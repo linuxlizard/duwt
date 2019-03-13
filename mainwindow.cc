@@ -23,7 +23,6 @@ MainWindow::~MainWindow()
 void MainWindow::on_action_Open_triggered()
 {
 	Netlink netlink;
-	netlink.get_scan_results();
 //    TestForm testform;
 //    testform.setModal(true);
 //    testform.exec();

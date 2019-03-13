@@ -133,6 +133,8 @@ static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err, void *ar
 	(void)err;
 	(void)arg;
 
+	assert(0);
+
 	return NL_STOP;
 }
 
@@ -153,6 +155,7 @@ static int ack_handler(struct nl_msg *msg, void *arg)
 
 	int *ret = arg;
 	*ret = 0;
+	assert(0);
 	return NL_STOP;
 }
 
@@ -613,7 +616,7 @@ static int print_sta_handler(struct nl_msg *msg, void *arg)
 	return NL_SKIP;
 }
 
-void decode_attr_bss( struct nlattr *attr )
+void decode_attr_bss( struct nlattr *attr)
 {
 	/* from iw-4.9 */
 	struct nlattr *bss[NL80211_BSS_MAX + 1];
@@ -656,12 +659,12 @@ void decode_attr_bss( struct nlattr *attr )
 		char mac_addr[64];
 		mac_addr_n2a(mac_addr, nla_data(bss[NL80211_BSS_BSSID]));
 		printf("bssid=%s\n", mac_addr);
+//		memcpy(network->bssid, nla_data(bss[NL80211_BSS_BSSID]), ETH_ALEN);
 	}
 
 	if (bss[NL80211_BSS_FREQUENCY]) {
 		counter--;
-		uint32_t freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
-		printf("freq=%" PRIu32 "\n", freq);
+//		network->freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
 	}
 
 	if (bss[NL80211_BSS_TSF]) {
@@ -757,20 +760,44 @@ void decode_attr_bss( struct nlattr *attr )
 
 int valid_handler(struct nl_msg *msg, void *arg)
 {
+	struct nlattr_list *attrs = (struct nlattr_list*)arg;
+
 	printf("%s %p %p\n", __func__, (void *)msg, arg);
+
+	struct nlmsghdr *hdr = nlmsg_hdr(msg);
+	nl_msg_dump(msg,stdout);
+
+//	struct nlmsghdr* nlhdr = nlmsg_hdr(msg);
+	printf("%s nlmsg max size=%ld\n", __func__, nlmsg_get_max_size(msg));
+
+	struct genlmsghdr* gnlh = nlmsg_data(nlmsg_hdr(msg));
+
+	printf("%s msgsize=%d\n", __func__, nlmsg_datalen(nlmsg_hdr(msg)));
+
+	printf("%s genlen=%d genattrlen=%d\n", __func__, genlmsg_len(gnlh), genlmsg_attrlen(gnlh, 0));
+
+	uint8_t *buf = (uint8_t *)malloc(genlmsg_attrlen(gnlh, 0));
+	if (buf) {
+		memcpy((void *)buf, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0));
+		attrs->buflist[attrs->counter] = buf;
+		attrs->bufsizelist[attrs->counter++] = genlmsg_attrlen(gnlh, 0);
+//		hex_dump("buf", (unsigned char *)msg, nlmsg_get_max_size(msg));
+	}
+
+	return NL_SKIP;
 
 //	hex_dump("msg", (const unsigned char *)msg, 128);
 
 //	nl_msg_dump(msg,stdout);
 
-	struct nlmsghdr *hdr = nlmsg_hdr(msg);
-
+//	struct nlmsghdr *hdr = nlmsg_hdr(msg);
+	hdr = nlmsg_hdr(msg);
 	int datalen = nlmsg_datalen(hdr);
 	printf("datalen=%d attrlen=%d\n", datalen, nlmsg_attrlen(hdr,0));
 
 	struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
 
-	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+//	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
 	nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
 		  genlmsg_attrlen(gnlh, 0), NULL);
 
@@ -935,12 +962,14 @@ int valid_handler(struct nl_msg *msg, void *arg)
 //	return NL_OK;
 }
 
-int get_scan_results(struct nl80211_state* state)
+int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_list *scan_attrs)
 {
 	/* SCAN -- THE BIG KAHOONA! */
 
-	const char *ifname = "wlp1s0";
 	unsigned int ifidx = if_nametoindex(ifname);
+	if (ifidx <= 0) {
+		return errno;
+	}
 	printf("ifidx=%u\n", ifidx);
 
 	struct nl_cb *cb = nl_cb_alloc(NL_CB_DEBUG);
@@ -951,7 +980,8 @@ int get_scan_results(struct nl80211_state* state)
 	nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &err);
 	nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_handler, &err);
 	nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, &err);
-	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, valid_handler, NULL);
+//	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, valid_handler, NULL);
+
 	nl_socket_set_cb(state->nl_sock, s_cb);
 
 	struct nl_msg* msg = nlmsg_alloc();
@@ -966,19 +996,26 @@ int get_scan_results(struct nl80211_state* state)
 	}
 
 	nla_put_u32(msg, NL80211_ATTR_IFINDEX, ifidx);
-	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, valid_handler, 0);
+
+	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, valid_handler, (void *)scan_attrs);
 
 	int retcode = nl_send_auto(state->nl_sock, msg);
-	printf("retcode=%d\n", retcode);
+	printf("nl_send_auto retcode=%d\n", retcode);
 
+	assert(err==1);
 	while (err > 0) {
 		printf("GET_SCAN calling nl_recvmsgs_default...\n");
 		retcode = nl_recvmsgs(state->nl_sock, cb);
-		printf("GET_SCAN retcode=%d err=%d\n", retcode, err);
+		printf("GET_SCAN retcode=%d err=%d counter=%ld\n", 
+				retcode, err, scan_attrs->counter);
 	}
 
 	nlmsg_free(msg);
 	msg = NULL;
+
+	nl_cb_put(cb);
+	nl_cb_put(s_cb);
+
 	return 0;
 }
 

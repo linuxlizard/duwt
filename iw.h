@@ -22,6 +22,8 @@
 #ifndef NETLINK_H
 #define NETLINK_H
 
+#include <linux/if_ether.h>
+
 struct nl_sock;
 struct nl_cb;
 
@@ -39,6 +41,18 @@ extern "C" {
 int nl80211_init(struct nl80211_state *state);
 void nl80211_cleanup(struct nl80211_state *state);
 
+struct nlattr_list {
+	size_t counter;
+
+	/* array of malloc'd copies of the struct nlattr blob from the genl
+	 * messages' payload 
+	 */
+	uint8_t *buflist[1024];
+
+	size_t bufsizelist[1024];
+};
+
+int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_list *scan_attrs);
 
 #ifdef __cplusplus
 }

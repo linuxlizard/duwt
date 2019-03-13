@@ -2,9 +2,11 @@
 
 #include "netlink.hh"
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	Netlink netlink;
+
+	netlink.get_scan("wlp1s0");
 
 	return 0;
 }

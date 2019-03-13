@@ -17,7 +17,7 @@ public:
 	Netlink(Netlink&&);  // Move constructor
 	Netlink& operator=(Netlink&&); // Move assignment operator
 
-	int get_scan_results(void);
+	int get_scan(const char *iface);
 
 private:
 	struct nl_sock* nl_sock;

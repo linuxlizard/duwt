@@ -8,6 +8,7 @@
 #include <netlink/attr.h>
 #include <linux/nl80211.h>
 
+#include "iw.h"
 #include "netlink.hh"
 
 Netlink::Netlink() :
@@ -71,8 +72,46 @@ Netlink& Netlink::operator=(Netlink&& src)
 	return *this;
 }
 
-int Netlink::get_scan_results(void)
+int Netlink::get_scan(const char *iface)
 {
-	return -1;
+	struct nl80211_state state = {
+		.nl_sock = nl_sock,
+		.nl80211_id = nl80211_id
+	};
+
+	struct nlattr_list attrlist = {};
+
+	int retcode = iw_get_scan(&state, iface, &attrlist);
+
+	for (size_t i=0 ; i<attrlist.counter ; i++) {
+		printf("%s %ld %p\n", __func__, i, attrlist.buflist[i]);
+
+//		hex_dump("attr", (unsigned char*)attrlist.buflist[i], 
+//				attrlist.bufsizelist[i]);
+
+		struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
+		retcode = nla_parse(tb_msg, NL80211_ATTR_MAX, 
+					(struct nlattr*)attrlist.buflist[i],
+			  				attrlist.bufsizelist[i], NULL);
+		printf("parse retcode=%d\n", retcode);
+
+		for (int i=0 ; i<NL80211_ATTR_MAX ; i++ ) {
+			if (tb_msg[i]) {
+				printf("%s %d=%p type=%d len=%d\n", __func__, i, (void *)tb_msg[i], nla_type(tb_msg[i]), nla_len(tb_msg[i]));
+			}
+		}
+
+	}
+
+	/* quick notes while I'm thinking of it: SSID could be utf8 
+	 * https://www.gnu.org/software/libc/manual/html_node/Extended-Char-Intro.html
+	 *
+	 * https://stackoverflow.com/questions/55641/unicode-processing-in-c
+	 * http://site.icu-project.org/ 
+	 * dnf info libicu
+	 * dnf info libicu-devel
+	 */
+
+	return retcode;
 }
 

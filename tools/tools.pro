@@ -1,7 +1,7 @@
 TEMPLATE = app
 TARGET = netlink
 
-CONFIG += debug c++14
+CONFIG += console debug c++14
 
 QT += sql 
 
