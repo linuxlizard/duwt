@@ -1,4 +1,4 @@
-/* this code based originally on 'iw' which has the following COPYING */
+/* this code based originally on 'iw' iw.h which has the following COPYING */
 /* 
  * Copyright (c) 2007, 2008        Johannes Berg
  * Copyright (c) 2007              Andy Lutomirski
@@ -54,5 +54,6 @@ void iw_hexdump(const char *prefix, const __u8 *buf, size_t size);
 
 int get_cf1(const struct chanmode *chanmode, unsigned long freq);
 
+void hex_dump( const char *title, unsigned char *ptr, int size );
 #endif
 
