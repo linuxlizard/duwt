@@ -15,7 +15,7 @@
 #include "iw.h"
 #include "util.h"
 
-Netlink::Netlink() :
+Cfg80211::Cfg80211() :
 	nl_sock(nullptr), nl80211_id(-1)
 {
 	/* starting from iw.c nl80211_init() */
@@ -37,13 +37,8 @@ Netlink::Netlink() :
 	s_cb = nl_cb_alloc(NL_CB_DEBUG);
 }
 
-Netlink::~Netlink()
+Cfg80211::~Cfg80211()
 {
-//	if (msg) {
-//		nlmsg_free(msg);
-//        msg = nullptr;
-//	}
-
 	if (nl_sock) {
 		nl_socket_free(nl_sock);
 	}
@@ -52,7 +47,7 @@ Netlink::~Netlink()
 	}
 }
 
-Netlink::Netlink(Netlink&& src)
+Cfg80211::Cfg80211(Cfg80211&& src)
 	: nl_sock(src.nl_sock), nl80211_id(src.nl80211_id), s_cb(src.s_cb)
 {
 	// move constructor
@@ -61,7 +56,7 @@ Netlink::Netlink(Netlink&& src)
 	src.s_cb = nullptr;
 }
 
-Netlink& Netlink::operator=(Netlink&& src)
+Cfg80211& Cfg80211::operator=(Cfg80211&& src)
 {
 	// move assignment
 	nl_sock = src.nl_sock;
@@ -106,32 +101,32 @@ BSS_Policy::BSS_Policy()
 //	policy[NL80211_BSS_BEACON_IES];
 }
 
-int Netlink::get_scan(const char *iface)
+int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 {
 	struct nl80211_state state = {
 		.nl_sock = nl_sock,
 		.nl80211_id = nl80211_id
 	};
 
-	struct nlattr_list attrlist = {};
+	struct nlattr_list attrlist {};
 
 	int retcode = iw_get_scan(&state, iface, &attrlist);
 
-	std::vector<Network *> network_list;
+//	std::vector<BSS> bss_list;
 
-	Network* network;
+//	BSS* network;
 	BSS_Policy bss_policy;
 
 	for (size_t i=0 ; i<attrlist.counter ; i++) {
-		printf("%s %ld %p\n", __func__, i, attrlist.buflist[i]);
+		printf("%s %ld %p\n", __func__, i, attrlist.attr_list[i]);
 
-//		hex_dump("attr", (unsigned char*)attrlist.buflist[i], 
-//				attrlist.bufsizelist[i]);
+//		hex_dump("attr", (unsigned char*)attrlist.attr_list[i], 
+//				attrlist.attr_len_list[i]);
 
 		struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
 		retcode = nla_parse(tb_msg, NL80211_ATTR_MAX, 
-					(struct nlattr*)attrlist.buflist[i],
-			  				attrlist.bufsizelist[i], NULL);
+					(struct nlattr*)attrlist.attr_list[i],
+			  				attrlist.attr_len_list[i], NULL);
 		printf("parse retcode=%d\n", retcode);
 
 		for (int i=0 ; i<NL80211_ATTR_MAX ; i++ ) {
@@ -140,7 +135,7 @@ int Netlink::get_scan(const char *iface)
 			}
 		}
 
-		network = new Network;
+		bss_list.emplace_back();
 
 		struct nlattr *bss[NL80211_BSS_MAX + 1];
 
@@ -159,13 +154,12 @@ int Netlink::get_scan(const char *iface)
 
 			struct nlattr *attr = bss[NL80211_BSS_BSSID];
 			hex_dump("bss", (unsigned char *)nla_data(attr), nla_len(attr));
-			memcpy( network->bssid, (unsigned char *)nla_data(attr), nla_len(attr));
+			memcpy( bss_list.back().bssid, (unsigned char *)nla_data(attr), nla_len(attr));
 			if (bss[NL80211_BSS_FREQUENCY]) {
-				network->freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
-
+				bss_list.back().freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
 			}
 			if (bss[NL80211_BSS_SEEN_MS_AGO]) {
-				network->age = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);
+				bss_list.back().age = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);
 			}
 
 			// following 'if' copied mostly from iw scan.c
@@ -174,7 +168,7 @@ int Netlink::get_scan(const char *iface)
 				struct nlattr *bcnies = bss[NL80211_BSS_BEACON_IES];
 
 				if (bss[NL80211_BSS_PRESP_DATA] ||
-					// wtf does this test do?
+					// TODO wtf does this test do?
 					(bcnies && (nla_len(ies) != nla_len(bcnies) ||
 						memcmp(nla_data(ies), nla_data(bcnies),
 							   nla_len(ies))))) {
@@ -199,12 +193,11 @@ int Netlink::get_scan(const char *iface)
 			}
 
 		}
-		network_list.push_back(network);
-		std::cout << "network " << *network << "\n";
+		// TODO what if I don't get a valid record (with no BSSID)?
 	}
 
 	for (size_t i=0 ; i<attrlist.counter ; i++) {
-		free(attrlist.buflist[i]);
+		free(attrlist.attr_list[i]);
 	}
 
 	/* quick notes while I'm thinking of it: SSID could be utf8 
@@ -221,12 +214,12 @@ int Netlink::get_scan(const char *iface)
 	return retcode;
 }
 
-std::ostream& operator<<(std::ostream& os, Network& network)
+std::ostream& operator<<(std::ostream& os, BSS& network)
 {
 	char mac_addr[20];
 	mac_addr_n2a(mac_addr, (const unsigned char *)network.bssid);
 
-	os << mac_addr << "\n";
+	os << mac_addr;
 	return os;
 }
 

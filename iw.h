@@ -24,6 +24,7 @@
 
 struct nl_sock;
 struct nl_cb;
+struct nl_attr;
 
 /* from iw 5.0.1 */
 struct nl80211_state {
@@ -37,9 +38,9 @@ struct nlattr_list {
 	/* array of malloc'd copies of the struct nlattr blob from the genl
 	 * messages' payload 
 	 */
-	uint8_t *buflist[1024];
+	struct nl_attr *attr_list[1024];
 
-	size_t bufsizelist[1024];
+	size_t attr_len_list[1024];
 };
 
 #ifdef __cplusplus

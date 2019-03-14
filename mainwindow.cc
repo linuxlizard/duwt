@@ -22,7 +22,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_action_Open_triggered()
 {
-	Netlink netlink;
 //    TestForm testform;
 //    testform.setModal(true);
 //    testform.exec();

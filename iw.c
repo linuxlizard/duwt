@@ -776,13 +776,14 @@ int valid_handler(struct nl_msg *msg, void *arg)
 
 	printf("%s genlen=%d genattrlen=%d\n", __func__, genlmsg_len(gnlh), genlmsg_attrlen(gnlh, 0));
 
-	uint8_t *buf = (uint8_t *)malloc(genlmsg_attrlen(gnlh, 0));
+	struct nl_attr *buf = (struct nl_attr *)malloc(genlmsg_attrlen(gnlh, 0));
 	if (buf) {
-		memcpy((void *)buf, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0));
-		attrs->buflist[attrs->counter] = buf;
-		attrs->bufsizelist[attrs->counter++] = genlmsg_attrlen(gnlh, 0);
+		memcpy(buf, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0));
+		attrs->attr_list[attrs->counter] = (struct nl_attr *)buf;
+		attrs->attr_len_list[attrs->counter++] = genlmsg_attrlen(gnlh, 0);
 //		hex_dump("buf", (unsigned char *)msg, nlmsg_get_max_size(msg));
 	}
+	// TOOD report malloc failure
 
 	return NL_SKIP;
 
