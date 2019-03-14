@@ -44,6 +44,10 @@ struct chandef {
 #define DIV_ROUND_UP(x, y) (((x) + (y - 1)) / (y))
 #define ARRAY_SIZE(ar) (sizeof(ar)/sizeof(ar[0]))
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int mac_addr_a2n(unsigned char *mac_addr, char *arg);
 void mac_addr_n2a(char *mac_addr, const unsigned char *arg);
 int parse_hex_mask(char *hexmask, unsigned char **result, size_t *result_len,
@@ -55,5 +59,9 @@ void iw_hexdump(const char *prefix, const __u8 *buf, size_t size);
 int get_cf1(const struct chanmode *chanmode, unsigned long freq);
 
 void hex_dump( const char *title, unsigned char *ptr, int size );
+
+#ifdef __cplusplus
+}
+#endif
 #endif
 

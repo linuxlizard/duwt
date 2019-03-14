@@ -1,6 +1,11 @@
 #ifndef NETLINK_HPP
 #define NETLINK_HPP
 
+#include <iostream>
+
+#include <linux/if_ether.h>
+#include <linux/nl80211.h>
+
 class Netlink
 {
 public:
@@ -26,9 +31,19 @@ private:
 
 };
 
-class Cfg80211
+class Network
 {
-
+public:
+	uint8_t bssid[ETH_ALEN];
+	enum nl80211_chan_width channel_width;
+	uint32_t freq;
+	uint32_t center_freq1;
+	uint32_t center_freq2;
+	int age;
 };
+
+
+// TODO re-read Stroustup to make sure I'm doing this right
+std::ostream& operator<<(std::ostream& os, Network& network);
 
 #endif

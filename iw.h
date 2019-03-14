@@ -22,8 +22,6 @@
 #ifndef NETLINK_H
 #define NETLINK_H
 
-#include <linux/if_ether.h>
-
 struct nl_sock;
 struct nl_cb;
 
@@ -32,14 +30,6 @@ struct nl80211_state {
 	struct nl_sock *nl_sock;
 	int nl80211_id;
 };
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/* from iw 5.0.1 */
-int nl80211_init(struct nl80211_state *state);
-void nl80211_cleanup(struct nl80211_state *state);
 
 struct nlattr_list {
 	size_t counter;
@@ -51,6 +41,14 @@ struct nlattr_list {
 
 	size_t bufsizelist[1024];
 };
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* from iw 5.0.1 */
+int nl80211_init(struct nl80211_state *state);
+void nl80211_cleanup(struct nl80211_state *state);
 
 int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_list *scan_attrs);
 

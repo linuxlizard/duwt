@@ -1,3 +1,6 @@
+#include <iostream>
+#include <vector>
+
 #include <sys/socket.h>
 #include <linux/if_ether.h>
 #include <net/if.h>
@@ -8,8 +11,9 @@
 #include <netlink/attr.h>
 #include <linux/nl80211.h>
 
-#include "iw.h"
 #include "netlink.hh"
+#include "iw.h"
+#include "util.h"
 
 Netlink::Netlink() :
 	nl_sock(nullptr), nl80211_id(-1)
@@ -72,6 +76,36 @@ Netlink& Netlink::operator=(Netlink&& src)
 	return *this;
 }
 
+class NLA_Policy
+{
+
+};
+
+class BSS_Policy : public NLA_Policy
+{
+
+public:
+	BSS_Policy();
+
+	struct nla_policy policy[NL80211_BSS_MAX+1];
+};
+
+BSS_Policy::BSS_Policy()
+{
+	policy[NL80211_BSS_TSF].type = NLA_U64 ;
+	policy[NL80211_BSS_FREQUENCY].type = NLA_U32 ;
+	policy[NL80211_BSS_BSSID].minlen = ETH_ALEN;
+	policy[NL80211_BSS_BSSID].maxlen = ETH_ALEN;
+	policy[NL80211_BSS_BEACON_INTERVAL].type = NLA_U16 ;
+	policy[NL80211_BSS_CAPABILITY].type = NLA_U16 ;
+//	policy[NL80211_BSS_INFORMATION_ELEMENTS];
+	policy[NL80211_BSS_SIGNAL_MBM].type = NLA_U32 ;
+	policy[NL80211_BSS_SIGNAL_UNSPEC].type = NLA_U8 ;
+	policy[NL80211_BSS_STATUS].type = NLA_U32 ;
+	policy[NL80211_BSS_SEEN_MS_AGO].type = NLA_U32 ;
+//	policy[NL80211_BSS_BEACON_IES];
+}
+
 int Netlink::get_scan(const char *iface)
 {
 	struct nl80211_state state = {
@@ -82,6 +116,11 @@ int Netlink::get_scan(const char *iface)
 	struct nlattr_list attrlist = {};
 
 	int retcode = iw_get_scan(&state, iface, &attrlist);
+
+	std::vector<Network *> network_list;
+
+	Network* network;
+	BSS_Policy bss_policy;
 
 	for (size_t i=0 ; i<attrlist.counter ; i++) {
 		printf("%s %ld %p\n", __func__, i, attrlist.buflist[i]);
@@ -101,6 +140,71 @@ int Netlink::get_scan(const char *iface)
 			}
 		}
 
+		network = new Network;
+
+		struct nlattr *bss[NL80211_BSS_MAX + 1];
+
+		if (tb_msg[NL80211_ATTR_BSS]) {
+			if (nla_parse_nested(bss, NL80211_BSS_MAX,
+						 tb_msg[NL80211_ATTR_BSS],
+						 bss_policy.policy)) {
+				std::cerr << "failed to parse nested attributes!\n";
+				continue;
+			}
+
+			if (!bss[NL80211_BSS_BSSID]) {
+				std::cerr << "bssid missing\n";
+				continue;
+			}
+
+			struct nlattr *attr = bss[NL80211_BSS_BSSID];
+			hex_dump("bss", (unsigned char *)nla_data(attr), nla_len(attr));
+			memcpy( network->bssid, (unsigned char *)nla_data(attr), nla_len(attr));
+			if (bss[NL80211_BSS_FREQUENCY]) {
+				network->freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
+
+			}
+			if (bss[NL80211_BSS_SEEN_MS_AGO]) {
+				network->age = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);
+			}
+
+			// following 'if' copied mostly from iw scan.c
+			if (bss[NL80211_BSS_INFORMATION_ELEMENTS] ) {
+				struct nlattr *ies = bss[NL80211_BSS_INFORMATION_ELEMENTS];
+				struct nlattr *bcnies = bss[NL80211_BSS_BEACON_IES];
+
+				if (bss[NL80211_BSS_PRESP_DATA] ||
+					// wtf does this test do?
+					(bcnies && (nla_len(ies) != nla_len(bcnies) ||
+						memcmp(nla_data(ies), nla_data(bcnies),
+							   nla_len(ies))))) {
+					std::cout << "found bytes=" << nla_len(ies) << " Information elements from Probe Response frame\n" ;
+					uint8_t *ie = (uint8_t *)nla_data(ies);
+					ssize_t ielen = (ssize_t)nla_len(ies);
+					hex_dump("ie", ie, ielen);
+//				print_ies(nla_data(ies), nla_len(ies),
+//					  params->unknown, params->type);
+				}
+			}
+			// following 'if' copied from iw scan.c
+			if (bss[NL80211_BSS_BEACON_IES] ) {
+				struct nlattr *bcnies = bss[NL80211_BSS_BEACON_IES];
+				std::cout << "found bytes="  << nla_len(bss[NL80211_BSS_BEACON_IES]) << " Information elements from Beacon frame\n";
+				uint8_t *ie = (uint8_t *)nla_data(bcnies);
+				ssize_t ielen = (ssize_t)nla_len(bcnies);
+				hex_dump("bie", ie, ielen);
+//				print_ies(nla_data(bss[NL80211_BSS_BEACON_IES]),
+//					  nla_len(bss[NL80211_BSS_BEACON_IES]),
+//					  params->unknown, params->type);
+			}
+
+		}
+		network_list.push_back(network);
+		std::cout << "network " << *network << "\n";
+	}
+
+	for (size_t i=0 ; i<attrlist.counter ; i++) {
+		free(attrlist.buflist[i]);
 	}
 
 	/* quick notes while I'm thinking of it: SSID could be utf8 
@@ -110,8 +214,19 @@ int Netlink::get_scan(const char *iface)
 	 * http://site.icu-project.org/ 
 	 * dnf info libicu
 	 * dnf info libicu-devel
+	 *
+	 * https://withblue.ink/2019/03/11/why-you-need-to-normalize-unicode-strings.html
 	 */
 
 	return retcode;
+}
+
+std::ostream& operator<<(std::ostream& os, Network& network)
+{
+	char mac_addr[20];
+	mac_addr_n2a(mac_addr, (const unsigned char *)network.bssid);
+
+	os << mac_addr << "\n";
+	return os;
 }
 
