@@ -15,6 +15,47 @@
 #include "iw.h"
 #include "util.h"
 
+class NLA_Policy
+{
+
+};
+
+class BSS_Policy : public NLA_Policy
+{
+
+public:
+	BSS_Policy();
+
+	struct nla_policy policy[NL80211_BSS_MAX+1];
+};
+
+BSS_Policy::BSS_Policy() : NLA_Policy()
+{
+	policy[NL80211_BSS_TSF].type = NLA_U64 ;
+	policy[NL80211_BSS_FREQUENCY].type = NLA_U32 ;
+	policy[NL80211_BSS_BSSID].minlen = ETH_ALEN;
+	policy[NL80211_BSS_BSSID].maxlen = ETH_ALEN;
+	policy[NL80211_BSS_BEACON_INTERVAL].type = NLA_U16 ;
+	policy[NL80211_BSS_CAPABILITY].type = NLA_U16 ;
+//	policy[NL80211_BSS_INFORMATION_ELEMENTS];
+	policy[NL80211_BSS_SIGNAL_MBM].type = NLA_U32 ;
+	policy[NL80211_BSS_SIGNAL_UNSPEC].type = NLA_U8 ;
+	policy[NL80211_BSS_STATUS].type = NLA_U32 ;
+	policy[NL80211_BSS_SEEN_MS_AGO].type = NLA_U32 ;
+//	policy[NL80211_BSS_BEACON_IES];
+}
+
+String_IE::String_IE(uint8_t id, uint8_t len, uint8_t *buf) 
+	: IE(id, len), s((char *)buf, len)
+{
+	// buf won't be null terminated
+}
+
+String_IE::String_IE(uint8_t id, uint8_t len, char *s) 
+	: IE(id, len), s(s)
+{
+}
+
 Cfg80211::Cfg80211() :
 	nl_sock(nullptr), nl80211_id(-1)
 {
@@ -69,36 +110,6 @@ Cfg80211& Cfg80211::operator=(Cfg80211&& src)
 	src.s_cb = nullptr;
 
 	return *this;
-}
-
-class NLA_Policy
-{
-
-};
-
-class BSS_Policy : public NLA_Policy
-{
-
-public:
-	BSS_Policy();
-
-	struct nla_policy policy[NL80211_BSS_MAX+1];
-};
-
-BSS_Policy::BSS_Policy()
-{
-	policy[NL80211_BSS_TSF].type = NLA_U64 ;
-	policy[NL80211_BSS_FREQUENCY].type = NLA_U32 ;
-	policy[NL80211_BSS_BSSID].minlen = ETH_ALEN;
-	policy[NL80211_BSS_BSSID].maxlen = ETH_ALEN;
-	policy[NL80211_BSS_BEACON_INTERVAL].type = NLA_U16 ;
-	policy[NL80211_BSS_CAPABILITY].type = NLA_U16 ;
-//	policy[NL80211_BSS_INFORMATION_ELEMENTS];
-	policy[NL80211_BSS_SIGNAL_MBM].type = NLA_U32 ;
-	policy[NL80211_BSS_SIGNAL_UNSPEC].type = NLA_U8 ;
-	policy[NL80211_BSS_STATUS].type = NLA_U32 ;
-	policy[NL80211_BSS_SEEN_MS_AGO].type = NLA_U32 ;
-//	policy[NL80211_BSS_BEACON_IES];
 }
 
 int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
@@ -176,6 +187,12 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 					uint8_t *ie = (uint8_t *)nla_data(ies);
 					ssize_t ielen = (ssize_t)nla_len(ies);
 					hex_dump("ie", ie, ielen);
+
+					// quick and dirty get the SSID (Usually the first)
+					if (ie[0] == 0) {
+						String_IE ssid {ie[0], ie[1], ie+2};
+						std::cout << "SSID=" << ssid << "\n";
+					}
 //				print_ies(nla_data(ies), nla_len(ies),
 //					  params->unknown, params->type);
 				}
@@ -200,26 +217,20 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 		free(attrlist.attr_list[i]);
 	}
 
-	/* quick notes while I'm thinking of it: SSID could be utf8 
-	 * https://www.gnu.org/software/libc/manual/html_node/Extended-Char-Intro.html
-	 *
-	 * https://stackoverflow.com/questions/55641/unicode-processing-in-c
-	 * http://site.icu-project.org/ 
-	 * dnf info libicu
-	 * dnf info libicu-devel
-	 *
-	 * https://withblue.ink/2019/03/11/why-you-need-to-normalize-unicode-strings.html
-	 */
-
 	return retcode;
 }
 
-std::ostream& operator<<(std::ostream& os, BSS& network)
+std::ostream& operator<<(std::ostream& os, const BSS& bss)
 {
 	char mac_addr[20];
-	mac_addr_n2a(mac_addr, (const unsigned char *)network.bssid);
-
+	mac_addr_n2a(mac_addr, (const unsigned char *)bss.bssid);
 	os << mac_addr;
+	return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const String_IE& ie)
+{
+	os << ie.s;
 	return os;
 }
 
