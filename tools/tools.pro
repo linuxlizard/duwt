@@ -1,17 +1,19 @@
 TEMPLATE = app
 TARGET = netlink
 
-CONFIG += console debug c++14
+CONFIG += console debug c++17
 
 QT += sql 
 
 HEADERS += ../iw.h\
 		 ../netlink.hh\
-		 ../util.h
+		 ../util.h\
+		 ../ie.hh
 
 SOURCES += ../iw.c\
 		   ../netlink.cc\
 		   ../util.c\
+		   ../ie.cc\
 		   main.cc
 
 INCLUDEPATH += ../

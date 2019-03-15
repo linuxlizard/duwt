@@ -1,12 +1,13 @@
 TEMPLATE = app
 TARGET = galileo
 
-CONFIG += ordered debug c++14
+CONFIG += ordered debug c++17
 QT += sql widgets
 
 HEADERS += ../galileo.h\
 		 ../iw.h\
 		 ../netlink.hh\
+		 ../ie.hh\
 		 ../util.h\
 		 ../mainwindow.h\
 		 ../aboutdialog.h
@@ -14,6 +15,7 @@ HEADERS += ../galileo.h\
 SOURCES += ../galileo.cc\
 		   ../iw.c\
 		   ../netlink.cc\
+		   ../ie.cc\
 		   ../util.c\
 		   ../mainwindow.cc\
 		   ../aboutdialog.cc

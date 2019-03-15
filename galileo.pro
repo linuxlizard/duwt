@@ -2,7 +2,7 @@ TEMPLATE = subdirs
 SUBDIRS = app tools
 TARGET = galileo
 
-CONFIG += ordered debug c++14
+CONFIG += ordered debug c++17
 QT += sql widgets
 
 HEADERS += galileo.h\

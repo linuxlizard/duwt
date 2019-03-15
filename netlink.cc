@@ -14,6 +14,7 @@
 #include "netlink.hh"
 #include "iw.h"
 #include "util.h"
+#include "ie.hh"
 
 class NLA_Policy
 {
@@ -45,19 +46,6 @@ BSS_Policy::BSS_Policy() : NLA_Policy()
 //	policy[NL80211_BSS_BEACON_IES];
 }
 
-IE::IE(uint8_t id, uint8_t len, uint8_t *buf) 
-{
-	this->id = id;
-	this->len = len;
-	this->buf = new uint8_t[len];
-	memcpy(this->buf, buf, len);
-}
-
-IE::~IE() 
-{
-	delete [] buf;
-}
-
 BSS::BSS(uint8_t *bssid)
 {
 	memcpy(this->bssid, bssid, ETH_ALEN);
@@ -76,6 +64,7 @@ BSS::~BSS()
 	std::cout << "~BSS() bye!\n";
 }
 
+#if 0
 BSS::BSS(const BSS&) 
 {
 	// Copy constructor
@@ -88,6 +77,7 @@ BSS& BSS::operator=(const BSS& bss)
 	std::cout << "BSS copy assignment\n";
 	return *this;
 }
+#endif
 
 BSS::BSS(BSS&&)
 {
@@ -229,24 +219,15 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 					std::cout << "found bytes=" << nla_len(ies) << " Information elements from Probe Response frame\n" ;
 					uint8_t *ie = (uint8_t *)nla_data(ies);
 					ssize_t ielen = (ssize_t)nla_len(ies);
-					hex_dump("ie", ie, ielen);
-
-					// quick and dirty get the SSID (Usually the first)
-					if (ie[0] == 0) {
-						std::string ssid_s { (char *)(ie+2), (size_t)ie[1] };
-						std::cout << "SSID=" << ssid_s << "\n";
-						IE ssid = IE(ie[0], ie[1], ie+2);
-//						String_IE *ssid = new String_IE(ie[0], ie[1], ie+2);
-//						std::cout << "SSID=" << *ssid << "\n";
-//
-//						bss_list.back().ie_list.emplace_back(std::make_unique<String_IE>(ie[0], ie[1], ie+2));
-//						bss_list.back().ie_list.emplace_back(std::move(ssid));
-						new_bss.ie_list.emplace_back(std::move(ssid));
-
-//						bss_list.back().ie_list.push_back(ssid);
+					uint8_t *ie_end = ie + ielen;
+					while (ie < ie_end) {
+//						IE new_ie = IE(ie[0], ie[1], ie+2);
+						ie += ie[1] + 2;
+						new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
+//						new_bss.ie_list.emplace_back(std::move(new_ie));
 					}
-//				print_ies(nla_data(ies), nla_len(ies),
-//					  params->unknown, params->type);
+
+//					hex_dump("ie", ie, ielen);
 				}
 			}
 			// following 'if' copied from iw scan.c
@@ -282,7 +263,8 @@ std::ostream& operator<<(std::ostream& os, const BSS& bss)
 
 std::ostream& operator<<(std::ostream& os, const IE& ie)
 {
-	printf("id=%#x\n", ie.id);
+	// The id and len are uint8_t which confuses ostream. So promote them to
+	// official ints and ostream is happy.
 	os << "id=" << static_cast<int>(ie.id) << " len=" << static_cast<int>(ie.len);
 	return os;
 }
