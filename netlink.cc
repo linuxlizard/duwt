@@ -45,15 +45,61 @@ BSS_Policy::BSS_Policy() : NLA_Policy()
 //	policy[NL80211_BSS_BEACON_IES];
 }
 
-String_IE::String_IE(uint8_t id, uint8_t len, uint8_t *buf) 
-	: IE(id, len), s((char *)buf, len)
+IE::IE(uint8_t id, uint8_t len, uint8_t *buf) 
 {
-	// buf won't be null terminated
+	this->id = id;
+	this->len = len;
+	this->buf = new uint8_t[len];
+	memcpy(this->buf, buf, len);
 }
 
-String_IE::String_IE(uint8_t id, uint8_t len, char *s) 
-	: IE(id, len), s(s)
+IE::~IE() 
 {
+	delete [] buf;
+}
+
+BSS::BSS(uint8_t *bssid)
+{
+	memcpy(this->bssid, bssid, ETH_ALEN);
+}
+
+BSS::~BSS()
+{
+	// delete all IEs
+	std::cout << "ie_list.size=" << ie_list.size() << "\n";
+	for (size_t i=0 ; i<ie_list.size() ; i++) {
+//		IE *ie = ie_list.at(i);
+//		printf("%p\n", ie);
+//		std::cout << "i=" << i << " delete " << ie->repr() << "\n";
+//		delete ie;
+	}
+	std::cout << "~BSS() bye!\n";
+}
+
+BSS::BSS(const BSS&) 
+{
+	// Copy constructor
+	std::cout << "BSS copy constructor\n";
+}
+
+BSS& BSS::operator=(const BSS& bss) 
+{
+	// Copy assignment operator
+	std::cout << "BSS copy assignment\n";
+	return *this;
+}
+
+BSS::BSS(BSS&&)
+{
+	// Move constructor
+	std::cout << "BSS move constructor\n";
+}
+
+BSS& BSS::operator=(BSS&& bss)
+{
+	// Move assignment operator
+	std::cout << "BSS move assignment\n";
+	return bss;
 }
 
 Cfg80211::Cfg80211() :
@@ -123,9 +169,6 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 
 	int retcode = iw_get_scan(&state, iface, &attrlist);
 
-//	std::vector<BSS> bss_list;
-
-//	BSS* network;
 	BSS_Policy bss_policy;
 
 	for (size_t i=0 ; i<attrlist.counter ; i++) {
@@ -146,8 +189,6 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 			}
 		}
 
-		bss_list.emplace_back();
-
 		struct nlattr *bss[NL80211_BSS_MAX + 1];
 
 		if (tb_msg[NL80211_ATTR_BSS]) {
@@ -163,9 +204,11 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 				continue;
 			}
 
+			BSS& new_bss = bss_list.emplace_back();
+
 			struct nlattr *attr = bss[NL80211_BSS_BSSID];
 			hex_dump("bss", (unsigned char *)nla_data(attr), nla_len(attr));
-			memcpy( bss_list.back().bssid, (unsigned char *)nla_data(attr), nla_len(attr));
+			memcpy( new_bss.bssid, (unsigned char *)nla_data(attr), nla_len(attr));
 			if (bss[NL80211_BSS_FREQUENCY]) {
 				bss_list.back().freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
 			}
@@ -190,8 +233,17 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 
 					// quick and dirty get the SSID (Usually the first)
 					if (ie[0] == 0) {
-						String_IE ssid {ie[0], ie[1], ie+2};
-						std::cout << "SSID=" << ssid << "\n";
+						std::string ssid_s { (char *)(ie+2), (size_t)ie[1] };
+						std::cout << "SSID=" << ssid_s << "\n";
+						IE ssid = IE(ie[0], ie[1], ie+2);
+//						String_IE *ssid = new String_IE(ie[0], ie[1], ie+2);
+//						std::cout << "SSID=" << *ssid << "\n";
+//
+//						bss_list.back().ie_list.emplace_back(std::make_unique<String_IE>(ie[0], ie[1], ie+2));
+//						bss_list.back().ie_list.emplace_back(std::move(ssid));
+						new_bss.ie_list.emplace_back(std::move(ssid));
+
+//						bss_list.back().ie_list.push_back(ssid);
 					}
 //				print_ies(nla_data(ies), nla_len(ies),
 //					  params->unknown, params->type);
@@ -228,9 +280,10 @@ std::ostream& operator<<(std::ostream& os, const BSS& bss)
 	return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const String_IE& ie)
+std::ostream& operator<<(std::ostream& os, const IE& ie)
 {
-	os << ie.s;
+	printf("id=%#x\n", ie.id);
+	os << "id=" << static_cast<int>(ie.id) << " len=" << static_cast<int>(ie.len);
 	return os;
 }
 

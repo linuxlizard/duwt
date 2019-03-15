@@ -3,43 +3,56 @@
 
 #include <iostream>
 #include <vector>
+#include <variant>
+#include <memory>
 
 #include <linux/if_ether.h>
 #include <linux/nl80211.h>
-
-// representation of a WiFi BSS
-class BSS
-{
-public:
-	uint8_t bssid[ETH_ALEN];
-	enum nl80211_chan_width channel_width;
-	uint32_t freq;
-	uint32_t center_freq1;
-	uint32_t center_freq2;
-	int age;
-};
 
 // base class of 802.11 Information Element
 class IE
 {
 	public:
-		IE(uint8_t id, uint8_t len) { this->id = id; this->len = len; }
+		IE(uint8_t id, uint8_t len, uint8_t *buf); 
+		~IE();
+
+//		std::string repr(void);
+
+		// definitely don't want copy constructors
+		IE(const IE&) = delete; // Copy constructor
+		IE& operator=(const IE&) = delete;  // Copy assignment operator
+
+		// added move constructors to learn how to use move constructors
+		// Move constructor
+		IE(IE&& src) 
+			: id(src.id), len(src.len), buf(src.buf)
+		{
+			src.id = -1;
+			src.len = -1;
+			src.buf = nullptr;
+		};
+
+		IE& operator=(IE&& src) // Move assignment operator
+		{
+			id = src.id;
+			len = src.len;
+			buf = src.buf;
+
+			src.id = -1;
+			src.len = -1;
+			src.buf = nullptr;
+
+			return *this;
+		};
+
+
+		friend std::ostream & operator << (std::ostream &, const IE&);
 
 	private:
 		uint8_t id;
 		uint8_t len;
-};
+		uint8_t *buf;
 
-// IE with a string (e.g., SSID)
-class String_IE : public IE
-{
-	public:
-		String_IE(uint8_t id, uint8_t len, uint8_t *buf);
-		String_IE(uint8_t id, uint8_t len, char *s);
-
-	friend std::ostream & operator << (std::ostream &, const String_IE&);
-
-	private:
 		/* quick notes while I'm thinking of it: SSID could be utf8 
 		 * https://www.gnu.org/software/libc/manual/html_node/Extended-Char-Intro.html
 		 *
@@ -50,9 +63,35 @@ class String_IE : public IE
 		 *
 		 * https://withblue.ink/2019/03/11/why-you-need-to-normalize-unicode-strings.html
 		 */
+};
 
-		// for now, just store the chars
-		std::string s;
+
+// representation of a WiFi BSS
+class BSS
+{
+public:
+	BSS() = default;
+	BSS(uint8_t *bssid);
+	~BSS();
+
+	// definitely don't want copy constructors
+//	BSS(const BSS&) = delete; // Copy constructor
+//	BSS& operator=(const BSS&) = delete;  // Copy assignment operator
+	BSS(const BSS&) ; // Copy constructor
+	BSS& operator=(const BSS&) ;  // Copy assignment operator
+
+	// added move constructors to learn how to use move constructors
+	BSS(BSS&&);  // Move constructor
+	BSS& operator=(BSS&&); // Move assignment operator
+
+	uint8_t bssid[ETH_ALEN];
+	enum nl80211_chan_width channel_width;
+	uint32_t freq;
+	uint32_t center_freq1;
+	uint32_t center_freq2;
+	int age;
+
+	std::vector<IE> ie_list;
 };
 
 // https://wireless.wiki.kernel.org/en/developers/Documentation/cfg80211
@@ -82,9 +121,9 @@ private:
 };
 
 
-// TODO re-read Stroustup to make sure I'm doing this right
+// TODO re-read Stroustrup to make sure I'm doing this right
 std::ostream& operator<<(std::ostream& os, const BSS& bss);
 
-std::ostream& operator<<(std::ostream& os, const String_IE& ie);
+std::ostream& operator<<(std::ostream& os, const IE& ie);
 
 #endif
