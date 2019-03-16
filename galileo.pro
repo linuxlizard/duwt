@@ -1,5 +1,5 @@
 TEMPLATE = subdirs
-SUBDIRS = app tools
+SUBDIRS = app scandump
 TARGET = galileo
 
 CONFIG += ordered debug c++17

@@ -1,5 +1,5 @@
 TEMPLATE = app
-TARGET = netlink
+TARGET = scandump
 
 CONFIG += console debug c++17
 
