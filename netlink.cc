@@ -222,8 +222,8 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 					uint8_t *ie_end = ie + ielen;
 					while (ie < ie_end) {
 //						IE new_ie = IE(ie[0], ie[1], ie+2);
-						ie += ie[1] + 2;
 						new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
+						ie += ie[1] + 2;
 //						new_bss.ie_list.emplace_back(std::move(new_ie));
 					}
 
@@ -236,7 +236,11 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 				std::cout << "found bytes="  << nla_len(bss[NL80211_BSS_BEACON_IES]) << " Information elements from Beacon frame\n";
 				uint8_t *ie = (uint8_t *)nla_data(bcnies);
 				ssize_t ielen = (ssize_t)nla_len(bcnies);
-				hex_dump("bie", ie, ielen);
+				uint8_t *ie_end = ie + ielen;
+				while (ie < ie_end) {
+					ie += ie[1] + 2;
+				}
+//				hex_dump("bie", ie, ielen);
 //				print_ies(nla_data(bss[NL80211_BSS_BEACON_IES]),
 //					  nla_len(bss[NL80211_BSS_BEACON_IES]),
 //					  params->unknown, params->type);
@@ -258,14 +262,6 @@ std::ostream& operator<<(std::ostream& os, const BSS& bss)
 	char mac_addr[20];
 	mac_addr_n2a(mac_addr, (const unsigned char *)bss.bssid);
 	os << mac_addr;
-	return os;
-}
-
-std::ostream& operator<<(std::ostream& os, const IE& ie)
-{
-	// The id and len are uint8_t which confuses ostream. So promote them to
-	// official ints and ostream is happy.
-	os << "id=" << static_cast<int>(ie.id) << " len=" << static_cast<int>(ie.len);
 	return os;
 }
 

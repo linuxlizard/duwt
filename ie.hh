@@ -7,7 +7,7 @@
 class IE
 {
 	public:
-		IE(uint8_t id, uint8_t len, uint8_t *buf); 
+		IE(uint8_t id, uint8_t len, uint8_t *buf) ; 
 		~IE();
 
 //		std::string repr(void);
@@ -19,11 +19,12 @@ class IE
 		// added move constructors to learn how to use move constructors
 		// Move constructor
 		IE(IE&& src) 
-			: id(src.id), len(src.len), buf(src.buf)
+			: id(src.id), len(src.len), buf(src.buf), name(src.name)
 		{
 			src.id = -1;
 			src.len = -1;
 			src.buf = nullptr;
+			src.name = nullptr;
 		};
 
 		IE& operator=(IE&& src) // Move assignment operator
@@ -31,10 +32,12 @@ class IE
 			id = src.id;
 			len = src.len;
 			buf = src.buf;
+			name = src.name;
 
 			src.id = -1;
 			src.len = -1;
 			src.buf = nullptr;
+			src.name = nullptr;
 
 			return *this;
 		};
@@ -43,10 +46,12 @@ class IE
 		friend std::ostream & operator << (std::ostream &, const IE&);
 
 	private:
+
 		uint8_t id;
 		uint8_t len;
 		uint8_t *buf;
 
+		const char* name;
 		/* quick notes while I'm thinking of it: SSID could be utf8 
 		 * https://www.gnu.org/software/libc/manual/html_node/Extended-Char-Intro.html
 		 *
@@ -57,6 +62,7 @@ class IE
 		 *
 		 * https://withblue.ink/2019/03/11/why-you-need-to-normalize-unicode-strings.html
 		 */
+
 };
 
 std::ostream& operator<<(std::ostream& os, const IE& ie);
