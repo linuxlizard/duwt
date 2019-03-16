@@ -5,7 +5,7 @@
 #include "aboutdialog.h"
 //#include "testform.h"
 
-#include "netlink.hh"
+#include "../netlink.hh"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
