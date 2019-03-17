@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include <cassert>
+
 #include <iostream>
 #include <vector>
 
@@ -26,43 +29,68 @@ class BSS_Policy : public NLA_Policy
 
 public:
 	BSS_Policy();
-
+#if 0
+	static struct nla_policy bss_policy[NL80211_BSS_MAX + 1] = {
+		[NL80211_BSS_TSF] = { .type = NLA_U64 },
+		[NL80211_BSS_FREQUENCY] = { .type = NLA_U32 },
+		[NL80211_BSS_BSSID] = { },
+		[NL80211_BSS_BEACON_INTERVAL] = { .type = NLA_U16 },
+		[NL80211_BSS_CAPABILITY] = { .type = NLA_U16 },
+		[NL80211_BSS_INFORMATION_ELEMENTS] = { },
+		[NL80211_BSS_SIGNAL_MBM] = { .type = NLA_U32 },
+		[NL80211_BSS_SIGNAL_UNSPEC] = { .type = NLA_U8 },
+		[NL80211_BSS_STATUS] = { .type = NLA_U32 },
+	};
+#endif
 	struct nla_policy policy[NL80211_BSS_MAX+1];
 };
 
 BSS_Policy::BSS_Policy() : NLA_Policy()
 {
+	memset(policy, 0, sizeof(policy));
 	policy[NL80211_BSS_TSF].type = NLA_U64 ;
 	policy[NL80211_BSS_FREQUENCY].type = NLA_U32 ;
-	policy[NL80211_BSS_BSSID].minlen = ETH_ALEN;
-	policy[NL80211_BSS_BSSID].maxlen = ETH_ALEN;
+//	policy[NL80211_BSS_BSSID].minlen = ETH_ALEN;
+//	policy[NL80211_BSS_BSSID].maxlen = ETH_ALEN;
 	policy[NL80211_BSS_BEACON_INTERVAL].type = NLA_U16 ;
 	policy[NL80211_BSS_CAPABILITY].type = NLA_U16 ;
 //	policy[NL80211_BSS_INFORMATION_ELEMENTS];
 	policy[NL80211_BSS_SIGNAL_MBM].type = NLA_U32 ;
 	policy[NL80211_BSS_SIGNAL_UNSPEC].type = NLA_U8 ;
 	policy[NL80211_BSS_STATUS].type = NLA_U32 ;
-	policy[NL80211_BSS_SEEN_MS_AGO].type = NLA_U32 ;
+//	policy[NL80211_BSS_SEEN_MS_AGO].type = NLA_U32 ;
 //	policy[NL80211_BSS_BEACON_IES];
 }
 
 BSS::BSS(uint8_t *bssid)
 {
-	memcpy(this->bssid, bssid, ETH_ALEN);
+	memcpy(this->bssid.data(), bssid, ETH_ALEN);
 }
 
 BSS::~BSS()
 {
 	// delete all IEs
-	std::cout << "ie_list.size=" << ie_list.size() << "\n";
+//	std::cout << "ie_list.size=" << ie_list.size() << "\n";
 	for (size_t i=0 ; i<ie_list.size() ; i++) {
 //		IE *ie = ie_list.at(i);
 //		printf("%p\n", ie);
 //		std::cout << "i=" << i << " delete " << ie->repr() << "\n";
 //		delete ie;
 	}
-	std::cout << "~BSS() bye!\n";
+//	std::cout << "~BSS() bye!\n";
 }
+
+std::string BSS::get_ssid(void)
+{
+	for (auto&& ie : ie_list) {
+		if (ie.get_id() == 0) {
+			return ie.str();
+		}
+	}
+
+	return std::string("not found");
+}
+
 
 #if 0
 BSS::BSS(const BSS&) 
@@ -79,7 +107,14 @@ BSS& BSS::operator=(const BSS& bss)
 }
 #endif
 
-BSS::BSS(BSS&&)
+BSS::BSS(BSS&& src)
+	: bssid(std::move(src.bssid)),
+	  channel_width(src.channel_width),
+	  freq(src.freq),
+	  center_freq1(src.center_freq1),
+	  center_freq2(src.center_freq2),
+	  age(src.age),
+	  ie_list(std::move(src.ie_list))
 {
 	// Move constructor
 	std::cout << "BSS move constructor\n";
@@ -169,8 +204,9 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 
 		struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
 		retcode = nla_parse(tb_msg, NL80211_ATTR_MAX, 
-					(struct nlattr*)attrlist.attr_list[i],
+					attrlist.attr_list[i],
 			  				attrlist.attr_len_list[i], NULL);
+		assert(retcode==0);
 		printf("parse retcode=%d\n", retcode);
 
 		for (int i=0 ; i<NL80211_ATTR_MAX ; i++ ) {
@@ -179,9 +215,11 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 			}
 		}
 
-		struct nlattr *bss[NL80211_BSS_MAX + 1];
+		struct nlattr *bss[NL80211_BSS_MAX + 1] { };
 
 		if (tb_msg[NL80211_ATTR_BSS]) {
+			decode_attr_bss(tb_msg[NL80211_ATTR_BSS]);
+
 			if (nla_parse_nested(bss, NL80211_BSS_MAX,
 						 tb_msg[NL80211_ATTR_BSS],
 						 bss_policy.policy)) {
@@ -194,16 +232,13 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 				continue;
 			}
 
-			BSS& new_bss = bss_list.emplace_back();
+			BSS& new_bss = bss_list.emplace_back((uint8_t*)nla_data(bss[NL80211_BSS_BSSID]));
 
-			struct nlattr *attr = bss[NL80211_BSS_BSSID];
-			hex_dump("bss", (unsigned char *)nla_data(attr), nla_len(attr));
-			memcpy( new_bss.bssid, (unsigned char *)nla_data(attr), nla_len(attr));
 			if (bss[NL80211_BSS_FREQUENCY]) {
-				bss_list.back().freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
+				new_bss.freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
 			}
 			if (bss[NL80211_BSS_SEEN_MS_AGO]) {
-				bss_list.back().age = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);
+				new_bss.age = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);
 			}
 
 			// following 'if' copied mostly from iw scan.c
@@ -220,14 +255,17 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 					uint8_t *ie = (uint8_t *)nla_data(ies);
 					ssize_t ielen = (ssize_t)nla_len(ies);
 					uint8_t *ie_end = ie + ielen;
+					size_t counter=0;
 					while (ie < ie_end) {
 //						IE new_ie = IE(ie[0], ie[1], ie+2);
 						new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
+						if (ie[0] == 0) {
+							std::cout << "P BSS=" << new_bss << " SSID:" << new_bss.ie_list.back().str() << std::endl;
+						}
 						ie += ie[1] + 2;
-//						new_bss.ie_list.emplace_back(std::move(new_ie));
+						counter++;
 					}
-
-//					hex_dump("ie", ie, ielen);
+					std::cout << "found " << counter << " ie\n";
 				}
 			}
 			// following 'if' copied from iw scan.c
@@ -237,10 +275,17 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 				uint8_t *ie = (uint8_t *)nla_data(bcnies);
 				ssize_t ielen = (ssize_t)nla_len(bcnies);
 				uint8_t *ie_end = ie + ielen;
+				size_t counter = 0;
 				while (ie < ie_end) {
+					new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
+					if (ie[0] == 0) {
+						std::cout << "B BSS=" << new_bss << " SSID:" << new_bss.ie_list.back().str() << std::endl;
+					}
+
 					ie += ie[1] + 2;
+					counter++;
 				}
-//				hex_dump("bie", ie, ielen);
+				std::cout << "found " << counter << " ie\n";
 //				print_ies(nla_data(bss[NL80211_BSS_BEACON_IES]),
 //					  nla_len(bss[NL80211_BSS_BEACON_IES]),
 //					  params->unknown, params->type);
@@ -260,7 +305,7 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 std::ostream& operator<<(std::ostream& os, const BSS& bss)
 {
 	char mac_addr[20];
-	mac_addr_n2a(mac_addr, (const unsigned char *)bss.bssid);
+	mac_addr_n2a(mac_addr, (const unsigned char *)bss.bssid.data());
 	os << mac_addr;
 	return os;
 }

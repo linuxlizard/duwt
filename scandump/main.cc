@@ -12,6 +12,7 @@ int main(void)
 
 	for ( auto&& bss : bss_list ) {
 		std::cout << "found BSS " << bss << " num_ies=" << bss.ie_list.size() << "\n";
+		std::cout << "SSID=" << bss.get_ssid() << "\n";
 		for (auto&& ie : bss.ie_list) {
 //			std::cerr << "ie=" << ie << std::endl;
 			std::cout << "ie=" << ie << "\n";

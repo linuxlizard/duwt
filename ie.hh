@@ -45,8 +45,11 @@ class IE
 
 		friend std::ostream & operator << (std::ostream &, const IE&);
 
-	private:
+		std::string str(void) { 
+			return std::string( (const char *)buf, (size_t)len); };
 
+		uint8_t get_id(void) { return id; };
+	private:
 		uint8_t id;
 		uint8_t len;
 		uint8_t *buf;

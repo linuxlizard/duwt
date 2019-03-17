@@ -22,9 +22,7 @@
 #ifndef NETLINK_H
 #define NETLINK_H
 
-struct nl_sock;
-struct nl_cb;
-struct nl_attr;
+#include <linux/netlink.h>
 
 /* from iw 5.0.1 */
 struct nl80211_state {
@@ -38,7 +36,8 @@ struct nlattr_list {
 	/* array of malloc'd copies of the struct nlattr blob from the genl
 	 * messages' payload 
 	 */
-	struct nl_attr *attr_list[1024];
+	// FIXME obviously hardcoding these is bad, m'kay?
+	struct nlattr *attr_list[1024];
 
 	size_t attr_len_list[1024];
 };
@@ -52,6 +51,9 @@ int nl80211_init(struct nl80211_state *state);
 void nl80211_cleanup(struct nl80211_state *state);
 
 int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_list *scan_attrs);
+
+void decode_attr_bss( struct nlattr *attr);
+int print_sta_handler(struct nl_msg *msg, void *arg);
 
 #ifdef __cplusplus
 }

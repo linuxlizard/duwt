@@ -29,7 +29,7 @@ public:
 	BSS(BSS&&);  // Move constructor
 	BSS& operator=(BSS&&); // Move assignment operator
 
-	uint8_t bssid[ETH_ALEN];
+	std::array<uint8_t,ETH_ALEN>bssid;
 	enum nl80211_chan_width channel_width;
 	uint32_t freq;
 	uint32_t center_freq1;
@@ -37,6 +37,8 @@ public:
 	int age;
 
 	std::vector<IE> ie_list;
+
+	std::string get_ssid(void);
 };
 
 // https://wireless.wiki.kernel.org/en/developers/Documentation/cfg80211

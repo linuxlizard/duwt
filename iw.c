@@ -345,7 +345,7 @@ static char *get_chain_signal(struct nlattr *attr_list)
  * end nl-4.9 
  */
 
-static int print_sta_handler(struct nl_msg *msg, void *arg)
+int print_sta_handler(struct nl_msg *msg, void *arg)
 {
 	struct nlattr *tb[NL80211_ATTR_MAX + 1];
 	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
@@ -401,6 +401,7 @@ static int print_sta_handler(struct nl_msg *msg, void *arg)
 	if (nla_parse_nested(sinfo, NL80211_STA_INFO_MAX,
 			     tb[NL80211_ATTR_STA_INFO],
 			     stats_policy)) {
+		assert(0);
 		fprintf(stderr, "failed to parse nested attributes!\n");
 		return NL_SKIP;
 	}
@@ -693,7 +694,7 @@ void decode_attr_bss( struct nlattr *attr)
 		uint8_t *ie = nla_data(bss[NL80211_BSS_INFORMATION_ELEMENTS]);
 		size_t ie_len = nla_len(bss[NL80211_BSS_INFORMATION_ELEMENTS]);
 		printf("found len=%zu of information elements\n", ie_len);
-		iw_hexdump("ie", ie, ie_len);
+		hex_dump("ie", ie, ie_len);
 	}
 
 	if (bss[NL80211_BSS_SIGNAL_MBM]) {
@@ -723,7 +724,7 @@ void decode_attr_bss( struct nlattr *attr)
 	if (bss[NL80211_BSS_BEACON_IES]) {
 		counter--;
 		uint8_t *beacon_ie = nla_data(bss[NL80211_BSS_BEACON_IES]);
-		iw_hexdump("beacon_ie", beacon_ie, nla_len(bss[NL80211_BSS_BEACON_IES]));
+		hex_dump("beacon_ie", beacon_ie, nla_len(bss[NL80211_BSS_BEACON_IES]));
 	}
 
 	if (bss[NL80211_BSS_CHAN_WIDTH]) {
@@ -751,12 +752,8 @@ void decode_attr_bss( struct nlattr *attr)
 		printf("last seen boottime=%" PRIu64 "ns\n", last_seen_boottime);
 	}
 
-
-
-
 	printf("%s counter=%zd unhandled attributes\n", __func__, counter);
 }
-
 
 int valid_handler(struct nl_msg *msg, void *arg)
 {
@@ -770,23 +767,35 @@ int valid_handler(struct nl_msg *msg, void *arg)
 //	struct nlmsghdr* nlhdr = nlmsg_hdr(msg);
 	printf("%s nlmsg max size=%ld\n", __func__, nlmsg_get_max_size(msg));
 
-	struct genlmsghdr* gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct genlmsghdr* gnlh = nlmsg_data(hdr);
 
-	printf("%s msgsize=%d\n", __func__, nlmsg_datalen(nlmsg_hdr(msg)));
+	printf("%s msgsize=%d\n", __func__, nlmsg_datalen(hdr));
 
 	printf("%s genlen=%d genattrlen=%d\n", __func__, genlmsg_len(gnlh), genlmsg_attrlen(gnlh, 0));
 
-	struct nl_attr *buf = (struct nl_attr *)malloc(genlmsg_attrlen(gnlh, 0));
+	size_t buflen = genlmsg_attrlen(gnlh, 0);
+	struct nlattr *ptr = genlmsg_attrdata(gnlh, 0);
+	struct nlattr *buf = (struct nlattr *)malloc(buflen);
 	if (buf) {
-		memcpy(buf, genlmsg_attrdata(gnlh, 0), genlmsg_attrlen(gnlh, 0));
-		attrs->attr_list[attrs->counter] = (struct nl_attr *)buf;
-		attrs->attr_len_list[attrs->counter++] = genlmsg_attrlen(gnlh, 0);
-//		hex_dump("buf", (unsigned char *)msg, nlmsg_get_max_size(msg));
+		memset(buf, 0xff, buflen);
+		hex_dump("attr", (unsigned char *)ptr, 64);
+		hex_dump("buf", (unsigned char *)buf, 64);
+		memcpy(buf, ptr, buflen);
+		attrs->attr_list[attrs->counter] = (struct nlattr *)buf;
+		attrs->attr_len_list[attrs->counter++] = buflen;
+		hex_dump("attr", (unsigned char *)ptr, 64);
+		hex_dump("buf", (unsigned char *)buf, 64);
+		int retcode = memcmp(buf, ptr, 64);
+		assert(retcode==0);
 	}
-	// TOOD report malloc failure
+	else {
+		// TODO report malloc failure
+		assert(0);
+	}
 
 	return NL_SKIP;
 
+#if 0
 //	hex_dump("msg", (const unsigned char *)msg, 128);
 
 //	nl_msg_dump(msg,stdout);
@@ -961,6 +970,7 @@ int valid_handler(struct nl_msg *msg, void *arg)
 
 	return NL_SKIP;
 //	return NL_OK;
+#endif
 }
 
 int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_list *scan_attrs)
@@ -1016,6 +1026,17 @@ int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_l
 
 	nl_cb_put(cb);
 	nl_cb_put(s_cb);
+
+	for (size_t i=0 ; i<scan_attrs->counter ; i++) {
+		struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
+		retcode = nla_parse(tb_msg, NL80211_ATTR_MAX, 
+					scan_attrs->attr_list[i],
+			  				scan_attrs->attr_len_list[i], NULL);
+		// TODO add a correct failure check
+		assert(retcode==0);
+
+		decode_attr_bss(tb_msg[NL80211_ATTR_BSS]);
+	}
 
 	return 0;
 }

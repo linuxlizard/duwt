@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QSqlQueryModel>
 
 namespace Ui {
 class MainWindow;
@@ -14,6 +15,7 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+
 
 private slots:
     void on_action_Open_triggered();
@@ -28,6 +30,11 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+
+	QSqlQueryModel model;
+	
+	void create_db(void);
+	void update_scan(void);
 };
 
 #endif // MAINWINDOW_H
