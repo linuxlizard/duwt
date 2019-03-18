@@ -45,7 +45,7 @@ class IE_Names
 		IE_Names();
 
 		// "IEEE Std 802.11-2012"
-		std::array<const char*, 255> names {
+		std::array<const char*, 256> names {
 			"SSID",
 			"Supported rates",
 			"FH parameter set",
@@ -218,6 +218,8 @@ IE_Names::IE_Names()
 	names[107] = "802.11u Interworking";
 	names[108] = "802.11u Advertisement",
 	names[111] = "802.11u Roaming Consortium";
+
+	names[255] = "Reserved";
 }
 
 static IE_Names ie_names;
