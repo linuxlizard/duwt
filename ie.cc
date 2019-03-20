@@ -225,18 +225,11 @@ IE_Names::IE_Names()
 static IE_Names ie_names;
 
 IE::IE(uint8_t id, uint8_t len, uint8_t *buf) 
-	: id(id), len(len)
+	: id{id}, len{len}
 {
-	this->buf = new uint8_t[len];
-	memcpy(this->buf, buf, len);
+	this->buf.assign(buf, buf+len);
 
 	name = ie_names.names.at(id);
-//	std::cout << "IE name=" << name << "\n";
-}
-
-IE::~IE() 
-{
-	delete [] buf;
 }
 
 std::ostream& operator<<(std::ostream& os, const IE& ie)
