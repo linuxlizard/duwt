@@ -67,19 +67,6 @@ BSS::BSS(uint8_t *bssid)
 	memcpy(this->bssid.data(), bssid, ETH_ALEN);
 }
 
-BSS::~BSS()
-{
-	// delete all IEs
-//	std::cout << "ie_list.size=" << ie_list.size() << "\n";
-	for (size_t i=0 ; i<ie_list.size() ; i++) {
-//		IE *ie = ie_list.at(i);
-//		printf("%p\n", ie);
-//		std::cout << "i=" << i << " delete " << ie->repr() << "\n";
-//		delete ie;
-	}
-//	std::cout << "~BSS() bye!\n";
-}
-
 std::string BSS::get_ssid(void)
 {
 	for (auto&& ie : ie_list) {
@@ -90,22 +77,6 @@ std::string BSS::get_ssid(void)
 
 	return std::string("not found");
 }
-
-
-#if 0
-BSS::BSS(const BSS&) 
-{
-	// Copy constructor
-	std::cout << "BSS copy constructor\n";
-}
-
-BSS& BSS::operator=(const BSS& bss) 
-{
-	// Copy assignment operator
-	std::cout << "BSS copy assignment\n";
-	return *this;
-}
-#endif
 
 BSS::BSS(BSS&& src)
 	: bssid(std::move(src.bssid)),
@@ -124,61 +95,51 @@ BSS& BSS::operator=(BSS&& bss)
 {
 	// Move assignment operator
 	std::cout << "BSS move assignment\n";
+	// TODO
 	return bss;
 }
 
 Cfg80211::Cfg80211() :
-	nl_sock(nullptr), nl80211_id(-1)
+	nl_sock(std::make_unique<NLSock>()),
+	nl80211_id(-1)
 {
-	/* starting from iw.c nl80211_init() */
-	nl_sock = nl_socket_alloc();
-    printf("nl_sock=%p\n", static_cast<void *>(nl_sock));
-
-	int retcode = genl_connect(nl_sock);
-	printf("genl_connect retcode=%d\n", retcode);
-
-	nl80211_id = genl_ctrl_resolve(nl_sock, NL80211_GENL_NAME);
-	if (nl80211_id < 0) {
-		nl_socket_free(nl_sock);
-//		throw ;
+	if (nl_sock == nullptr) {
+		// nl_socket_alloc() failed
+		// TODO throw something
 	}
 
-	printf("nl80211_id=%d\n", nl80211_id);
+	int retcode = genl_connect(nl_sock->my_sock);
+	if (retcode < 0) {
+		// TODO throw something
+	}
 
-//	struct nl_cb *cb = nl_cb_alloc(NL_CB_DEBUG);
-	s_cb = nl_cb_alloc(NL_CB_DEBUG);
+	nl80211_id = genl_ctrl_resolve(nl_sock->my_sock, NL80211_GENL_NAME);
+	if (nl80211_id < 0) {
+		// TODO throw something
+	}
+
 }
 
 Cfg80211::~Cfg80211()
 {
-	if (nl_sock) {
-		nl_socket_free(nl_sock);
-	}
-	if (s_cb) {
-		nl_cb_put(s_cb);
-	}
+	// anything?
 }
 
 Cfg80211::Cfg80211(Cfg80211&& src)
-	: nl_sock(src.nl_sock), nl80211_id(src.nl80211_id), s_cb(src.s_cb)
+	: nl_sock(std::move(src.nl_sock)), 
+	nl80211_id(src.nl80211_id)
 {
 	// move constructor
-	src.nl_sock = nullptr;
 	src.nl80211_id = -1;
-	src.s_cb = nullptr;
 }
 
 Cfg80211& Cfg80211::operator=(Cfg80211&& src)
 {
 	// move assignment
-	nl_sock = src.nl_sock;
-	src.nl_sock = nullptr;
+	nl_sock = std::move(src.nl_sock);
 
 	nl80211_id = src.nl80211_id;
 	src.nl80211_id = -1;
-
-	s_cb = src.s_cb;
-	src.s_cb = nullptr;
 
 	return *this;
 }
@@ -186,7 +147,7 @@ Cfg80211& Cfg80211::operator=(Cfg80211&& src)
 int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 {
 	struct nl80211_state state = {
-		.nl_sock = nl_sock,
+		.nl_sock = nl_sock->my_sock,
 		.nl80211_id = nl80211_id
 	};
 

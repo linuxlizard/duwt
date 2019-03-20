@@ -8,8 +8,35 @@
 
 #include <linux/if_ether.h>
 #include <linux/nl80211.h>
+#include <netlink/socket.h>
 
 #include "ie.hh"
+
+// encapsulate a netlink socket struct so can wrap it in a unique_ptr
+class NLSock
+{
+	public:
+		NLSock() 
+		{ 
+			my_sock = nl_socket_alloc(); 
+			std::cout << "class sock=" << my_sock << "\n";
+		};
+
+		~NLSock() 
+		{
+			std::cout << "~class sock\n";
+			if (my_sock) {
+				std::cout << "class sock nl_socket_free " << my_sock << "\n";
+				nl_socket_free(my_sock);
+				my_sock = nullptr;
+			}
+		};
+
+		struct nl_sock* my_sock;
+};
+
+
+using nl_sock_ptr_class = std::unique_ptr<NLSock>;
 
 // representation of a WiFi BSS
 class BSS
@@ -17,13 +44,11 @@ class BSS
 public:
 	BSS() = default;
 	BSS(uint8_t *bssid);
-	~BSS();
+	~BSS() = default;
 
 	// definitely don't want copy constructors
 	BSS(const BSS&) = delete; // Copy constructor
 	BSS& operator=(const BSS&) = delete;  // Copy assignment operator
-//	BSS(const BSS&) ; // Copy constructor
-//	BSS& operator=(const BSS&) ;  // Copy assignment operator
 
 	// added move constructors to learn how to use move constructors
 	BSS(BSS&&);  // Move constructor
@@ -48,7 +73,7 @@ public:
 	// https://en.cppreference.com/w/cpp/language/rule_of_three
 	// https://github.com/isocpp/CppCoreGuidelines/blob/master/CppCoreGuidelines.md#S-ctor
 	Cfg80211();
-	virtual ~Cfg80211();  // Destructor
+	~Cfg80211();  // Destructor
 
 	// definitely don't want copy constructors
 	Cfg80211(const Cfg80211&) = delete; // Copy constructor
@@ -61,12 +86,9 @@ public:
 	int get_scan(const char*iface, std::vector<BSS>& network_list);
 
 private:
-	struct nl_sock* nl_sock;
+	nl_sock_ptr_class nl_sock;
 	int nl80211_id;
-	struct nl_cb* s_cb;
-
 };
-
 
 // TODO re-read Stroustrup to make sure I'm doing this right
 std::ostream& operator<<(std::ostream& os, const BSS& bss);
