@@ -19,6 +19,8 @@
 #include "util.h"
 #include "ie.hh"
 
+using namespace cfg80211;
+
 class NLA_Policy
 {
 

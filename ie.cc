@@ -14,6 +14,8 @@
 
 #include "ie.hh"
 
+using namespace cfg80211;
+
 // From IEEE802.11-2012:
 //
 // <quote>
@@ -219,6 +221,8 @@ IE_Names::IE_Names()
 	names[108] = "802.11u Advertisement",
 	names[111] = "802.11u Roaming Consortium";
 
+	// TODO fill out the rest of the empty fields with "Reserved"
+
 	names[255] = "Reserved";
 }
 
@@ -232,7 +236,7 @@ IE::IE(uint8_t id, uint8_t len, uint8_t *buf)
 	name = ie_names.names.at(id);
 }
 
-std::ostream& operator<<(std::ostream& os, const IE& ie)
+std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie)
 {
 	// The id and len are uint8_t which confuses ostream. So promote them to
 	// official ints and ostream is happy.

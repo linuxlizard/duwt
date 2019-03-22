@@ -4,6 +4,16 @@
 #include <iostream>
 #include <vector>
 
+// forward declare class IE so can introduce operator<< before the 'friend' in
+// class IE
+namespace cfg80211 {
+	class IE;
+};
+
+std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie);
+
+namespace cfg80211 {
+
 // base class of 802.11 Information Element
 class IE
 {
@@ -41,7 +51,7 @@ class IE
 		};
 
 
-		friend std::ostream & operator << (std::ostream &, const IE&);
+		friend std::ostream& ::operator<< (std::ostream &, const IE&);
 
 		std::string str(void) { 
 			return std::string( 
@@ -70,6 +80,6 @@ class IE
 
 };
 
-std::ostream& operator<<(std::ostream& os, const IE& ie);
+};  // end namespace cfg80211
 
 #endif

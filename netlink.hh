@@ -12,6 +12,8 @@
 
 #include "ie.hh"
 
+namespace cfg80211 {
+
 // encapsulate a netlink socket struct so can wrap it in a unique_ptr
 class NLSock
 {
@@ -90,7 +92,9 @@ private:
 	int nl80211_id;
 };
 
+}; // end namespace cfg80211
+
 // TODO re-read Stroustrup to make sure I'm doing this right
-std::ostream& operator<<(std::ostream& os, const BSS& bss);
+std::ostream& operator<<(std::ostream& os, const cfg80211::BSS& bss);
 
 #endif

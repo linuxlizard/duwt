@@ -10,6 +10,8 @@
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QMainWindow>
+#include <QWindow>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -18,6 +20,10 @@
 
 #include "../netlink.hh"
 #include "../util.h"
+
+/* davep 20190318 ; https://www.qcustomplot.com/index.php/introduction */
+
+/* davep 20190319 ; nl_socket_get_fd() + QSocketNotifier */
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -35,6 +41,12 @@ MainWindow::MainWindow(QWidget *parent) :
 	update_scan();
 
 	ui->tableView->setModel(&model);
+
+	// increase BSS and SSID column widths
+	ui->tableView->setColumnWidth(0, ui->tableView->columnWidth(0)*2);
+	ui->tableView->setColumnWidth(1, ui->tableView->columnWidth(1)*2);
+
+//	setIcon(QIcon("Gnome-network-wireless.svg"));
 }
 
 MainWindow::~MainWindow()
@@ -66,9 +78,9 @@ void MainWindow::create_db(void)
 
 void MainWindow::update_scan(void)
 {
-	Cfg80211 cfg80211;
+	cfg80211::Cfg80211 cfg80211;
 
-	std::vector<BSS> bss_list;
+	std::vector<cfg80211::BSS> bss_list;
 	cfg80211.get_scan("wlp1s0", bss_list);
 
 	QSqlDatabase db = QSqlDatabase::database();
