@@ -22,6 +22,7 @@ class NLSock
 		{ 
 			my_sock = nl_socket_alloc(); 
 			std::cout << "class sock=" << my_sock << "\n";
+			// TODO throw something on alloc fail
 		};
 
 		~NLSock() 
@@ -38,7 +39,28 @@ class NLSock
 };
 
 
+class NLCallback
+{
+	public:
+		NLCallback() 
+		{ 
+			my_cb = nl_cb_alloc(NL_CB_DEBUG);
+			// TODO throw something on alloc failure
+		};
+
+		~NLCallback() 
+		{
+			if (my_cb) {
+				nl_cb_put(my_cb);
+				my_cb = nullptr;
+			}
+		};
+
+		struct nl_cb *my_cb;
+};
+
 using nl_sock_ptr_class = std::unique_ptr<NLSock>;
+using nl_cb_ptr_class = std::unique_ptr<NLCallback>;
 
 // representation of a WiFi BSS
 class BSS
@@ -65,6 +87,8 @@ public:
 
 	std::vector<IE> ie_list;
 
+	// FIXME this method is awful; need a better way
+	// also std::string isn't UTF8 safe
 	std::string get_ssid(void);
 };
 
@@ -87,8 +111,17 @@ public:
 
 	int get_scan(const char*iface, std::vector<BSS>& network_list);
 
+	int listen_scan_events(void);
+	int fetch_scan_events(void);
+
+	int get_fd(void)
+	{
+		return nl_socket_get_fd(nl_sock->my_sock);
+	}
+
 private:
 	nl_sock_ptr_class nl_sock;
+	nl_cb_ptr_class nl_cb;
 	int nl80211_id;
 };
 

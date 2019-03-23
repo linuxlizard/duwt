@@ -133,8 +133,6 @@ static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err, void *ar
 	(void)err;
 	(void)arg;
 
-	assert(0);
-
 	return NL_STOP;
 }
 
@@ -155,7 +153,6 @@ static int ack_handler(struct nl_msg *msg, void *arg)
 
 	int *ret = arg;
 	*ret = 0;
-	assert(0);
 	return NL_STOP;
 }
 
@@ -977,6 +974,9 @@ int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_l
 {
 	/* SCAN -- THE BIG KAHOONA! */
 
+	// FIXME use state's callback ptr
+	// Currently don't need it here because GET_SCAN is stateless.
+
 	unsigned int ifidx = if_nametoindex(ifname);
 	if (ifidx <= 0) {
 		return errno;
@@ -1038,6 +1038,182 @@ int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_l
 		decode_attr_bss(tb_msg[NL80211_ATTR_BSS]);
 	}
 
+	return 0;
+}
+
+/* from iw event.c */
+static int scan_event_handler(struct nl_msg *msg, void *arg)
+{
+	printf("%s %p %p\n", __func__, (void *)msg, arg);
+
+	struct nlmsghdr *hdr = nlmsg_hdr(msg);
+
+	int datalen = nlmsg_datalen(hdr);
+	printf("datalen=%d attrlen=%d\n", datalen, nlmsg_attrlen(hdr,0));
+
+	struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
+
+	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+		  genlmsg_attrlen(gnlh, 0), NULL);
+
+	printf("%s cmd=%d\n", __func__, (int)(gnlh->cmd));
+
+	// report attrs not handled in my crappy code below
+	ssize_t counter=0;
+
+	for (int i=0 ; i<NL80211_ATTR_MAX ; i++ ) {
+		if (tb_msg[i]) {
+			printf("%s %d=%p type=%d len=%d\n", __func__, i, (void *)tb_msg[i], nla_type(tb_msg[i]), nla_len(tb_msg[i]));
+			counter++;
+		}
+	}
+
+	return NL_OK;
+}
+
+static int no_seq_check(struct nl_msg *msg, void *arg)
+{
+	(void)msg;
+	(void)arg;
+
+	return NL_OK;
+}
+
+/* from iw genl.c */
+struct handler_args {
+	const char *group;
+	int id;
+};
+
+/* from iw genl.c */
+static int family_handler(struct nl_msg *msg, void *arg)
+{
+	struct handler_args *grp = arg;
+	struct nlattr *tb[CTRL_ATTR_MAX + 1];
+	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct nlattr *mcgrp;
+	int rem_mcgrp;
+
+	printf("%s\n", __func__);
+	nla_parse(tb, CTRL_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+		  genlmsg_attrlen(gnlh, 0), NULL);
+
+	if (!tb[CTRL_ATTR_MCAST_GROUPS])
+		return NL_SKIP;
+
+	nla_for_each_nested(mcgrp, tb[CTRL_ATTR_MCAST_GROUPS], rem_mcgrp) {
+		struct nlattr *tb_mcgrp[CTRL_ATTR_MCAST_GRP_MAX + 1];
+
+		nla_parse(tb_mcgrp, CTRL_ATTR_MCAST_GRP_MAX,
+			  nla_data(mcgrp), nla_len(mcgrp), NULL);
+
+		if (!tb_mcgrp[CTRL_ATTR_MCAST_GRP_NAME] ||
+		    !tb_mcgrp[CTRL_ATTR_MCAST_GRP_ID])
+			continue;
+		if (strncmp(nla_data(tb_mcgrp[CTRL_ATTR_MCAST_GRP_NAME]),
+			    grp->group, nla_len(tb_mcgrp[CTRL_ATTR_MCAST_GRP_NAME])))
+			continue;
+		grp->id = nla_get_u32(tb_mcgrp[CTRL_ATTR_MCAST_GRP_ID]);
+		break;
+	}
+
+	return NL_SKIP;
+}
+
+/* from iw genl.c but I renamed from nl_get_multicast_id() because it was
+ * confusing me thinking it was part of the libnl. 
+ */
+int iw_get_multicast_id(struct nl_sock *sock, const char *family, const char *group)
+{
+	struct nl_msg *msg;
+	struct nl_cb *cb;
+	int ret, ctrlid;
+	struct handler_args grp = {
+		.group = group,
+		.id = -ENOENT,
+	};
+
+	msg = nlmsg_alloc();
+	if (!msg)
+		return -ENOMEM;
+
+	cb = nl_cb_alloc(NL_CB_DEFAULT);
+	if (!cb) {
+		ret = -ENOMEM;
+		goto out_fail_cb;
+	}
+
+	ctrlid = genl_ctrl_resolve(sock, "nlctrl");
+
+	genlmsg_put(msg, 0, 0, ctrlid, 0,
+		    0, CTRL_CMD_GETFAMILY, 0);
+
+	ret = -ENOBUFS;
+	NLA_PUT_STRING(msg, CTRL_ATTR_FAMILY_NAME, family);
+
+	ret = nl_send_auto_complete(sock, msg);
+	if (ret < 0)
+		goto out;
+
+	ret = 1;
+
+	nl_cb_err(cb, NL_CB_CUSTOM, error_handler, &ret);
+	nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, &ret);
+	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, family_handler, &grp);
+
+	while (ret > 0)
+		nl_recvmsgs(sock, cb);
+
+	if (ret == 0)
+		ret = grp.id;
+ nla_put_failure:
+ out:
+	nl_cb_put(cb);
+ out_fail_cb:
+	nlmsg_free(msg);
+	return ret;
+}
+
+int iw_listen_scan_events(struct nl80211_state* state)
+{
+	printf("%s\n", __func__);
+
+	// set up to listen for scan events
+	int mcid = iw_get_multicast_id(state->nl_sock, "nl80211", "scan");
+	if (mcid < 0) {
+		fprintf(stderr, "iw_get_multicast_id errno=%d \"%s\"\n", mcid, strerror(mcid));
+		// TODO create an err.h for useful error numbers
+		return -1;
+	}
+
+	int err = nl_socket_add_membership(state->nl_sock, mcid);
+	if (err < 0) {
+		fprintf(stderr, "nl_socket_add_membership failed err=%d\n", err);
+		// TODO create an err.h for useful error numbers
+		return -1;
+	}
+
+
+	/* from iw event.c */
+	/* no sequence checking for multicast messages */
+	nl_cb_set(state->cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
+
+	nl_cb_set(state->cb, NL_CB_VALID, NL_CB_CUSTOM, scan_event_handler, NULL);
+
+	return 0;
+}
+
+int iw_fetch_scan_events(struct nl80211_state* state)
+{
+	int err;
+
+	printf("%s\n", __func__);
+	printf("%s calling nl_recvmsgs...\n", __func__);
+	err = nl_recvmsgs(state->nl_sock, state->cb);
+	if (err < 0) {
+		fprintf(stderr, "%s nl_recvmsgs err=%d\n", __func__, err);
+	}
 	return 0;
 }
 

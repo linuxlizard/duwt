@@ -23,6 +23,11 @@ using namespace cfg80211;
 
 class NLA_Policy
 {
+	public:
+		NLA_Policy() 
+		{ 
+			make_bss_policy(g_bss_policy); 
+		};
 
 };
 
@@ -31,6 +36,8 @@ class BSS_Policy : public NLA_Policy
 
 public:
 	BSS_Policy();
+	// C++ doesn't support designated initializers so we'll build a class
+	// instead
 #if 0
 	static struct nla_policy bss_policy[NL80211_BSS_MAX + 1] = {
 		[NL80211_BSS_TSF] = { .type = NLA_U64 },
@@ -103,10 +110,16 @@ BSS& BSS::operator=(BSS&& bss)
 
 Cfg80211::Cfg80211() :
 	nl_sock(std::make_unique<NLSock>()),
+	nl_cb(std::make_unique<NLCallback>()),
 	nl80211_id(-1)
 {
 	if (nl_sock == nullptr) {
 		// nl_socket_alloc() failed
+		// TODO throw something
+	}
+
+	if (nl_cb == nullptr) {
+		// nl_cb_alloc() failed
 		// TODO throw something
 	}
 
@@ -129,6 +142,7 @@ Cfg80211::~Cfg80211()
 
 Cfg80211::Cfg80211(Cfg80211&& src)
 	: nl_sock(std::move(src.nl_sock)), 
+	nl_cb(std::move(src.nl_cb)), 
 	nl80211_id(src.nl80211_id)
 {
 	// move constructor
@@ -139,6 +153,7 @@ Cfg80211& Cfg80211::operator=(Cfg80211&& src)
 {
 	// move assignment
 	nl_sock = std::move(src.nl_sock);
+	nl_cb = std::move(src.nl_cb);
 
 	nl80211_id = src.nl80211_id;
 	src.nl80211_id = -1;
@@ -150,6 +165,8 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 {
 	struct nl80211_state state = {
 		.nl_sock = nl_sock->my_sock,
+		// TODO use the callback in GET_SCAN ???
+		.cb = nullptr,
 		.nl80211_id = nl80211_id
 	};
 
@@ -264,6 +281,36 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 
 	return retcode;
 }
+
+int Cfg80211::listen_scan_events(void)
+{
+	struct nl80211_state state = {
+		.nl_sock = nl_sock->my_sock,
+		.cb = nl_cb->my_cb,
+		.nl80211_id = nl80211_id
+	};
+
+	std::cout << __func__ << "\n";
+	int err = iw_listen_scan_events(&state);
+	(void)err;
+
+	return 0;
+};
+
+int Cfg80211::fetch_scan_events(void)
+{
+	struct nl80211_state state = {
+		.nl_sock = nl_sock->my_sock,
+		.cb = nl_cb->my_cb,
+		.nl80211_id = nl80211_id
+	};
+
+	std::cout << __func__ << "\n";
+	int err = iw_fetch_scan_events(&state);
+	(void)err;
+
+	return 0;
+};
 
 std::ostream& operator<<(std::ostream& os, const BSS& bss)
 {

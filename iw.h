@@ -27,6 +27,7 @@
 /* from iw 5.0.1 */
 struct nl80211_state {
 	struct nl_sock *nl_sock;
+	struct nl_cb *cb ;
 	int nl80211_id;
 };
 
@@ -50,10 +51,14 @@ extern "C" {
 int nl80211_init(struct nl80211_state *state);
 void nl80211_cleanup(struct nl80211_state *state);
 
-int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_list *scan_attrs);
-
 void decode_attr_bss( struct nlattr *attr);
 int print_sta_handler(struct nl_msg *msg, void *arg);
+
+// my feeble code
+int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_list *scan_attrs);
+int iw_get_multicast_id(struct nl_sock *sock, const char *family, const char *group);
+int iw_listen_scan_events(struct nl80211_state* state);
+int iw_fetch_scan_events(struct nl80211_state* state);
 
 #ifdef __cplusplus
 }
