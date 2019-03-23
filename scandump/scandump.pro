@@ -8,12 +8,14 @@ QT += sql
 HEADERS += ../iw.h\
 		 ../netlink.hh\
 		 ../util.h\
-		 ../ie.hh
+		 ../ie.hh\
+		 ../attr.hh
 
 SOURCES += ../iw.c\
 		   ../netlink.cc\
 		   ../util.c\
 		   ../ie.cc\
+		   ../attr.cc\
 		   main.cc
 
 INCLUDEPATH += ../
