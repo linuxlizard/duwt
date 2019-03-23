@@ -58,7 +58,7 @@ int print_sta_handler(struct nl_msg *msg, void *arg);
 int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_list *scan_attrs);
 int iw_get_multicast_id(struct nl_sock *sock, const char *family, const char *group);
 int iw_listen_scan_events(struct nl80211_state* state);
-int iw_fetch_scan_events(struct nl80211_state* state);
+int iw_fetch_scan_events(struct nl80211_state* state, struct nlattr_list* evt_attrs);
 
 #ifdef __cplusplus
 }

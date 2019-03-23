@@ -770,6 +770,7 @@ int valid_handler(struct nl_msg *msg, void *arg)
 
 	printf("%s genlen=%d genattrlen=%d\n", __func__, genlmsg_len(gnlh), genlmsg_attrlen(gnlh, 0));
 
+	// copy the attrs blob to the caller
 	size_t buflen = genlmsg_attrlen(gnlh, 0);
 	struct nlattr *ptr = genlmsg_attrdata(gnlh, 0);
 	struct nlattr *buf = (struct nlattr *)malloc(buflen);
@@ -779,7 +780,8 @@ int valid_handler(struct nl_msg *msg, void *arg)
 		hex_dump("buf", (unsigned char *)buf, 64);
 		memcpy(buf, ptr, buflen);
 		attrs->attr_list[attrs->counter] = (struct nlattr *)buf;
-		attrs->attr_len_list[attrs->counter++] = buflen;
+		attrs->attr_len_list[attrs->counter] = buflen;
+		attrs->counter++;
 		hex_dump("attr", (unsigned char *)ptr, 64);
 		hex_dump("buf", (unsigned char *)buf, 64);
 		int retcode = memcmp(buf, ptr, 64);
@@ -1044,6 +1046,8 @@ int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_l
 /* from iw event.c */
 static int scan_event_handler(struct nl_msg *msg, void *arg)
 {
+	struct nlattr_list *attrs = (struct nlattr_list*)arg;
+
 	printf("%s %p %p\n", __func__, (void *)msg, arg);
 
 	struct nlmsghdr *hdr = nlmsg_hdr(msg);
@@ -1051,9 +1055,10 @@ static int scan_event_handler(struct nl_msg *msg, void *arg)
 	int datalen = nlmsg_datalen(hdr);
 	printf("datalen=%d attrlen=%d\n", datalen, nlmsg_attrlen(hdr,0));
 
-	struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
+//	struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
 
 	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+#if 0
 	nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
 		  genlmsg_attrlen(gnlh, 0), NULL);
 
@@ -1068,8 +1073,24 @@ static int scan_event_handler(struct nl_msg *msg, void *arg)
 			counter++;
 		}
 	}
+#endif
+	// copy the nlattr blob to the caller
+	size_t buflen = genlmsg_attrlen(gnlh, 0);
+	struct nlattr *ptr = genlmsg_attrdata(gnlh, 0);
+	struct nlattr *buf = (struct nlattr *)malloc(buflen);
+	if (buf) {
+		memcpy(buf, ptr, buflen);
+		attrs->attr_list[attrs->counter] = (struct nlattr *)buf;
+		attrs->attr_len_list[attrs->counter] = buflen;
+		attrs->counter++;
+	}
+	else {
+		// TODO report malloc failure
+		assert(0);
+	}
 
-	return NL_OK;
+	// TODO NL_SKIP vs NL_OK ?????  I really would like to understand this
+	return NL_SKIP;
 }
 
 static int no_seq_check(struct nl_msg *msg, void *arg)
@@ -1190,29 +1211,38 @@ int iw_listen_scan_events(struct nl80211_state* state)
 	int err = nl_socket_add_membership(state->nl_sock, mcid);
 	if (err < 0) {
 		fprintf(stderr, "nl_socket_add_membership failed err=%d\n", err);
-		// TODO create an err.h for useful error numbers
+		// TODO err.h for useful error numbers
 		return -1;
 	}
 
-
-	/* from iw event.c */
+	/* from iw event.c (TODO not sure why it's used)*/
 	/* no sequence checking for multicast messages */
-	nl_cb_set(state->cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
-
-	nl_cb_set(state->cb, NL_CB_VALID, NL_CB_CUSTOM, scan_event_handler, NULL);
+	err = nl_cb_set(state->cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
+	if (err < 0) {
+		// TODO complain loudly
+		return err;
+	}
 
 	return 0;
 }
 
-int iw_fetch_scan_events(struct nl80211_state* state)
+int iw_fetch_scan_events(struct nl80211_state* state, struct nlattr_list* evt_attrs)
 {
 	int err;
 
 	printf("%s\n", __func__);
+
+	err = nl_cb_set(state->cb, NL_CB_VALID, NL_CB_CUSTOM, scan_event_handler, (void*)evt_attrs);
+	if (err < 0) {
+		// TODO complain loudly
+		return err;
+	}
+
 	printf("%s calling nl_recvmsgs...\n", __func__);
 	err = nl_recvmsgs(state->nl_sock, state->cb);
 	if (err < 0) {
 		fprintf(stderr, "%s nl_recvmsgs err=%d\n", __func__, err);
+		return err;
 	}
 	return 0;
 }
