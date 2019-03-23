@@ -18,16 +18,12 @@
 #include "iw.h"
 #include "util.h"
 #include "ie.hh"
+#include "attr.hh"
 
 using namespace cfg80211;
 
 class NLA_Policy
 {
-	public:
-		NLA_Policy() 
-		{ 
-			make_bss_policy(g_bss_policy); 
-		};
 
 };
 
@@ -189,9 +185,10 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 		assert(retcode==0);
 		printf("parse retcode=%d\n", retcode);
 
-		for (int i=0 ; i<NL80211_ATTR_MAX ; i++ ) {
-			if (tb_msg[i]) {
-				printf("%s %d=%p type=%d len=%d\n", __func__, i, (void *)tb_msg[i], nla_type(tb_msg[i]), nla_len(tb_msg[i]));
+		for (int msgidx=0 ; msgidx<NL80211_ATTR_MAX ; msgidx++ ) {
+			if (tb_msg[msgidx]) {
+				printf("%s %d=%p type=%d len=%d\n", __func__, 
+						msgidx, (void *)tb_msg[msgidx], nla_type(tb_msg[msgidx]), nla_len(tb_msg[msgidx]));
 			}
 		}
 
@@ -305,9 +302,30 @@ int Cfg80211::fetch_scan_events(void)
 		.nl80211_id = nl80211_id
 	};
 
+	struct nlattr_list attrlist {};
+
 	std::cout << __func__ << "\n";
-	int err = iw_fetch_scan_events(&state);
-	(void)err;
+	int err = iw_fetch_scan_events(&state, &attrlist);
+	if (err) {
+		// TODO better error handling
+		assert(0);
+		return err;
+	}
+
+	struct nlattr *tb_msg[NL80211_ATTR_MAX + 1] {};
+
+	err = nla_parse(tb_msg, NL80211_ATTR_MAX, 
+				attrlist.attr_list[0],
+						attrlist.attr_len_list[0], NULL);
+	assert(err==0);
+
+	for (int i=0 ; i<NL80211_ATTR_MAX ; i++ ) {
+		if (tb_msg[i]) {
+			printf("%s %d=%p type=%d len=%d\n", __func__, i, (void *)tb_msg[i], nla_type(tb_msg[i]), nla_len(tb_msg[i]));
+		}
+	}
+
+	decode_nl80211_attr(tb_msg, NL80211_ATTR_MAX);
 
 	return 0;
 };
