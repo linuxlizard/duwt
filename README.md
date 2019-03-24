@@ -1,5 +1,5 @@
 # duwt
-Dave's Useful WiFi Tool
+Dave's Useful WiFi Tool(s)
 
 # contains chunks of 'iw'
 Copyright (c) 2007, 2008        Johannes Berg
