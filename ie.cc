@@ -14,6 +14,32 @@
 
 #include "ie.hh"
 
+using Blob = std::vector<uint8_t>;
+
+static std::string print_ds(Blob bytes)
+{
+	return std::to_string(static_cast<int>(bytes[0]));
+}
+
+// helper function to decode an Information Element blob
+// going to pretty much copy iw's scan.c decode fns
+static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& decode)
+{
+	(void)len;
+
+	switch (id) {
+		case 3:
+			decode.push_back(print_ds(bytes));
+			break;
+
+		default:
+			// TODO
+			decode.emplace_back("(no decode)");
+			break;
+	}
+	std::cout << "decode=" << decode.at(0) << "\n";
+}
+
 using namespace cfg80211;
 
 // From IEEE802.11-2012:
@@ -47,6 +73,7 @@ class IE_Names
 		IE_Names();
 
 		// "IEEE Std 802.11-2012"
+		// Table 8-54—Element IDs
 		std::array<const char*, 256> names {
 			"SSID",
 			"Supported rates",
@@ -69,7 +96,6 @@ class IE_Names
 			"Reserved", // 17
 			"Reserved",
 			"Reserved",
-			"Reserved",
 
 			"Reserved", // 20
 			"Reserved",
@@ -80,9 +106,10 @@ class IE_Names
 			"Reserved",
 			"Reserved",
 			"Reserved",
+			"Reserved",
 
 			"Reserved", // 30
-			"Reserved", // 31
+			"Reserved",
 			"Power constraint",
 			"Power capability",
 			"TPC request",
@@ -101,6 +128,7 @@ class IE_Names
 			"QoS capability",
 			"Reserved", // 47
 			"RSN",
+			"Reserved",
 
 			"Extended supported rates",	// 50
 			"AP channel report",
@@ -131,6 +159,7 @@ class IE_Names
 			"Overlapping BSS scan parameters",
 			"RIC descriptor",
 			"Management MIC",
+			"Reserved",
 			"Event request",
 			"Event report",
 
@@ -159,6 +188,7 @@ class IE_Names
 			"DMS response", // 100
 			"Link identifier", 
 			"Wakeup schedule",
+			"Reserved",
 			"Channel switch timing",
 			"PTI control",
 			"TPU buffer status",
@@ -185,8 +215,8 @@ class IE_Names
 			"GANN",
 			"RANN",
 			"Extended capabilities",
-			"Reserved", // 128
-			"Reserved", // 129
+			"Reserved",
+			"Reserved",
 
 			"PREQ", // 130
 			"PREP", 
@@ -203,10 +233,7 @@ class IE_Names
 			"Destination URI", 
 			"U-APSD coexistence", 
 			"Reserved", // 143
-
-
 		};
-
 };
 
 IE_Names::IE_Names()
@@ -221,6 +248,7 @@ IE_Names::IE_Names()
 	names[108] = "802.11u Advertisement",
 	names[111] = "802.11u Roaming Consortium";
 
+	// TODO fill out VHT fields; anything new in HE (802.11x)?
 	// TODO fill out the rest of the empty fields with "Reserved"
 
 	names[255] = "Reserved";
@@ -229,11 +257,18 @@ IE_Names::IE_Names()
 static IE_Names ie_names;
 
 IE::IE(uint8_t id, uint8_t len, uint8_t *buf) 
-	: id{id}, len{len}
+	: id{id}, 
+	  len{len},
+	  bytes{},
+	  name {nullptr},
+	  decode {}
 {
-	this->buf.assign(buf, buf+len);
+	bytes.assign(buf, buf+len);
 
 	name = ie_names.names.at(id);
+	
+	decode_ie(static_cast<int>(id), static_cast<size_t>(len), bytes, decode);
+	std::cout << "construct ie=" << name << " = " << decode.at(0) << "\n";
 }
 
 std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie)
@@ -245,7 +280,8 @@ std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie)
 //		<< " name=" << (ie.name?ie.name:"undefined") << std::endl;
 
 	os << "id=" << static_cast<int>(ie.id) << " len=" << static_cast<int>(ie.len) 
-		<< " name=" << (ie.name?ie.name:"undefined") ;
+		<< " name=" << (ie.name?ie.name:"undefined") 
+		<< "\"" << ie.decode.at(0) << "\"";
 	return os;
 }
 

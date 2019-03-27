@@ -5,30 +5,34 @@
 
 #include "attr.hh"
 
+// Notes:
+// https://www.infradead.org/~tgr/libnl/doc/core.html#core_attr
+// https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/nl80211.h#L2306
+
 void decode_nl80211_attr(struct nlattr* tb_msg[], size_t counter)
 {
 
 	if (tb_msg[NL80211_ATTR_WIPHY]) {
 		counter--;
 		uint32_t phy_id = nla_get_u32(tb_msg[NL80211_ATTR_WIPHY]);
-		(void)phy_id;
-//		printf("phy_id=%u\n", phy_id);
+		printf("phy_id=%u\n", phy_id);
 	}
 
 	if (tb_msg[NL80211_ATTR_WIPHY_NAME]) {
 		counter--;
-		const char *p = nla_get_string(tb_msg[NL80211_ATTR_WIPHY_NAME]);
-		(void)p;
+		const char* p = nla_get_string(tb_msg[NL80211_ATTR_WIPHY_NAME]);
 //		printf("phy_name=%s\n", p);
 	}
 
 	if (tb_msg[NL80211_ATTR_IFINDEX]) {
 		counter--;
+		uint32_t ifidx = nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
 //		printf("ifindex=%d\n", nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]));
 	}
 
 	if (tb_msg[NL80211_ATTR_IFNAME]) {
 		counter--;
+		const char* ifname = nla_get_string(tb_msg[NL80211_ATTR_IFNAME]);
 //		printf("ifname=%s\n", nla_get_string(tb_msg[NL80211_ATTR_IFNAME]));
 	}
 
@@ -139,6 +143,7 @@ void decode_nl80211_attr(struct nlattr* tb_msg[], size_t counter)
 		 */
 
 		enum nl80211_band_attr band = static_cast<enum nl80211_band_attr>(nla_get_u32(tb_msg[NL80211_ATTR_BANDS]));
+		(void)band;
 		// results are kinda boring ... 
 //		printf("attr_bands=%#" PRIx32 "\n", band);
 	}
@@ -163,6 +168,13 @@ void decode_nl80211_attr(struct nlattr* tb_msg[], size_t counter)
 	if (tb_msg[NL80211_ATTR_SCAN_SSIDS]) {
 		counter--;
 		printf("scan_ssids\n");
+		struct nlattr *nst;
+		int rem_nst;
+		nla_for_each_nested(nst, tb_msg[NL80211_ATTR_SCAN_SSIDS], rem_nst) {
+			printf(" \"");
+//			print_ssid_escaped(nla_len(nst), nla_data(nst));
+			printf("\"");
+		}
 	}
 
 }

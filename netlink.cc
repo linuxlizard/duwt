@@ -194,18 +194,22 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 
 		struct nlattr *bss[NL80211_BSS_MAX + 1] { };
 
+		// TODO capture other fields in the tb_msg[]
+
 		if (tb_msg[NL80211_ATTR_BSS]) {
 			decode_attr_bss(tb_msg[NL80211_ATTR_BSS]);
 
 			if (nla_parse_nested(bss, NL80211_BSS_MAX,
 						 tb_msg[NL80211_ATTR_BSS],
 						 bss_policy.policy)) {
+				// TODO throw something
 				std::cerr << "failed to parse nested attributes!\n";
 				continue;
 			}
 
 			if (!bss[NL80211_BSS_BSSID]) {
 				std::cerr << "bssid missing\n";
+				// TODO throw something (?)
 				continue;
 			}
 
@@ -234,11 +238,18 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 					uint8_t *ie_end = ie + ielen;
 					size_t counter=0;
 					while (ie < ie_end) {
-//						IE new_ie = IE(ie[0], ie[1], ie+2);
+						// XXX temp debug
+						IE new_ie = IE(ie[0], ie[1], ie+2);
+						std::cout << __func__ << " new_ie=" << new_ie << "\n";
+
 						new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
-						if (ie[0] == 0) {
-							std::cout << "P BSS=" << new_bss << " SSID:" << new_bss.ie_list.back().str() << std::endl;
-						}
+
+//						if (ie[0] == 0) {
+//							std::cout << "P BSS=" << new_bss << " SSID:" << new_bss.ie_list.back().str() << std::endl;
+//						}
+						// XXX temp debug
+						std::cout << __func__ << " ie_list last=" << new_bss.ie_list.back() << "\n";
+
 						ie += ie[1] + 2;
 						counter++;
 					}
@@ -312,7 +323,7 @@ int Cfg80211::fetch_scan_events(void)
 		return err;
 	}
 
-	struct nlattr *tb_msg[NL80211_ATTR_MAX + 1] {};
+	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1] {};
 
 	err = nla_parse(tb_msg, NL80211_ATTR_MAX, 
 				attrlist.attr_list[0],
