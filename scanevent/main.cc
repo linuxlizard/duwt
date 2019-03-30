@@ -1,6 +1,8 @@
 /* Simple CLI program to monitor cfg80211 netlink scan events
  *
  */
+#include <cassert>
+
 #include <iostream>
 #include <vector>
 
@@ -32,10 +34,12 @@ int main(void)
 
 		if (ret < 0) {
 			// something went wrong
+			assert(0); // TODO better handling
 		}
 
 		if (fds.revents & (POLLHUP | POLLERR | POLLNVAL) ) {
 			// something went wrong
+			assert(0); // TODO better handling
 		}
 
 		// get some messages
@@ -43,6 +47,7 @@ int main(void)
 			ret = iw.fetch_scan_events();
 			if (ret < 0) {
 				// something went wrong
+				assert(0); // TODO better handling
 			}
 
 		}

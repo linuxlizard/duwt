@@ -28,8 +28,14 @@ static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& 
 	(void)len;
 
 	switch (id) {
+		case 0:
+			// FIXME UTF-8 (somehow)
+			decode.emplace_back(std::string(reinterpret_cast<char*>(bytes.data()), bytes.size()));
+			break;
+
 		case 3:
-			decode.push_back(print_ds(bytes));
+			decode.emplace_back(std::move(print_ds(bytes)));
+//			decode.push_back(print_ds(bytes));
 			break;
 
 		default:
@@ -281,7 +287,7 @@ std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie)
 
 	os << "id=" << static_cast<int>(ie.id) << " len=" << static_cast<int>(ie.len) 
 		<< " name=" << (ie.name?ie.name:"undefined") 
-		<< "\"" << ie.decode.at(0) << "\"";
+		<< " \"" << ie.decode.at(0) << "\"";
 	return os;
 }
 

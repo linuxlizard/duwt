@@ -52,6 +52,7 @@ void hex_dump( const char *label, const unsigned char *ptr, int size )
             break;
          }
       }
+	  // std::cout << "0x" << std::hex << std::setw(4) << std::setfill('0') << c << '\n';
       printf( "0x%08lx %s %s\n", offset, label, line );
 //      printf( "%d %p %p %s\n", i, ptr, ptr-i, line );
       offset += 16;

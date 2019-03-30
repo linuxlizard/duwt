@@ -2,6 +2,8 @@
 #include <cassert>
 
 #include <iostream>
+#include <iterator>
+#include <sstream>
 #include <vector>
 
 #include <sys/socket.h>
@@ -59,12 +61,12 @@ BSS_Policy::BSS_Policy() : NLA_Policy()
 //	policy[NL80211_BSS_BSSID].maxlen = ETH_ALEN;
 	policy[NL80211_BSS_BEACON_INTERVAL].type = NLA_U16 ;
 	policy[NL80211_BSS_CAPABILITY].type = NLA_U16 ;
-//	policy[NL80211_BSS_INFORMATION_ELEMENTS];
+	policy[NL80211_BSS_INFORMATION_ELEMENTS].type = NLA_UNSPEC;
 	policy[NL80211_BSS_SIGNAL_MBM].type = NLA_U32 ;
 	policy[NL80211_BSS_SIGNAL_UNSPEC].type = NLA_U8 ;
 	policy[NL80211_BSS_STATUS].type = NLA_U32 ;
 //	policy[NL80211_BSS_SEEN_MS_AGO].type = NLA_U32 ;
-//	policy[NL80211_BSS_BEACON_IES];
+	policy[NL80211_BSS_BEACON_IES].type = NLA_UNSPEC;
 }
 
 BSS::BSS(uint8_t *bssid)
@@ -160,10 +162,10 @@ Cfg80211& Cfg80211::operator=(Cfg80211&& src)
 int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 {
 	struct nl80211_state state = {
-		.nl_sock = nl_sock->my_sock,
+		nl_sock->my_sock,
 		// TODO use the callback in GET_SCAN ???
-		.cb = nullptr,
-		.nl80211_id = nl80211_id
+		nullptr,
+		nl80211_id
 	};
 
 	struct nlattr_list attrlist {};
@@ -293,13 +295,14 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 int Cfg80211::listen_scan_events(void)
 {
 	struct nl80211_state state = {
-		.nl_sock = nl_sock->my_sock,
-		.cb = nl_cb->my_cb,
-		.nl80211_id = nl80211_id
+		nl_sock->my_sock,
+		nl_cb->my_cb,
+		nl80211_id
 	};
 
 	std::cout << __func__ << "\n";
 	int err = iw_listen_scan_events(&state);
+	// TODO check error
 	(void)err;
 
 	return 0;
@@ -308,9 +311,9 @@ int Cfg80211::listen_scan_events(void)
 int Cfg80211::fetch_scan_events(void)
 {
 	struct nl80211_state state = {
-		.nl_sock = nl_sock->my_sock,
-		.cb = nl_cb->my_cb,
-		.nl80211_id = nl80211_id
+		nl_sock->my_sock,
+		nl_cb->my_cb,
+		nl80211_id
 	};
 
 	struct nlattr_list attrlist {};
@@ -328,6 +331,7 @@ int Cfg80211::fetch_scan_events(void)
 	err = nla_parse(tb_msg, NL80211_ATTR_MAX, 
 				attrlist.attr_list[0],
 						attrlist.attr_len_list[0], NULL);
+	// TODO check error
 	assert(err==0);
 
 	for (int i=0 ; i<NL80211_ATTR_MAX ; i++ ) {
@@ -336,7 +340,59 @@ int Cfg80211::fetch_scan_events(void)
 		}
 	}
 
-	decode_nl80211_attr(tb_msg, NL80211_ATTR_MAX);
+//	decode_nl80211_attr(tb_msg, NL80211_ATTR_MAX);
+
+	// TODO copy guts of event.c print_event() 
+
+	uint32_t phyidx;
+	if (tb_msg[NL80211_ATTR_WIPHY]) {
+		phyidx = nla_get_u32(tb_msg[NL80211_ATTR_WIPHY]);
+	}
+
+	std::string phyname;
+	if (tb_msg[NL80211_ATTR_WIPHY_NAME]) {
+		phyname.append(nla_get_string(tb_msg[NL80211_ATTR_WIPHY_NAME]));
+	}
+
+	uint32_t ifidx;
+	if (tb_msg[NL80211_ATTR_IFINDEX]) {
+		ifidx = nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
+	}
+
+	std::string ifname;
+	if (tb_msg[NL80211_ATTR_IFNAME]) {
+		ifname.append(nla_get_string(tb_msg[NL80211_ATTR_IFNAME]));
+	}
+
+	std::vector<uint32_t> frequencies;
+	if (tb_msg[NL80211_ATTR_SCAN_FREQUENCIES]) {
+		struct nlattr *nst;
+		int rem_nst;
+		size_t len = nla_len(tb_msg[NL80211_ATTR_SCAN_FREQUENCIES]);
+		std::cout << "len=" << len << "\n";
+		nla_for_each_nested(nst, tb_msg[NL80211_ATTR_SCAN_FREQUENCIES], rem_nst) {
+			frequencies.push_back(nla_get_u32(nst));
+		}
+	}
+
+	std::cout << "scan event on ifname=" << ifname << " ifidx=" << ifidx << "\n";
+	std::cout << "scan event on phyname=" << phyname << " phyidx=" << phyidx << "\n";
+
+	std::cout << "found count=" << frequencies.size() << " freq\n";
+	for (auto f : frequencies) {
+//		std::cout << "f=" << f << "\n";
+	}
+	// https://en.cppreference.com/w/cpp/algorithm/copy
+	std::copy(frequencies.cbegin(), frequencies.cend(), 
+				std::ostream_iterator<uint32_t>(std::cout, " "));
+	std::cout << "\n";
+
+	std::ostringstream s;
+	std::copy(frequencies.cbegin(), frequencies.cend(), 
+				std::ostream_iterator<uint32_t>(s, ","));
+	std::string joined = s.str();
+	joined.pop_back();
+	std::cout << joined << "*\n";
 
 	return 0;
 };

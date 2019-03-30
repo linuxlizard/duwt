@@ -983,7 +983,7 @@ int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_l
 	if (ifidx <= 0) {
 		return errno;
 	}
-	printf("ifidx=%u\n", ifidx);
+	printf("%s ifidx=%u\n", __func__, ifidx);
 
 	struct nl_cb *cb = nl_cb_alloc(NL_CB_DEBUG);
 	struct nl_cb *s_cb = nl_cb_alloc(NL_CB_DEBUG);
@@ -998,6 +998,7 @@ int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_l
 	nl_socket_set_cb(state->nl_sock, s_cb);
 
 	struct nl_msg* msg = nlmsg_alloc();
+	// TODO check for failure
 
 	void* p = genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, state->nl80211_id, 0, 
 						NLM_F_DUMP, NL80211_CMD_GET_SCAN, 0);
@@ -1013,14 +1014,14 @@ int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_l
 	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, valid_handler, (void *)scan_attrs);
 
 	int retcode = nl_send_auto(state->nl_sock, msg);
-	printf("nl_send_auto retcode=%d\n", retcode);
+	printf("%s nl_send_auto retcode=%d\n", __func__, retcode);
 
 	assert(err==1);
 	while (err > 0) {
-		printf("GET_SCAN calling nl_recvmsgs_default...\n");
+		printf("%s GET_SCAN calling nl_recvmsgs_default...\n", __func__);
 		retcode = nl_recvmsgs(state->nl_sock, cb);
-		printf("GET_SCAN retcode=%d err=%d counter=%ld\n", 
-				retcode, err, scan_attrs->counter);
+		printf("%s GET_SCAN retcode=%d err=%d counter=%ld\n", 
+				__func__, retcode, err, scan_attrs->counter);
 	}
 
 	nlmsg_free(msg);

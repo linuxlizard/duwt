@@ -65,7 +65,8 @@ class IE
 		friend std::ostream& ::operator<< (std::ostream &, const IE&);
 
 		std::string str(void) { 
-			return std::string("TODO");
+			return decode.at(0);
+//			return std::string("TODO");
 			// FIXME this is so stupid dangerous. Find a less stupid way.
 			// Originally this was a quick hack to get the SSID.
 //			return std::string( 

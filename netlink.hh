@@ -23,7 +23,7 @@ class NLSock
 			my_sock = nl_socket_alloc(); 
 			std::cout << "class sock=" << my_sock << "\n";
 			// TODO throw something on alloc fail
-		};
+        }
 
 		~NLSock() 
 		{
@@ -33,7 +33,7 @@ class NLSock
 				nl_socket_free(my_sock);
 				my_sock = nullptr;
 			}
-		};
+        }
 
 		struct nl_sock* my_sock;
 };
@@ -46,7 +46,7 @@ class NLCallback
 		{ 
 			my_cb = nl_cb_alloc(NL_CB_DEBUG);
 			// TODO throw something on alloc failure
-		};
+        }
 
 		~NLCallback() 
 		{
@@ -54,7 +54,7 @@ class NLCallback
 				nl_cb_put(my_cb);
 				my_cb = nullptr;
 			}
-		};
+        }
 
 		struct nl_cb *my_cb;
 };
