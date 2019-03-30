@@ -1,0 +1,8 @@
+
+FMT 
+http://fmtlib.net/latest/index.html
+
+Apache log4cxx
+https://logging.apache.org/log4cxx/latest_stable/usage.html
+
+
