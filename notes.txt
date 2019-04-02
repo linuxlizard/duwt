@@ -1,8 +1,19 @@
 
-FMT 
-http://fmtlib.net/latest/index.html
-
-Apache log4cxx
-https://logging.apache.org/log4cxx/latest_stable/usage.html
+String Formatting.
+	FMT 
+	http://fmtlib.net/latest/index.html
 
 
+Logging.
+
+	Apache log4cxx. 
+		Might be overkill. Requires apr.
+		https://logging.apache.org/log4cxx/latest_stable/usage.html
+
+	Simple.
+		https://stackoverflow.com/questions/6168107/how-to-implement-a-good-debug-logging-feature-in-a-project
+		http://www.drdobbs.com/cpp/logging-in-c/201804215
+		http://www.drdobbs.com/cpp/a-highly-configurable-logging-framework/225700666
+
+	Winner?
+		https://github.com/gabime/spdlog

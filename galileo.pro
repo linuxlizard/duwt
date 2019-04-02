@@ -1,5 +1,5 @@
 TEMPLATE = subdirs
-SUBDIRS = app scandump scanevent
+SUBDIRS = fmt app scandump scanevent 
 #TARGET = galileo
 
 # vim: ft=make

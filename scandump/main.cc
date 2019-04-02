@@ -3,6 +3,10 @@
 #include <iostream>
 #include <vector>
 
+#include "fmt/format.h"
+#include "fmt/ostream.h"
+#include "spdlog/spdlog.h"
+
 #include "netlink.hh"
 
 int main(int argc, char* argv[])
@@ -11,6 +15,8 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "usage: %s ifname\n", argv[0]);
 		exit(1);
 	}
+
+	spdlog::info("Hello, {}!", "World");
 
 	const char* ifname = argv[1];
 
@@ -23,13 +29,18 @@ int main(int argc, char* argv[])
 	iw.get_scan(ifname, bss_list);
 
 	for ( auto&& bss : bss_list ) {
-		std::cout << "found BSS " << bss << " num_ies=" << bss.ie_list.size() << "\n";
+		fmt::print("found BSS {} num_ies={}\n", bss, bss.ie_list.size());
+		spdlog::info(fmt::format("found BSS {} num_ies={}", bss, bss.ie_list.size()));
+		spdlog::info("found BSS {} num_ies={}", bss, bss.ie_list.size());
+//		std::cout << "found BSS " << bss << " num_ies=" << bss.ie_list.size() << "\n";
 		std::cout << "SSID=" << bss.get_ssid() << "\n";
 		for (auto&& ie : bss.ie_list) {
 //			std::cerr << "ie=" << ie << std::endl;
 //			std::cout << "ie=" << ie << "\n";
 		}
 	}
+
+	spdlog::info("Goodbye, {}!", "World");
 
 	return 0;
 }

@@ -23,20 +23,20 @@
 
 /* davep 20190318 ; https://www.qcustomplot.com/index.php/introduction */
 
-/* davep 20190319 ; nl_socket_get_fd() + QSocketNotifier */
+/* davep 20190319 ; TODO nl_socket_get_fd() + QSocketNotifier */
 
 MainWindow::MainWindow(QWidget *parent) :
-    QMainWindow(parent),
-    ui(new Ui::MainWindow)
+	QMainWindow(parent),
+	ui(new Ui::MainWindow)
 {
-    ui->setupUi(this);
+	ui->setupUi(this);
 
 	create_db();
 
-    model.setQuery("select BSSID, SSID, Channel from bss order by BSSID desc");
-    model.setHeaderData(0, Qt::Horizontal, QObject::tr("BSSID"));
-    model.setHeaderData(1, Qt::Horizontal, QObject::tr("SSID"));
-    model.setHeaderData(2, Qt::Horizontal, QObject::tr("Channel"));
+	model.setQuery("select BSSID, SSID, Channel from bss order by BSSID desc");
+	model.setHeaderData(0, Qt::Horizontal, QObject::tr("BSSID"));
+	model.setHeaderData(1, Qt::Horizontal, QObject::tr("SSID"));
+	model.setHeaderData(2, Qt::Horizontal, QObject::tr("Channel"));
 
 	update_scan();
 
@@ -51,29 +51,33 @@ MainWindow::MainWindow(QWidget *parent) :
 
 MainWindow::~MainWindow()
 {
-    delete ui;
+	delete ui;
 }
 
 void MainWindow::create_db(void)
 {
-    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
-    db.setDatabaseName(":memory:");
-    if (!db.open()) {
+	QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+	db.setDatabaseName(":memory:");
+	if (!db.open()) {
 		// messagebox from Qt examples
-        QMessageBox::critical(nullptr, QObject::tr("Cannot open database"),
-            QObject::tr("Unable to establish a database connection.\n"
-                        "This example needs SQLite support. Please read "
-                        "the Qt SQL driver documentation for information how "
-                        "to build it.\n\n"
-                        "Click Cancel to exit."), QMessageBox::Cancel);
+		QMessageBox::critical(nullptr, QObject::tr("Cannot open database"),
+			QObject::tr("Unable to establish a database connection.\n"
+						"This example needs SQLite support. Please read "
+						"the Qt SQL driver documentation for information how "
+						"to build it.\n\n"
+						"Click Cancel to exit."), QMessageBox::Cancel);
  
 		// TODO throw something better
 		throw std::runtime_error("no db");
 	}
 
-    QSqlQuery query;
-    query.exec("create table bss (id integer primary key, "
-               "BSSID char(20), SSID varchar(64), Channel int)");
+	QSqlQuery query;
+
+	// https://www.sqlite.org/pragma.html#pragma_encoding
+	query.exec("pragma encoding=\"UTF-8\"");
+
+	query.exec("create table bss (id integer primary key, "
+				"BSSID char(20), SSID varchar(64), Channel int)");
 }
 
 void MainWindow::update_scan(void)
@@ -114,7 +118,7 @@ void MainWindow::update_scan(void)
 	}
 
 
-    model.setQuery("select BSSID, SSID, Channel from bss order by BSSID desc");
+	model.setQuery("select BSSID, SSID, Channel from bss order by BSSID desc");
 }
 
 void MainWindow::on_action_Open_triggered()
@@ -124,16 +128,16 @@ void MainWindow::on_action_Open_triggered()
 
 void MainWindow::on_action_Quit_triggered()
 {
-    // quit, I think?
-    QCoreApplication::quit();
+	// quit, I think?
+	QCoreApplication::quit();
 
 }
 
 void MainWindow::on_action_About_triggered()
 {
-    qDebug() << "About triggered";
-    AboutDialog dialog(this);
-    dialog.exec();
+	qDebug() << "About triggered";
+	AboutDialog dialog(this);
+	dialog.exec();
 }
 
 void MainWindow::on_action_Save_triggered()
@@ -143,5 +147,5 @@ void MainWindow::on_action_Save_triggered()
 
 void MainWindow::on_actionAbout_Qt_triggered()
 {
-    QApplication::aboutQt();
+	QApplication::aboutQt();
 }
