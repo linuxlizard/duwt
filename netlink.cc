@@ -16,9 +16,11 @@
 #include <netlink/attr.h>
 #include <linux/nl80211.h>
 
+#include "fmt/format.h"
+#include "logging.h"
 #include "netlink.hh"
 #include "iw.h"
-#include "util.h"
+//#include "util.h"
 #include "ie.hh"
 #include "attr.hh"
 
@@ -72,10 +74,16 @@ BSS_Policy::BSS_Policy() : NLA_Policy()
 BSS::BSS(uint8_t *bssid)
 {
 	memcpy(this->bssid.data(), bssid, ETH_ALEN);
+
+	bssid_str = fmt::format("{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+					bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]);
 }
 
 std::string BSS::get_ssid(void)
 {
+	// FIXME this method is stupid and needs to be fixed.
+	// Dangerous to assume the SSID isn't UTF8.
+	// Linear search is stupid.
 	for (auto&& ie : ie_list) {
 		if (ie.get_id() == 0) {
 			return ie.str();
@@ -85,6 +93,7 @@ std::string BSS::get_ssid(void)
 	return std::string("not found");
 }
 
+#if 0
 BSS::BSS(BSS&& src)
 	: bssid(std::move(src.bssid)),
 	  channel_width(src.channel_width),
@@ -105,32 +114,41 @@ BSS& BSS::operator=(BSS&& bss)
 	// TODO
 	return bss;
 }
+#endif
 
 Cfg80211::Cfg80211() :
 	nl_sock(std::make_unique<NLSock>()),
 	nl_cb(std::make_unique<NLCallback>()),
 	nl80211_id(-1)
 {
+	logcfg = spdlog::get("cfg80211");
+	if (!logcfg) {
+		logcfg = spdlog::stdout_logger_mt("cfg80211");
+	}
+
+	logcfg->info("hello world");
+
 	if (nl_sock == nullptr) {
-		// nl_socket_alloc() failed
+		logcfg->error("nl_socket_alloc() failed");
 		// TODO throw something
 	}
 
 	if (nl_cb == nullptr) {
-		// nl_cb_alloc() failed
+		logcfg->error("nl_cb_alloc() failed");
 		// TODO throw something
 	}
 
 	int retcode = genl_connect(nl_sock->my_sock);
 	if (retcode < 0) {
-		// TODO throw something
+		logcfg->error("genl_connect failed err={}", retcode);
+		throw NetlinkException("genl_connect failed", retcode);
 	}
 
 	nl80211_id = genl_ctrl_resolve(nl_sock->my_sock, NL80211_GENL_NAME);
 	if (nl80211_id < 0) {
-		// TODO throw something
+		logcfg->error("genl_ctrl_resolve of {} failed err={}", NL80211_GENL_NAME, nl80211_id );
+		throw NetlinkException(fmt::format("genl_ctrl_resolve name={} failed err={}", NL80211_GENL_NAME, nl80211_id));
 	}
-
 }
 
 Cfg80211::~Cfg80211()
@@ -141,7 +159,8 @@ Cfg80211::~Cfg80211()
 Cfg80211::Cfg80211(Cfg80211&& src)
 	: nl_sock(std::move(src.nl_sock)), 
 	nl_cb(std::move(src.nl_cb)), 
-	nl80211_id(src.nl80211_id)
+	nl80211_id(src.nl80211_id),
+	logcfg(std::move(src.logcfg))
 {
 	// move constructor
 	src.nl80211_id = -1;
@@ -156,6 +175,8 @@ Cfg80211& Cfg80211::operator=(Cfg80211&& src)
 	nl80211_id = src.nl80211_id;
 	src.nl80211_id = -1;
 
+	logcfg = std::move(src.logcfg);
+
 	return *this;
 }
 
@@ -167,15 +188,21 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 		nullptr,
 		nl80211_id
 	};
-
 	struct nlattr_list attrlist {};
 
+	logcfg->info("get_scan iface={}", iface);
+
 	int retcode = iw_get_scan(&state, iface, &attrlist);
+	if (retcode < 0) {
+		logcfg->error("get_scan iface={} iw_get_scan failed err={}", iface, retcode);
+		assert(0);
+		// TODO throw something
+	}
 
 	BSS_Policy bss_policy;
 
 	for (size_t i=0 ; i<attrlist.counter ; i++) {
-		printf("%s %ld %p\n", __func__, i, attrlist.attr_list[i]);
+		logcfg->debug("get_scan attr i={} len={}", i, attrlist.attr_len_list[i]);
 
 //		hex_dump("attr", (unsigned char*)attrlist.attr_list[i], 
 //				attrlist.attr_len_list[i]);
@@ -185,7 +212,7 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 					attrlist.attr_list[i],
 			  				attrlist.attr_len_list[i], NULL);
 		assert(retcode==0);
-		printf("parse retcode=%d\n", retcode);
+		logcfg->debug("get_scan parse retcode={}", retcode);
 
 		for (int msgidx=0 ; msgidx<NL80211_ATTR_MAX ; msgidx++ ) {
 			if (tb_msg[msgidx]) {
@@ -216,6 +243,9 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 			}
 
 			BSS& new_bss = bss_list.emplace_back((uint8_t*)nla_data(bss[NL80211_BSS_BSSID]));
+			auto ssid = new_bss.get_ssid();
+			auto bssid = new_bss.get_bssid();
+			logcfg->debug("found bssid={}", new_bss.get_bssid());
 
 			if (bss[NL80211_BSS_FREQUENCY]) {
 				new_bss.freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
@@ -234,15 +264,14 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 					(bcnies && (nla_len(ies) != nla_len(bcnies) ||
 						memcmp(nla_data(ies), nla_data(bcnies),
 							   nla_len(ies))))) {
-					std::cout << "found bytes=" << nla_len(ies) << " Information elements from Probe Response frame\n" ;
+					logcfg->debug("found bytes={} IEs in Probe Response frame", nla_len(ies));
 					uint8_t *ie = (uint8_t *)nla_data(ies);
 					ssize_t ielen = (ssize_t)nla_len(ies);
 					uint8_t *ie_end = ie + ielen;
 					size_t counter=0;
 					while (ie < ie_end) {
 						// XXX temp debug
-						IE new_ie = IE(ie[0], ie[1], ie+2);
-						std::cout << __func__ << " new_ie=" << new_ie << "\n";
+//						IE new_ie = IE(ie[0], ie[1], ie+2);
 
 						new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
 
@@ -250,32 +279,32 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 //							std::cout << "P BSS=" << new_bss << " SSID:" << new_bss.ie_list.back().str() << std::endl;
 //						}
 						// XXX temp debug
-						std::cout << __func__ << " ie_list last=" << new_bss.ie_list.back() << "\n";
+//						std::cout << __func__ << " ie_list last=" << new_bss.ie_list.back() << "\n";
 
 						ie += ie[1] + 2;
 						counter++;
 					}
-					std::cout << "found " << counter << " ie\n";
+					logcfg->debug("found count={} IEs in Probe Response frame", counter);
 				}
 			}
 			// following 'if' copied from iw scan.c
 			if (bss[NL80211_BSS_BEACON_IES] ) {
 				struct nlattr *bcnies = bss[NL80211_BSS_BEACON_IES];
-				std::cout << "found bytes="  << nla_len(bss[NL80211_BSS_BEACON_IES]) << " Information elements from Beacon frame\n";
+				logcfg->debug("found bytes={} IEs in Beacon frame", nla_len(bss[NL80211_BSS_BEACON_IES]));
 				uint8_t *ie = (uint8_t *)nla_data(bcnies);
 				ssize_t ielen = (ssize_t)nla_len(bcnies);
 				uint8_t *ie_end = ie + ielen;
 				size_t counter = 0;
 				while (ie < ie_end) {
 					new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
-					if (ie[0] == 0) {
-						std::cout << "B BSS=" << new_bss << " SSID:" << new_bss.ie_list.back().str() << std::endl;
-					}
+//					if (ie[0] == 0) {
+//						std::cout << "B BSS=" << new_bss << " SSID:" << new_bss.ie_list.back().str() << std::endl;
+//					}
 
 					ie += ie[1] + 2;
 					counter++;
 				}
-				std::cout << "found " << counter << " ie\n";
+				logcfg->debug("found count={} IEs in Beacon frame", counter);
 //				print_ies(nla_data(bss[NL80211_BSS_BEACON_IES]),
 //					  nla_len(bss[NL80211_BSS_BEACON_IES]),
 //					  params->unknown, params->type);
@@ -308,7 +337,7 @@ int Cfg80211::listen_scan_events(void)
 	return 0;
 };
 
-int Cfg80211::fetch_scan_events(void)
+void Cfg80211::fetch_scan_events(ScanEvent& sev)
 {
 	struct nl80211_state state = {
 		nl_sock->my_sock,
@@ -321,9 +350,7 @@ int Cfg80211::fetch_scan_events(void)
 	std::cout << __func__ << "\n";
 	int err = iw_fetch_scan_events(&state, &attrlist);
 	if (err) {
-		// TODO better error handling
-		assert(0);
-		return err;
+		throw NetlinkException("iw_fetch_scan_events failed", err);
 	}
 
 	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1] {};
@@ -344,44 +371,41 @@ int Cfg80211::fetch_scan_events(void)
 
 	// TODO copy guts of event.c print_event() 
 
-	uint32_t phyidx;
 	if (tb_msg[NL80211_ATTR_WIPHY]) {
-		phyidx = nla_get_u32(tb_msg[NL80211_ATTR_WIPHY]);
+		sev.phyidx = nla_get_u32(tb_msg[NL80211_ATTR_WIPHY]);
 	}
 
-	std::string phyname;
 	if (tb_msg[NL80211_ATTR_WIPHY_NAME]) {
-		phyname.append(nla_get_string(tb_msg[NL80211_ATTR_WIPHY_NAME]));
+		sev.phyname.append(nla_get_string(tb_msg[NL80211_ATTR_WIPHY_NAME]));
 	}
 
-	uint32_t ifidx;
 	if (tb_msg[NL80211_ATTR_IFINDEX]) {
-		ifidx = nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
+		sev.ifidx = nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
 	}
 
-	std::string ifname;
 	if (tb_msg[NL80211_ATTR_IFNAME]) {
-		ifname.append(nla_get_string(tb_msg[NL80211_ATTR_IFNAME]));
+		sev.ifname = nla_get_string(tb_msg[NL80211_ATTR_IFNAME]);
 	}
 
-	std::vector<uint32_t> frequencies;
+	sev.frequencies.clear();
 	if (tb_msg[NL80211_ATTR_SCAN_FREQUENCIES]) {
 		struct nlattr *nst;
 		int rem_nst;
 		size_t len = nla_len(tb_msg[NL80211_ATTR_SCAN_FREQUENCIES]);
 		std::cout << "len=" << len << "\n";
 		nla_for_each_nested(nst, tb_msg[NL80211_ATTR_SCAN_FREQUENCIES], rem_nst) {
-			frequencies.push_back(nla_get_u32(nst));
+			sev.frequencies.push_back(nla_get_u32(nst));
 		}
 	}
 
+#if 0
 	std::cout << "scan event on ifname=" << ifname << " ifidx=" << ifidx << "\n";
 	std::cout << "scan event on phyname=" << phyname << " phyidx=" << phyidx << "\n";
 
 	std::cout << "found count=" << frequencies.size() << " freq\n";
-	for (auto f : frequencies) {
+//	for (auto f : frequencies) {
 //		std::cout << "f=" << f << "\n";
-	}
+//	}
 	// https://en.cppreference.com/w/cpp/algorithm/copy
 	std::copy(frequencies.cbegin(), frequencies.cend(), 
 				std::ostream_iterator<uint32_t>(std::cout, " "));
@@ -393,15 +417,15 @@ int Cfg80211::fetch_scan_events(void)
 	std::string joined = s.str();
 	joined.pop_back();
 	std::cout << joined << "*\n";
-
-	return 0;
+#endif
 };
 
 std::ostream& operator<<(std::ostream& os, const BSS& bss)
 {
-	char mac_addr[20];
-	mac_addr_n2a(mac_addr, (const unsigned char *)bss.bssid.data());
-	os << mac_addr;
+//	char mac_addr[20];
+//	mac_addr_n2a(mac_addr, (const unsigned char *)bss.bssid.data());
+//	os << mac_addr;
+	os << bss.get_bssid();
 	return os;
 }
 

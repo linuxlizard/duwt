@@ -25,6 +25,9 @@ SOURCES += galileo.cc\
 		   ../attr.cc\
 		   mainwindow.cc\
 		   aboutdialog.cc
+INCLUDEPATH += ../include
+INCLUDEPATH += ../fmt/include
+LIBS += -L../fmt -lfmt
 
 CONFIG += link_pkgconfig
 PKGCONFIG += libnl-3.0 libnl-genl-3.0 libnl-route-3.0

@@ -3,6 +3,7 @@
 #include <netlink/attr.h>
 #include <linux/nl80211.h>
 
+#include "logging.h"
 #include "attr.hh"
 
 // Notes:

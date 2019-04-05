@@ -1,4 +1,3 @@
-#include <iostream>
 #include <array>
 #include <cassert>
 
@@ -12,6 +11,7 @@
 #include <netlink/attr.h>
 #include <linux/nl80211.h>
 
+#include "logging.h"
 #include "ie.hh"
 
 using Blob = std::vector<uint8_t>;
@@ -43,7 +43,7 @@ static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& 
 			decode.emplace_back("(no decode)");
 			break;
 	}
-	std::cout << "decode=" << decode.at(0) << "\n";
+//	std::cout << "decode=" << decode.at(0) << "\n";
 }
 
 using namespace cfg80211;
@@ -267,14 +267,21 @@ IE::IE(uint8_t id, uint8_t len, uint8_t *buf)
 	  len{len},
 	  bytes{},
 	  name {nullptr},
-	  decode {}
+	  decode {},
+	  logie {nullptr}
 {
+	logie = spdlog::get("ie");
+	if (!logie) {
+		logie = spdlog::stdout_logger_mt("ie");
+	}
+
 	bytes.assign(buf, buf+len);
 
 	name = ie_names.names.at(id);
 	
 	decode_ie(static_cast<int>(id), static_cast<size_t>(len), bytes, decode);
-	std::cout << "construct ie=" << name << " = " << decode.at(0) << "\n";
+
+	logie->debug("construct ie={}", decode.at(0));
 }
 
 std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie)

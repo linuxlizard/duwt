@@ -35,7 +35,8 @@ class IE
 			  len{src.len}, 
 			  bytes{std::move(src.bytes)}, 
 			  name{src.name},
-			  decode{std::move(src.decode)}
+			  decode{std::move(src.decode)},
+			  logie{std::move(src.logie)}
 		{
 			// https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c64-a-move-operation-should-move-and-leave-its-source-in-a-valid-state
 			src.id = -1;
@@ -51,6 +52,7 @@ class IE
 			bytes = std::move(src.bytes);
 			name = src.name;
 			decode = std::move(src.decode);
+			logie = std::move(src.logie);
 
 			// https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c64-a-move-operation-should-move-and-leave-its-source-in-a-valid-state
 			src.id = -1;
@@ -84,6 +86,8 @@ class IE
 		const char* name;
 
 		std::vector<std::string> decode;
+
+		std::shared_ptr<spdlog::logger> logie;
 
 		/* quick notes while I'm thinking of it: SSID could be utf8 
 		 * https://www.gnu.org/software/libc/manual/html_node/Extended-Char-Intro.html
