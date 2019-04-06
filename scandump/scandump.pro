@@ -1,29 +1,28 @@
 TEMPLATE = app
 TARGET = scandump
 
-CONFIG += console debug c++17
+CONFIG += cmdline debug c++17 warn_on
 
 # https://stackoverflow.com/questions/53022608/application-crashes-with-symbol-zdlpvm-version-qt-5-not-defined-in-file-libqt
 QMAKE_CXXFLAGS += "-fno-sized-deallocation"
 
 #QT += sql 
 
-HEADERS += ../iw.h\
-		 ../netlink.hh\
+xxHEADERS += ../iw.h\
+		 ../cfg80211.hh\
 		 ../util.h\
 		 ../ie.hh\
 		 ../logging.h\
 		 ../attr.hh
 
-SOURCES += ../iw.c\
-		   ../netlink.cc\
-		   ../util.c\
-		   ../ie.cc\
-		   ../attr.cc\
-		   ../logging.cc\
+SOURCES += ../src/iw.c\
+		   ../src/cfg80211.cc\
+		   ../src/util.c\
+		   ../src/ie.cc\
+		   ../src/attr.cc\
+		   ../src/logging.cc\
 		   main.cc
 
-INCLUDEPATH += ../
 INCLUDEPATH += ../include
 INCLUDEPATH += ../fmt/include
 

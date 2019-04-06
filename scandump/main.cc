@@ -7,7 +7,7 @@
 #include "fmt/ostream.h"
 
 #include "logging.h"
-#include "netlink.hh"
+#include "cfg80211.h"
 
 int main(int argc, char* argv[])
 {

@@ -18,8 +18,8 @@
 #include "aboutdialog.h"
 //#include "testform.h"
 
-#include "../netlink.hh"
-#include "../util.h"
+#include "cfg80211.h"
+#include "util.h"
 
 /* davep 20190318 ; https://www.qcustomplot.com/index.php/introduction */
 

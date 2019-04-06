@@ -18,11 +18,11 @@
 
 #include "fmt/format.h"
 #include "logging.h"
-#include "netlink.hh"
+#include "cfg80211.h"
 #include "iw.h"
 //#include "util.h"
-#include "ie.hh"
-#include "attr.hh"
+#include "ie.h"
+#include "attr.h"
 
 using namespace cfg80211;
 

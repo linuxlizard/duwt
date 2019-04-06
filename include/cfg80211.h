@@ -13,7 +13,7 @@
 #include "fmt/format.h"
 #include "spdlog/spdlog.h"
 
-#include "ie.hh"
+#include "ie.h"
 
 namespace cfg80211 {
 

@@ -1,7 +1,7 @@
 TEMPLATE = app
 TARGET = Galileo
 
-CONFIG += ordered debug c++17
+CONFIG += ordered debug c++17 warn_on
 QT += sql widgets
 
 # TODO how to enable these flags? this doesn't seem to work
@@ -9,22 +9,18 @@ CFLAGS+=-Wall -Wextra -Wshadow -pedantic
 CPPFLAGS+=-Wall -Wextra -Wshadow -pedantic
 
 HEADERS += galileo.h\
-		 ../iw.h\
-		 ../netlink.hh\
-		 ../ie.hh\
-		 ../util.h\
-		 ../attr.hh\
 		 mainwindow.h\
 		 aboutdialog.h
 
 SOURCES += galileo.cc\
-		   ../iw.c\
-		   ../netlink.cc\
-		   ../ie.cc\
-		   ../util.c\
-		   ../attr.cc\
+		   ../src/iw.c\
+		   ../src/cfg80211.cc\
+		   ../src/ie.cc\
+		   ../src/util.c\
+		   ../src/attr.cc\
 		   mainwindow.cc\
 		   aboutdialog.cc
+
 INCLUDEPATH += ../include
 INCLUDEPATH += ../fmt/include
 LIBS += -L../fmt -lfmt

@@ -4,7 +4,7 @@
 #include <linux/nl80211.h>
 
 #include "logging.h"
-#include "attr.hh"
+#include "attr.h"
 
 // Notes:
 // https://www.infradead.org/~tgr/libnl/doc/core.html#core_attr

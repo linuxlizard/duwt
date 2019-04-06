@@ -16,7 +16,7 @@
 
 #include "fmt/format.h"
 #include "logging.h"
-#include "ie.hh"
+#include "ie.h"
 
 // From IEEE802.11-2012:
 //

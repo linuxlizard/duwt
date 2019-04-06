@@ -11,7 +11,7 @@
 
 #include "fmt/format.h"
 #include "logging.h"
-#include "netlink.hh"
+#include "cfg80211.h"
 
 // I made a thing!
 template <typename Input, typename T>
