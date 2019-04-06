@@ -107,15 +107,28 @@ union ieee80211_country_ie_triplet {
 	} __attribute__ ((packed)) ext;
 } __attribute__ ((packed));
 
+static const char *country_env_str(char environment)
+{
+	switch (environment) {
+	case 'I':
+		return "Indoor only";
+	case 'O':
+		return "Outdoor only";
+	case ' ':
+		return "Indoor/Outdoor";
+	default:
+		return "bogus";
+	}
+}
+
 static void decode_country(Blob bytes, std::vector<std::string>& decode)
 {
 	uint8_t *data = bytes.data();
 	ssize_t len = bytes.size();
 
-//	printf(" %.*s", 2, data);
 	decode.emplace_back(std::string(reinterpret_cast<char *>(data), 2));
 
-//	printf("\tEnvironment: %s\n", country_env_str(data[2]));
+	decode.push_back(fmt::format("Environment: {}", country_env_str(data[2])));
 
 	data += 3;
 	len -= 3;
@@ -147,61 +160,14 @@ static void decode_country(Blob bytes, std::vector<std::string>& decode)
 		else
 			end_channel =  triplet->chans.first_channel + (4 * (triplet->chans.num_channels - 1));
 
-		decode.push_back(fmt::format("Channels [{:d} - {:d}] @ {:d} dBm", triplet->chans.first_channel, end_channel, triplet->chans.max_power));
+		decode.push_back(fmt::format("Channels [{:d} - {:d}] @ {:d} dBm", 
+					triplet->chans.first_channel, end_channel, triplet->chans.max_power));
 
 		data += 3;
 		len -= 3;
 	}
 
 }
-
-#if 0
-static void print_country(const uint8_t type, uint8_t len, const uint8_t *data,
-			  const struct print_ies_data *ie_buffer)
-{
-	printf(" %.*s", 2, data);
-
-	printf("\tEnvironment: %s\n", country_env_str(data[2]));
-
-	data += 3;
-	len -= 3;
-
-	if (len < 3) {
-		printf("\t\tNo country IE triplets present\n");
-		return;
-	}
-
-	while (len >= 3) {
-		int end_channel;
-		union ieee80211_country_ie_triplet *triplet = (void *) data;
-
-		if (triplet->ext.reg_extension_id >= IEEE80211_COUNTRY_EXTENSION_ID) {
-			printf("\t\tExtension ID: %d Regulatory Class: %d Coverage class: %d (up to %dm)\n",
-			       triplet->ext.reg_extension_id,
-			       triplet->ext.reg_class,
-			       triplet->ext.coverage_class,
-			       triplet->ext.coverage_class * 450);
-
-			data += 3;
-			len -= 3;
-			continue;
-		}
-
-		/* 2 GHz */
-		if (triplet->chans.first_channel <= 14)
-			end_channel = triplet->chans.first_channel + (triplet->chans.num_channels - 1);
-		else
-			end_channel =  triplet->chans.first_channel + (4 * (triplet->chans.num_channels - 1));
-
-		printf("\t\tChannels [%d - %d] @ %d dBm\n", triplet->chans.first_channel, end_channel, triplet->chans.max_power);
-
-		data += 3;
-		len -= 3;
-	}
-
-	return;
-}
-#endif
 
 // helper function to decode an Information Element blob
 // going to pretty much copy iw's scan.c decode fns
