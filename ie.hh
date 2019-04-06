@@ -78,6 +78,14 @@ class IE
 		};
 
 		uint8_t get_id(void) { return id; };
+
+		// learning from Kismet's trackedelement.h
+		using string_vec_t = std::vector<std::string>;
+		using const_iterator = typename string_vec_t::const_iterator;
+
+		const_iterator cbegin() const { return std::cbegin(decode); }
+		const_iterator cend() const { return std::cend(decode); }
+
 	private:
 		uint8_t id;
 		uint8_t len;

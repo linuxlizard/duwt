@@ -5,8 +5,8 @@
 
 #include "fmt/format.h"
 #include "fmt/ostream.h"
-#include "logging.h"
 
+#include "logging.h"
 #include "netlink.hh"
 
 int main(int argc, char* argv[])
@@ -42,18 +42,24 @@ int main(int argc, char* argv[])
 	}
 
 	for ( auto&& bss : bss_list ) {
-		fmt::print("found BSS {} num_ies={}\n", bss, bss.ie_list.size());
-		spdlog::info(fmt::format("found BSS {} num_ies={}", bss, bss.ie_list.size()));
-		logger->info("found BSS {} num_ies={}", bss, bss.ie_list.size());
+		fmt::print("found BSS {} num_ies={}\n", bss, bss.ie_count());
+		spdlog::info(fmt::format("found BSS {} num_ies={}", bss, bss.ie_count()));
+		logger->info("found BSS {} num_ies={}", bss, bss.ie_count());
 //		std::cout << "found BSS " << bss << " num_ies=" << bss.ie_list.size() << "\n";
 		logger->info("SSID={}", bss.get_ssid());
-		for (auto&& ie : bss.ie_list) {
-			logger->info("ie={}", ie);
+		for (auto&& ie = bss.cbegin() ; ie != bss.cend() ; ++ie) {
+			logger->info("ie={}", *ie);
+			fmt::print("\tie={}\n", *ie);
+
+			for (auto&& s = ie->cbegin() ; s != ie->cend() ; ++s) {
+				std::cout << "\t\t" << *s << "\n";
+			}
+
+//			for (auto& const s : ie) {
+//				fmt::print("\t\t{}\n", s);
+//			}
 		}
 	}
-
-	spdlog::info("Goodbye, {}!", "World");
-	logger->info("goodbye, world");
 
 //	auto sink = std::make_shared<spdlog::sinks::stdout_sink_mt>();
 //	auto my_logger= std::make_shared<spdlog::logger>("mylogger", sink);

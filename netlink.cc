@@ -273,7 +273,8 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 						// XXX temp debug
 //						IE new_ie = IE(ie[0], ie[1], ie+2);
 
-						new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
+						new_bss.add_ie(IE(ie[0], ie[1], ie+2));
+//						new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
 
 //						if (ie[0] == 0) {
 //							std::cout << "P BSS=" << new_bss << " SSID:" << new_bss.ie_list.back().str() << std::endl;
@@ -296,7 +297,9 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 				uint8_t *ie_end = ie + ielen;
 				size_t counter = 0;
 				while (ie < ie_end) {
-					new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
+					new_bss.add_ie(IE(ie[0], ie[1], ie+2));
+//					new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
+
 //					if (ie[0] == 0) {
 //						std::cout << "B BSS=" << new_bss << " SSID:" << new_bss.ie_list.back().str() << std::endl;
 //					}

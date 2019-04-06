@@ -130,15 +130,23 @@ public:
 	uint32_t center_freq2;
 	int age;
 
-	std::vector<IE> ie_list;
-
 	// FIXME this method is awful; need a better way
 	// also std::string isn't UTF8 safe
 	std::string get_ssid(void);
 
 	const std::string& get_bssid(void) const { return bssid_str; };
 
+	void add_ie(IE&& ie) { ie_list.push_back(std::move(ie)); }
+	size_t ie_count(void) { return ie_list.size(); }
+
+	using const_iterator = typename std::vector<IE>::const_iterator;
+
+	const_iterator cbegin() const { return std::cbegin(ie_list); }
+	const_iterator cend() const { return std::cend(ie_list); }
+
 private:
+	std::vector<IE> ie_list;
+
 	std::string bssid_str;
 };
 

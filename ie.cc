@@ -1,5 +1,8 @@
+#include <iostream>
 #include <array>
+#include <vector>
 #include <cassert>
+#include <boost/assert.hpp>
 
 #include <sys/socket.h>
 #include <linux/if_ether.h>
@@ -11,42 +14,9 @@
 #include <netlink/attr.h>
 #include <linux/nl80211.h>
 
+#include "fmt/format.h"
 #include "logging.h"
 #include "ie.hh"
-
-using Blob = std::vector<uint8_t>;
-
-static std::string print_ds(Blob bytes)
-{
-	return std::to_string(static_cast<int>(bytes[0]));
-}
-
-// helper function to decode an Information Element blob
-// going to pretty much copy iw's scan.c decode fns
-static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& decode)
-{
-	(void)len;
-
-	switch (id) {
-		case 0:
-			// FIXME UTF-8 (somehow)
-			decode.emplace_back(std::string(reinterpret_cast<char*>(bytes.data()), bytes.size()));
-			break;
-
-		case 3:
-			decode.emplace_back(std::move(print_ds(bytes)));
-//			decode.push_back(print_ds(bytes));
-			break;
-
-		default:
-			// TODO
-			decode.emplace_back("(no decode)");
-			break;
-	}
-//	std::cout << "decode=" << decode.at(0) << "\n";
-}
-
-using namespace cfg80211;
 
 // From IEEE802.11-2012:
 //
@@ -72,6 +42,204 @@ using namespace cfg80211;
 // As a result of publishing this revision, all of the previously published amendments and revisions are now
 // retired.
 // </quote>
+
+using namespace cfg80211;
+
+using Blob = std::vector<uint8_t>;
+
+// iw scan.c print_ds()
+static std::string decode_ds(Blob bytes)
+{
+	return std::to_string(static_cast<int>(bytes[0]));
+}
+
+// iw scan.c print_supprates()
+#define BSS_MEMBERSHIP_SELECTOR_VHT_PHY 126
+#define BSS_MEMBERSHIP_SELECTOR_HT_PHY 127
+static std::string decode_supprates(Blob bytes)
+{
+	size_t i;
+	std::string s;
+
+	for (i = 0; i < bytes.size(); i++) {
+		uint8_t byte = bytes.data()[i];
+		int r = byte & 0x7f;
+
+		if (r == BSS_MEMBERSHIP_SELECTOR_VHT_PHY && byte & 0x80)
+			s += "VHT";
+		else if (r == BSS_MEMBERSHIP_SELECTOR_HT_PHY && byte & 0x80)
+			s += "HT";
+		else
+			s += fmt::format("{}.{}", r/2, 5*(r&1));
+//			printf("%d.%d", r/2, 5*(r&1));
+
+		s += (byte & 0x80) ? "* " : " ";
+	}
+
+	return s;
+}
+
+// iw scan.c print_tim()
+static std::string decode_tim(Blob bytes)
+{
+	std::string s = fmt::format(" DTIM Count {:d} DTIM Period {:d} Bitmap Control {:#x} Bitmap[0] {:#x}",
+	       bytes.data()[0], bytes.data()[1], bytes.data()[2], bytes.data()[3]);
+
+	if (bytes.size() - 4)
+		s += fmt::format(" (+ {:d} octet{:s})", bytes.size() - 4, bytes.size() - 4 == 1 ? "" : "s");
+	return s;
+}
+
+// iw scan.c print_country()
+
+#define IEEE80211_COUNTRY_EXTENSION_ID 201
+
+union ieee80211_country_ie_triplet {
+	struct {
+		__u8 first_channel;
+		__u8 num_channels;
+		__s8 max_power;
+	} __attribute__ ((packed)) chans;
+	struct {
+		__u8 reg_extension_id;
+		__u8 reg_class;
+		__u8 coverage_class;
+	} __attribute__ ((packed)) ext;
+} __attribute__ ((packed));
+
+static void decode_country(Blob bytes, std::vector<std::string>& decode)
+{
+	uint8_t *data = bytes.data();
+	ssize_t len = bytes.size();
+
+//	printf(" %.*s", 2, data);
+	decode.emplace_back(std::string(reinterpret_cast<char *>(data), 2));
+
+//	printf("\tEnvironment: %s\n", country_env_str(data[2]));
+
+	data += 3;
+	len -= 3;
+
+	if (len < 3) {
+		decode.push_back("No country IE triplets present");
+		return;
+	}
+
+	while (len >= 3) {
+		int end_channel;
+		union ieee80211_country_ie_triplet *triplet = reinterpret_cast<union ieee80211_country_ie_triplet*>(data);
+
+		if (triplet->ext.reg_extension_id >= IEEE80211_COUNTRY_EXTENSION_ID) {
+			decode.push_back(fmt::format("Extension ID: {:d} Regulatory Class: {:d} Coverage class: {:d} (up to {:d}m)",
+			       triplet->ext.reg_extension_id,
+			       triplet->ext.reg_class,
+			       triplet->ext.coverage_class,
+			       triplet->ext.coverage_class * 450));
+
+			data += 3;
+			len -= 3;
+			continue;
+		}
+
+		/* 2 GHz */
+		if (triplet->chans.first_channel <= 14)
+			end_channel = triplet->chans.first_channel + (triplet->chans.num_channels - 1);
+		else
+			end_channel =  triplet->chans.first_channel + (4 * (triplet->chans.num_channels - 1));
+
+		decode.push_back(fmt::format("Channels [{:d} - {:d}] @ {:d} dBm", triplet->chans.first_channel, end_channel, triplet->chans.max_power));
+
+		data += 3;
+		len -= 3;
+	}
+
+}
+
+#if 0
+static void print_country(const uint8_t type, uint8_t len, const uint8_t *data,
+			  const struct print_ies_data *ie_buffer)
+{
+	printf(" %.*s", 2, data);
+
+	printf("\tEnvironment: %s\n", country_env_str(data[2]));
+
+	data += 3;
+	len -= 3;
+
+	if (len < 3) {
+		printf("\t\tNo country IE triplets present\n");
+		return;
+	}
+
+	while (len >= 3) {
+		int end_channel;
+		union ieee80211_country_ie_triplet *triplet = (void *) data;
+
+		if (triplet->ext.reg_extension_id >= IEEE80211_COUNTRY_EXTENSION_ID) {
+			printf("\t\tExtension ID: %d Regulatory Class: %d Coverage class: %d (up to %dm)\n",
+			       triplet->ext.reg_extension_id,
+			       triplet->ext.reg_class,
+			       triplet->ext.coverage_class,
+			       triplet->ext.coverage_class * 450);
+
+			data += 3;
+			len -= 3;
+			continue;
+		}
+
+		/* 2 GHz */
+		if (triplet->chans.first_channel <= 14)
+			end_channel = triplet->chans.first_channel + (triplet->chans.num_channels - 1);
+		else
+			end_channel =  triplet->chans.first_channel + (4 * (triplet->chans.num_channels - 1));
+
+		printf("\t\tChannels [%d - %d] @ %d dBm\n", triplet->chans.first_channel, end_channel, triplet->chans.max_power);
+
+		data += 3;
+		len -= 3;
+	}
+
+	return;
+}
+#endif
+
+// helper function to decode an Information Element blob
+// going to pretty much copy iw's scan.c decode fns
+static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& decode)
+{
+	(void)len;
+
+	switch (id) {
+		case 0:
+			// FIXME UTF-8 (somehow)
+			decode.emplace_back(std::string(reinterpret_cast<char*>(bytes.data()), bytes.size()));
+			break;
+
+		case 1:
+			// Supported Rates
+			decode.push_back(decode_supprates(bytes));
+			break;
+
+		case 3:
+			decode.emplace_back(std::move(decode_ds(bytes)));
+//			decode.push_back(decode_ds(bytes));
+			break;
+
+		case 5:
+			decode.push_back(decode_tim(bytes));
+			break;
+
+		case 7:
+			decode_country(bytes, decode);
+			break;
+
+		default:
+			// TODO
+			decode.emplace_back("(no decode)");
+			break;
+	}
+	BOOST_ASSERT(decode.size() > 0);
+}
 
 class IE_Names
 {
@@ -254,10 +422,16 @@ IE_Names::IE_Names()
 	names[108] = "802.11u Advertisement",
 	names[111] = "802.11u Roaming Consortium";
 
-	// TODO fill out VHT fields; anything new in HE (802.11x)?
-	// TODO fill out the rest of the empty fields with "Reserved"
-
 	names[255] = "Reserved";
+
+	// TODO fill out VHT fields; anything new in HE (802.11x)?
+
+	// fill out any empty fields with "Reserved"
+	for (size_t idx=0 ; idx<256 ; idx++) {
+		if (!names.at(idx)) {
+			names[idx] = "Reserved";
+		}
+	}
 }
 
 static IE_Names ie_names;
@@ -278,10 +452,18 @@ IE::IE(uint8_t id, uint8_t len, uint8_t *buf)
 	bytes.assign(buf, buf+len);
 
 	name = ie_names.names.at(id);
-	
-	decode_ie(static_cast<int>(id), static_cast<size_t>(len), bytes, decode);
+	if (!name) {
+		logie->error("failed to find id={}", id);
+		logie->flush();
+		assert(name);
+	}
 
-	logie->debug("construct ie={}", decode.at(0));
+	int int_id = static_cast<int>(id);
+	size_t int_len = static_cast<size_t>(len);
+
+	decode_ie(int_id, int_len, bytes, decode);
+	logie->debug("construct ie name=\"{}\" id={} len={} {}", 
+			name, int_id, int_len, decode.at(0));
 }
 
 std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie)
