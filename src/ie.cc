@@ -18,6 +18,16 @@
 #include "logging.h"
 #include "ie.h"
 
+// From IEEE802.11-2016:
+//
+// This revision is based on IEEE Std 802.11-2012, into which the following amendments have been
+// incorporated:
+// — IEEE Std 802.11aeTM-2012: Prioritization of Management Frames (Amendment 1)
+// — IEEE Std 802.11aaTM-2012: MAC Enhancements for Robust Audio Video Streaming (Amendment 2)
+// — IEEE Std 802.11adTM-2012: Enhancements for Very High Throughput in the 60 GHz Band (Amendment 3)
+// — IEEE Std 802.11acTM-2013: Enhancements for Very High Throughput for Operation in Bands below 6 GHz (Amendment 4)
+// — IEEE Std 802.11afTM-2013: Television White Spaces (TVWS) Operation (Amendment 5)
+
 // From IEEE802.11-2012:
 //
 // <quote>
@@ -46,6 +56,12 @@
 using namespace cfg80211;
 
 using Blob = std::vector<uint8_t>;
+
+namespace {
+	unsigned char ms_oui[3]		= { 0x00, 0x50, 0xf2 };
+	unsigned char ieee80211_oui[3]	= { 0x00, 0x0f, 0xac };
+	unsigned char wfa_oui[3]		= { 0x50, 0x6f, 0x9a };
+};
 
 // iw scan.c print_ds()
 static std::string decode_ds(Blob bytes)
@@ -169,6 +185,318 @@ static void decode_country(Blob bytes, std::vector<std::string>& decode)
 
 }
 
+static std::string unknown_suite(const uint8_t* data)
+{
+	return fmt::format("{0:02x}-{1:02x}-{2:02x}:{3:d}",
+		data[0], data[1] ,data[2], data[3]);
+}
+
+// iw scan.c print_cipher()
+static std::string decode_cipher(const uint8_t *data)
+{
+	if (memcmp(data, ms_oui, 3) == 0) {
+		switch (data[3]) {
+		case 0:
+			return "Use group cipher suite";
+			break;
+		case 1:
+			return "WEP-40";
+			break;
+		case 2:
+			return "TKIP";
+			break;
+		case 4:
+			return "CCMP";
+			break;
+		case 5:
+			return "WEP-104";
+			break;
+		default:
+			return unknown_suite(data);
+			break;
+		}
+	} else if (memcmp(data, ieee80211_oui, 3) == 0) {
+		switch (data[3]) {
+		case 0:
+			return "Use group cipher suite";
+			break;
+		case 1:
+			return "WEP-40";
+			break;
+		case 2:
+			return "TKIP";
+			break;
+		case 4:
+			return "CCMP";
+			break;
+		case 5:
+			return "WEP-104";
+			break;
+		case 6:
+			return "AES-128-CMAC";
+			break;
+		case 7:
+			return "NO-GROUP";
+			break;
+		case 8:
+			return "GCMP";
+			break;
+		default:
+			return unknown_suite(data);
+			break;
+		}
+	} else {
+		return unknown_suite(data);
+	}
+}
+
+// iw scan.c print_auth() 
+static std::string decode_auth(const uint8_t *data)
+{
+	if (memcmp(data, ms_oui, 3) == 0) {
+		switch (data[3]) {
+		case 1:
+			return "IEEE 802.1X";
+			break;
+		case 2:
+			return "PSK";
+			break;
+		default:
+			return unknown_suite(data);
+			break;
+		}
+	} else if (memcmp(data, ieee80211_oui, 3) == 0) {
+		switch (data[3]) {
+		case 1:
+			return "IEEE 802.1X";
+			break;
+		case 2:
+			return "PSK";
+			break;
+		case 3:
+			return "FT/IEEE 802.1X";
+			break;
+		case 4:
+			return "FT/PSK";
+			break;
+		case 5:
+			return "IEEE 802.1X/SHA-256";
+			break;
+		case 6:
+			return "PSK/SHA-256";
+			break;
+		case 7:
+			return "TDLS/TPK";
+			break;
+		case 8:
+			return "SAE";
+			break;
+		case 9:
+			return "FT/SAE";
+			break;
+		case 11:
+			return "IEEE 802.1X/SUITE-B";
+			break;
+		case 12:
+			return "IEEE 802.1X/SUITE-B-192";
+			break;
+		case 13:
+			return "FT/IEEE 802.1X/SHA-384";
+			break;
+		case 14:
+			return "FILS/SHA-256";
+			break;
+		case 15:
+			return "FILS/SHA-384";
+			break;
+		case 16:
+			return "FT/FILS/SHA-256";
+			break;
+		case 17:
+			return "FT/FILS/SHA-384";
+			break;
+		case 18:
+			return "OWE";
+			break;
+		default:
+			return unknown_suite(data);
+			break;
+		}
+	} else if (memcmp(data, wfa_oui, 3) == 0) {
+		switch (data[3]) {
+		case 1:
+			return "OSEN";
+			break;
+		case 2:
+			return "DPP";
+			break;
+		default:
+			return unknown_suite(data);
+			break;
+		}
+	} else {
+		return unknown_suite(data);
+	}
+}
+
+// iw scan.c _print_rsn_ie()
+// is_osen seems to be a HotSpot thing
+static void _decode_rsn_ie(const Blob& bytes, const char *defcipher, const char *defauth, int is_osen, std::vector<std::string>& decode)
+{
+	__u16 count, capa;
+	int i;
+	std::string s;
+	const uint8_t* data = bytes.data();
+	ssize_t len = bytes.size();
+
+	if (!is_osen) {
+		__u16 version;
+		version = data[0] + (data[1] << 8);
+		decode.push_back(fmt::format("Version: {:d}", version));
+
+		data += 2;
+		len -= 2;
+	}
+
+	if (len < 4) {
+		decode.push_back(fmt::format("Group cipher: {:s}", defcipher));
+		decode.push_back(fmt::format("Pairwise ciphers: {:s}", defcipher));
+		return;
+	}
+
+	s = "Group cipher: " + decode_cipher(data);
+	decode.push_back(s);
+
+	data += 4;
+	len -= 4;
+
+	if (len < 2) {
+		decode.push_back(fmt::format("Pairwise ciphers: {:s}", defcipher));
+		return;
+	}
+
+	count = data[0] | (data[1] << 8);
+	if (2 + (count * 4) > len)
+		goto invalid;
+
+	s = "Pairwise ciphers:";
+	for (i = 0; i < count; i++) {
+		s += " " + decode_cipher(data + 2 + (i * 4));
+	}
+	decode.push_back(s);
+
+	data += 2 + (count * 4);
+	len -= 2 + (count * 4);
+
+	if (len < 2) {
+		decode.push_back(fmt::format("Authentication suites: {:s}", defauth));
+		return;
+	}
+
+	count = data[0] | (data[1] << 8);
+	if (2 + (count * 4) > len)
+		goto invalid;
+
+	s = "Authentication suites:";
+	for (i = 0; i < count; i++) {
+		s += " " + decode_auth(data + 2 + (i * 4));
+	}
+	decode.push_back(s);
+
+	data += 2 + (count * 4);
+	len -= 2 + (count * 4);
+
+	if (len >= 2) {
+		capa = data[0] | (data[1] << 8);
+		s = "Capabilities:";
+		if (capa & 0x0001)
+			s += " PreAuth";
+		if (capa & 0x0002)
+			s += " NoPairwise";
+		switch ((capa & 0x000c) >> 2) {
+		case 0:
+			s += " 1-PTKSA-RC";
+			break;
+		case 1:
+			s += " 2-PTKSA-RC";
+			break;
+		case 2:
+			s += " 4-PTKSA-RC";
+			break;
+		case 3:
+			s += " 16-PTKSA-RC";
+			break;
+		}
+		switch ((capa & 0x0030) >> 4) {
+		case 0:
+			s += " 1-GTKSA-RC";
+			break;
+		case 1:
+			s += " 2-GTKSA-RC";
+			break;
+		case 2:
+			s += " 4-GTKSA-RC";
+			break;
+		case 3:
+			s += " 16-GTKSA-RC";
+			break;
+		}
+		if (capa & 0x0040)
+			s += " MFP-required";
+		if (capa & 0x0080)
+			s += " MFP-capable";
+		if (capa & 0x0200)
+			s += " Peerkey-enabled";
+		if (capa & 0x0400)
+			s += " SPP-AMSDU-capable";
+		if (capa & 0x0800)
+			s += " SPP-AMSDU-required";
+		s += fmt::format(" ({:#4x})", capa);
+		data += 2;
+		len -= 2;
+		decode.push_back(s);
+	}
+
+	if (len >= 2) {
+		int pmkid_count = data[0] | (data[1] << 8);
+
+		if (len >= 2 + 16 * pmkid_count) {
+			decode.push_back(fmt::format("{:d} PMKIDs", pmkid_count));
+			/* not printing PMKID values */
+			data += 2 + 16 * pmkid_count;
+			len -= 2 + 16 * pmkid_count;
+		} else
+			goto invalid;
+	}
+
+	if (len >= 4) {
+		s = "Group mgmt cipher suite: ";
+		s += decode_cipher(data);
+		decode.push_back(s);
+		data += 4;
+		len -= 4;
+	}
+
+ invalid:
+	if (len != 0) {
+		s = fmt::format("bogus tail data ({:d}):", len);
+		while (len) {
+			printf(" %.2x", *data);
+			data++;
+			len--;
+		}
+	}
+}
+
+// iw scan.c print_rsn()
+static void decode_rsn(const Blob& bytes, std::vector<std::string>& decode)
+{
+	const char *defcipher = "CCMP";
+	const char *defauth = "IEEE 802.1X";
+
+	_decode_rsn_ie(bytes, defcipher, defauth, 0, decode);
+}
+
 // helper function to decode an Information Element blob
 // going to pretty much copy iw's scan.c decode fns
 static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& decode)
@@ -197,6 +525,10 @@ static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& 
 
 		case 7:
 			decode_country(bytes, decode);
+			break;
+
+		case 48:
+			decode_rsn(bytes, decode);
 			break;
 
 		default:
