@@ -48,11 +48,11 @@ extern "C" {
 #endif
 
 /* from iw 5.0.1 */
-int nl80211_init(struct nl80211_state *state);
-void nl80211_cleanup(struct nl80211_state *state);
+//int nl80211_init(struct nl80211_state *state);
+//void nl80211_cleanup(struct nl80211_state *state);
 
-void decode_attr_bss( struct nlattr *attr);
-int print_sta_handler(struct nl_msg *msg, void *arg);
+//void decode_attr_bss( struct nlattr *attr);
+//int print_sta_handler(struct nl_msg *msg, void *arg);
 
 // my feeble code
 int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_list *scan_attrs);
