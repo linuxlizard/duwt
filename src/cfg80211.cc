@@ -226,7 +226,7 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 		// TODO capture other fields in the tb_msg[]
 
 		if (tb_msg[NL80211_ATTR_BSS]) {
-			decode_attr_bss(tb_msg[NL80211_ATTR_BSS]);
+//			decode_attr_bss(tb_msg[NL80211_ATTR_BSS]);
 
 			if (nla_parse_nested(bss, NL80211_BSS_MAX,
 						 tb_msg[NL80211_ATTR_BSS],
