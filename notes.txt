@@ -5,7 +5,6 @@ String Formatting.
 
 
 Logging.
-
 	Apache log4cxx. 
 		Might be overkill. Requires apr.
 		https://logging.apache.org/log4cxx/latest_stable/usage.html
@@ -17,3 +16,18 @@ Logging.
 
 	Winner?
 		https://github.com/gabime/spdlog
+
+
+JSON
+	https://nlohmann.github.io/json/
+
+
+Root.
+	Need superuser privs to trigger a scan. What's the modern way to do so?
+
+	https://stackoverflow.com/questions/2483755/how-to-programmatically-gain-root-privileges
+
+	https://fedoraproject.org/wiki/Features/RemoveSETUID
+
+	https://www.freedesktop.org/wiki/Software/polkit/
+
