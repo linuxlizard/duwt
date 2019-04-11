@@ -4,17 +4,14 @@
 #include <QApplication>
 #include <QtDebug>
 #include <QDebug>
-#include <QHeaderView>
-#include <QTableView>
-#include <QMessageBox>
+#include <QtWidgets>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
-#include <QMainWindow>
 #include <QWindow>
+#include <QtCore/QVariant>
 
 #include "mainwindow.h"
-#include "ui_mainwindow.h"
 #include "aboutdialog.h"
 //#include "testform.h"
 
@@ -26,32 +23,17 @@
 /* davep 20190319 ; TODO nl_socket_get_fd() + QSocketNotifier */
 
 MainWindow::MainWindow(QWidget *parent) :
-	QMainWindow(parent),
-	ui(new Ui::MainWindow)
+	QMainWindow(parent)
 {
-	ui->setupUi(this);
-
 	create_db();
 
-	model.setQuery("select BSSID, SSID, Channel from bss order by BSSID desc");
-	model.setHeaderData(0, Qt::Horizontal, QObject::tr("BSSID"));
-	model.setHeaderData(1, Qt::Horizontal, QObject::tr("SSID"));
-	model.setHeaderData(2, Qt::Horizontal, QObject::tr("Channel"));
+	setup_ui();
+	setup_model();
+	setup_views();
 
 	update_scan();
 
-	ui->tableView->setModel(&model);
-
-	// increase BSS and SSID column widths
-	ui->tableView->setColumnWidth(0, ui->tableView->columnWidth(0)*2);
-	ui->tableView->setColumnWidth(1, ui->tableView->columnWidth(1)*2);
-
 //	setIcon(QIcon("Gnome-network-wireless.svg"));
-}
-
-MainWindow::~MainWindow()
-{
-	delete ui;
 }
 
 void MainWindow::create_db(void)
@@ -78,6 +60,108 @@ void MainWindow::create_db(void)
 
 	query.exec("create table bss (id integer primary key, "
 				"BSSID char(20), SSID varchar(64), Channel int)");
+}
+
+void MainWindow::setup_ui(void)
+{
+	// Qt5.12 Examples Chart
+	
+	// originally used Qt Designer but couldn't add a QSplitter
+	// copy/paste/edit into this method
+    QAction *action_Open;
+    QAction *action_Save;
+    QAction *action_Quit;
+    QAction *action_About;
+    QAction *actionAbout_Qt;
+    QMenu *menu_File;
+    QMenu *menu_Help;
+	QSplitter *splitter;
+
+	if (objectName().isEmpty())
+		setObjectName(QString::fromUtf8("MainWindow"));
+	resize(400, 300);
+
+	action_Open = new QAction(tr("&Open"), this);
+	action_Open->setObjectName(QString::fromUtf8("action_Open"));
+	action_Open->setStatusTip(tr("Open something"));
+
+	action_Save = new QAction(tr("&Save"), this);
+	action_Save->setObjectName(QString::fromUtf8("action_Save"));
+	action_Save->setStatusTip(tr("Close something"));
+
+	action_Quit = new QAction(tr("&Quit"), this);
+	action_Quit->setObjectName(QString::fromUtf8("action_Quit"));
+	action_Quit->setStatusTip(tr("Quit the application"));
+
+	action_About = new QAction(tr("&About"), this);
+	action_About->setObjectName(QString::fromUtf8("action_About"));
+
+	actionAbout_Qt = new QAction(tr("About &Qt"), this);
+	actionAbout_Qt->setObjectName(QString::fromUtf8("actionAbout_Qt"));
+
+	splitter = new QSplitter(this);
+	splitter->setObjectName(QString::fromUtf8("splitter"));
+
+	tableView = new QTableView();
+	tableView->setObjectName(QString::fromUtf8("tableView"));
+	treeView = new QTreeView();
+	treeView->setObjectName(QString::fromUtf8("treeView"));
+
+	splitter->addWidget(tableView);
+	splitter->addWidget(treeView);
+	splitter->setStretchFactor(0, 0);
+	splitter->setStretchFactor(1, 1);
+
+	setCentralWidget(splitter);
+
+	menu_File = new QMenu(tr("&File"), this);
+	menu_File->setObjectName(QString::fromUtf8("menu_File"));
+	menuBar()->addMenu(menu_File);
+
+	menu_Help = new QMenu(tr("&Help"), this);
+	menu_Help->setObjectName(QString::fromUtf8("menu_Help"));
+	menuBar()->addMenu(menu_Help);
+
+	menu_File->addAction(action_Open);
+	menu_File->addAction(action_Save);
+	menu_File->addAction(action_Quit);
+
+	menu_Help->addAction(action_About);
+	menu_Help->addAction(actionAbout_Qt);
+
+	// XXX do I still need this?
+//	retranslateUi(MainWindow);
+
+	statusBar();
+
+	QMetaObject::connectSlotsByName(this);
+}
+
+void MainWindow::setup_model(void)
+{
+	model.setQuery("select BSSID, SSID, Channel from bss order by BSSID desc");
+	model.setHeaderData(0, Qt::Horizontal, QObject::tr("BSSID"));
+	model.setHeaderData(1, Qt::Horizontal, QObject::tr("SSID"));
+	model.setHeaderData(2, Qt::Horizontal, QObject::tr("Channel"));
+
+	tableView->setModel(&model);
+}
+
+void MainWindow::setup_views(void)
+{
+	// TODO set splitter width
+	QSplitter *splitter = QObject::findChild<QSplitter*>("splitter");
+	if (splitter) {
+		qDebug() << "found the splitter";
+	}
+	else {
+		qDebug() << "did not find splitter";
+	}
+
+	// increase BSS and SSID column widths
+	tableView->setColumnWidth(0, tableView->columnWidth(0)*2);
+	tableView->setColumnWidth(1, tableView->columnWidth(1)*2);
+
 }
 
 void MainWindow::update_scan(void)

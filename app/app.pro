@@ -28,7 +28,7 @@ LIBS += -L../fmt -lfmt
 CONFIG += link_pkgconfig
 PKGCONFIG += libnl-3.0 libnl-genl-3.0 libnl-route-3.0
 
-FORMS += mainwindow.ui aboutdialog.ui
+FORMS += aboutdialog.ui
 
 requires(qtConfig(tableview))
 
