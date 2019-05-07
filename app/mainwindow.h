@@ -6,6 +6,8 @@
 #include <QTableView>
 #include <QTreeView>
 
+#include "bssmodel.h"
+
 namespace Ui {
 class MainWindow;
 }
@@ -35,6 +37,7 @@ private:
 	QTreeView* treeView;
 
 	QSqlQueryModel model;
+	BSSModel bss_model;
 	
 	void create_db(void);
 	void update_scan(void);

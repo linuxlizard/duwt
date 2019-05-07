@@ -12,7 +12,7 @@ TARGET = fmt
 
 QMAKE_EXT_CPP = .cc
 
-CONFIG = staticlib warn_on c++11
+CONFIG += staticlib warn_on c++11
 
 FMT_SOURCES = \
     ./src/format.cc \

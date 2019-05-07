@@ -10,6 +10,7 @@ CPPFLAGS+=-Wall -Wextra -Wshadow -pedantic
 
 HEADERS += galileo.h\
 		 mainwindow.h\
+		 bssmodel.h\
 		 aboutdialog.h
 
 SOURCES += galileo.cc\
@@ -18,7 +19,9 @@ SOURCES += galileo.cc\
 		   ../src/ie.cc\
 		   ../src/util.c\
 		   ../src/attr.cc\
+		   ../src/logging.cc\
 		   mainwindow.cc\
+		   bssmodel.cc\
 		   aboutdialog.cc
 
 INCLUDEPATH += ../include

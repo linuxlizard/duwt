@@ -137,6 +137,16 @@ static const char *country_env_str(char environment)
 	}
 }
 
+// TODO learn more C++ because passing my decode by ref like this is wrong
+// these days ????
+//
+// "I heard a recent talk by Herb Sutter who suggested that the reasons to pass
+// std::vector and std::string by const & are largely gone. He suggested that
+// writing a function such as the following is now preferable:"
+//
+// https://stackoverflow.com/questions/10231349/are-the-days-of-passing-const-stdstring-as-a-parameter-over?rq=1
+//
+// https://web.archive.org/web/20140113221447/http://cpp-next.com/archive/2009/08/want-speed-pass-by-value/
 static void decode_country(Blob bytes, std::vector<std::string>& decode)
 {
 	uint8_t *data = bytes.data();
@@ -502,6 +512,9 @@ static void decode_rsn(const Blob& bytes, std::vector<std::string>& decode)
 static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& decode)
 {
 	(void)len;
+
+	// TODO use a lut of some sort
+	// https://stackoverflow.com/questions/55588440/return-a-function-from-a-class
 
 	switch (id) {
 		case 0:

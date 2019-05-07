@@ -59,6 +59,12 @@ class NLSock
 			}
         }
 
+		// TODO can I move my_sock private?
+		// http://www.nuonsoft.com/blog/2019/02/01/presentation-modern-c-memory-management/
+		// Conversion operator to FILE*
+		//   operator FILE*() const { return m_file; }
+//		operator struct nl_sock* () const { return my_sock; }
+
 		struct nl_sock* my_sock;
 
 	private:

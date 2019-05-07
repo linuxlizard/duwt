@@ -43,10 +43,6 @@ struct nlattr_list {
 	size_t attr_len_list[1024];
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /* from iw 5.0.1 */
 //int nl80211_init(struct nl80211_state *state);
 //void nl80211_cleanup(struct nl80211_state *state);
@@ -59,9 +55,5 @@ int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_l
 int iw_get_multicast_id(struct nl_sock *sock, const char *family, const char *group);
 int iw_listen_scan_events(struct nl80211_state* state);
 int iw_fetch_scan_events(struct nl80211_state* state, struct nlattr_list* evt_attrs);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

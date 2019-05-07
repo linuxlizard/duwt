@@ -40,6 +40,9 @@
 #include "iw.h"
 #include "util.h"
 
+/* davep 20190505 ; TODO make a user configurable flag */
+static const bool iw_debug = false;
+
 /* iw-4.9 iw.h */
 #define BIT(x) (1ULL<<(x))
 
@@ -128,7 +131,9 @@ int nl80211_init(struct nl80211_state* state)
 
 static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err, void *arg)
 {
-	printf("%s\n", __func__);
+	if (iw_debug) {
+		printf("%s\n", __func__);
+	}
 	(void)nla;
 	(void)err;
 	(void)arg;
@@ -138,20 +143,24 @@ static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err, void *ar
 
 static int finish_handler(struct nl_msg *msg, void *arg)
 {
-	printf("%s\n", __func__);
+	if (iw_debug) {
+		printf("%s\n", __func__);
+	}
 	(void)msg;
 
-	int *ret = arg;
+	int *ret = static_cast<int*>(arg);
 	*ret = 0;
 	return NL_SKIP;
 }
 
 static int ack_handler(struct nl_msg *msg, void *arg)
 {
-	printf("%s\n", __func__);
+	if (iw_debug) {
+		printf("%s\n", __func__);
+	}
 	(void)msg;
 
-	int *ret = arg;
+	int *ret = static_cast<int*>(arg);
 	*ret = 0;
 	return NL_STOP;
 }
@@ -164,16 +173,14 @@ int valid_handler(struct nl_msg *msg, void *arg)
 	printf("%s %p %p\n", __func__, (void *)msg, arg);
 
 	struct nlmsghdr *hdr = nlmsg_hdr(msg);
-	nl_msg_dump(msg,stdout);
+	struct genlmsghdr* gnlh = static_cast<struct genlmsghdr*>(nlmsg_data(hdr));
 
-//	struct nlmsghdr* nlhdr = nlmsg_hdr(msg);
-	printf("%s nlmsg max size=%ld\n", __func__, nlmsg_get_max_size(msg));
-
-	struct genlmsghdr* gnlh = nlmsg_data(hdr);
-
-	printf("%s msgsize=%d\n", __func__, nlmsg_datalen(hdr));
-
-	printf("%s genlen=%d genattrlen=%d\n", __func__, genlmsg_len(gnlh), genlmsg_attrlen(gnlh, 0));
+	if (iw_debug) {
+		nl_msg_dump(msg,stdout);
+		printf("%s nlmsg max size=%ld\n", __func__, nlmsg_get_max_size(msg));
+		printf("%s msgsize=%d\n", __func__, nlmsg_datalen(hdr));
+		printf("%s genlen=%d genattrlen=%d\n", __func__, genlmsg_len(gnlh), genlmsg_attrlen(gnlh, 0));
+	}
 
 	// copy the attrs blob to the caller
 	size_t buflen = genlmsg_attrlen(gnlh, 0);
@@ -205,10 +212,16 @@ int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_l
 	if (ifidx <= 0) {
 		return errno;
 	}
-	printf("%s ifidx=%u\n", __func__, ifidx);
+	if (iw_debug) {
+		printf("%s ifidx=%u\n", __func__, ifidx);
+	}
 
-	struct nl_cb *cb = nl_cb_alloc(NL_CB_DEBUG);
-	struct nl_cb *s_cb = nl_cb_alloc(NL_CB_DEBUG);
+	struct nl_cb* cb;
+	struct nl_cb* s_cb;
+
+	cb = nl_cb_alloc(iw_debug ? NL_CB_DEBUG : NL_CB_DEFAULT);
+	s_cb = nl_cb_alloc(iw_debug ? NL_CB_DEBUG : NL_CB_DEFAULT);
+
 
 	/* davep 20190228 ; copied from iw.c */
 	int err=1;
@@ -280,7 +293,7 @@ static int scan_event_handler(struct nl_msg *msg, void *arg)
 
 //	struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
 
-	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct genlmsghdr *gnlh = static_cast<struct genlmsghdr*>(nlmsg_data(nlmsg_hdr(msg)));
 #if 0
 	nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
 		  genlmsg_attrlen(gnlh, 0), NULL);
@@ -333,9 +346,9 @@ struct handler_args {
 /* from iw genl.c */
 static int family_handler(struct nl_msg *msg, void *arg)
 {
-	struct handler_args *grp = arg;
+	struct handler_args *grp = static_cast<struct handler_args*>(arg);
 	struct nlattr *tb[CTRL_ATTR_MAX + 1];
-	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct genlmsghdr *gnlh = static_cast<struct genlmsghdr*>(nlmsg_data(nlmsg_hdr(msg)));
 	struct nlattr *mcgrp;
 	int rem_mcgrp;
 
@@ -350,12 +363,12 @@ static int family_handler(struct nl_msg *msg, void *arg)
 		struct nlattr *tb_mcgrp[CTRL_ATTR_MCAST_GRP_MAX + 1];
 
 		nla_parse(tb_mcgrp, CTRL_ATTR_MCAST_GRP_MAX,
-			  nla_data(mcgrp), nla_len(mcgrp), NULL);
+			  static_cast<struct nlattr*>(nla_data(mcgrp)), nla_len(mcgrp), NULL);
 
 		if (!tb_mcgrp[CTRL_ATTR_MCAST_GRP_NAME] ||
 		    !tb_mcgrp[CTRL_ATTR_MCAST_GRP_ID])
 			continue;
-		if (strncmp(nla_data(tb_mcgrp[CTRL_ATTR_MCAST_GRP_NAME]),
+		if (strncmp(static_cast<char*>(nla_data(tb_mcgrp[CTRL_ATTR_MCAST_GRP_NAME])),
 			    grp->group, nla_len(tb_mcgrp[CTRL_ATTR_MCAST_GRP_NAME])))
 			continue;
 		grp->id = nla_get_u32(tb_mcgrp[CTRL_ATTR_MCAST_GRP_ID]);

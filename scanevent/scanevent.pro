@@ -2,6 +2,7 @@ TEMPLATE = app
 TARGET = scanevent
 
 CONFIG += cmdline debug c++17 warn_on
+CONFIG -= qt
 
 # https://stackoverflow.com/questions/53022608/application-crashes-with-symbol-zdlpvm-version-qt-5-not-defined-in-file-libqt
 QMAKE_CXXFLAGS += "-fno-sized-deallocation"

@@ -1,6 +1,8 @@
 #ifndef LOGGING_H
 #define LOGGING_H
 
+// https://github.com/gabime/spdlog
+
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h" // support for basic file logging
 #include "spdlog/sinks/stdout_sinks.h"

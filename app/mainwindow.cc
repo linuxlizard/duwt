@@ -67,7 +67,7 @@ void MainWindow::setup_ui(void)
 	// Qt5.12 Examples Chart
 	
 	// originally used Qt Designer but couldn't add a QSplitter
-	// copy/paste/edit into this method
+    // so copy/paste/edit into this method
     QAction *action_Open;
     QAction *action_Save;
     QAction *action_Quit;
@@ -145,6 +145,7 @@ void MainWindow::setup_model(void)
 	model.setHeaderData(2, Qt::Horizontal, QObject::tr("Channel"));
 
 	tableView->setModel(&model);
+	treeView->setModel(&bss_model);
 }
 
 void MainWindow::setup_views(void)

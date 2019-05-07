@@ -1,4 +1,8 @@
 
+Make just one subdir/subproject.
+	make sub-scandump
+
+
 String Formatting.
 	FMT 
 	http://fmtlib.net/latest/index.html
@@ -30,4 +34,23 @@ Root.
 	https://fedoraproject.org/wiki/Features/RemoveSETUID
 
 	https://www.freedesktop.org/wiki/Software/polkit/
+
+
+	net/wireless/cfg80211.c
+      {
+               .cmd = NL80211_CMD_TRIGGER_SCAN,
+               .doit = nl80211_trigger_scan,
+               .policy = nl80211_policy,
+               .flags = GENL_UNS_ADMIN_PERM,  <----------------------
+               .internal_flags = NL80211_FLAG_NEED_WDEV_UP |
+                                 NL80211_FLAG_NEED_RTNL,
+       },
+
+	GENL_UNS_ADMIN_PERM winner winner
+	trigger scan CAP_NET_ADMIN it is
+ 
+	net/netlink/genetlink.c
+     if ((ops->flags & GENL_UNS_ADMIN_PERM) &&
+           !netlink_ns_capable(skb, net->user_ns, CAP_NET_ADMIN))
+               return -EPERM;
 
