@@ -20,7 +20,6 @@
 #include "logging.h"
 #include "cfg80211.h"
 #include "iw.h"
-//#include "util.h"
 #include "ie.h"
 #include "attr.h"
 

@@ -16,9 +16,8 @@ xxHEADERS += ../iw.h\
 		 ../logging.h\
 		 ../attr.hh
 
-SOURCES += ../src/iw.c\
+SOURCES += ../src/iw.cc\
 		   ../src/cfg80211.cc\
-		   ../src/util.c\
 		   ../src/ie.cc\
 		   ../src/attr.cc\
 		   ../src/logging.cc\

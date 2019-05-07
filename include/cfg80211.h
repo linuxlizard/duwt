@@ -140,7 +140,7 @@ public:
 	// also std::string isn't UTF8 safe
 	std::string get_ssid(void);
 
-	const std::string& get_bssid(void) const { return bssid_str; };
+	std::string get_bssid(void) const { return bssid_str; };
 
 	void add_ie(IE&& ie) { ie_list.push_back(std::move(ie)); }
 	size_t ie_count(void) { return ie_list.size(); }

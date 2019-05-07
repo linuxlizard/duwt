@@ -16,7 +16,6 @@
 //#include "testform.h"
 
 #include "cfg80211.h"
-#include "util.h"
 
 /* davep 20190318 ; https://www.qcustomplot.com/index.php/introduction */
 
@@ -186,12 +185,11 @@ void MainWindow::update_scan(void)
 //		std::stringstream s;
 //		s << "found BSS " << bss << " num_ies=" << bss.ie_list.size();
 //		std::cerr << "s=" << s << std::endl;
-		char mac_addr[20];
-		mac_addr_n2a(mac_addr, (const unsigned char *)bss.bssid.data());
 
-		qDebug() << "found BSS=" << mac_addr;
+		std::string bssid = bss.get_bssid();
+		qDebug() << "found BSS=" << bssid.c_str();
 
-		q.bindValue(":bssid", mac_addr);
+		q.bindValue(":bssid", bssid.c_str());
 		q.bindValue(":ssid", bss.get_ssid().c_str());
 		q.bindValue(":channel", bss.freq);
 

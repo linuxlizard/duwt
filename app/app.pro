@@ -14,10 +14,9 @@ HEADERS += galileo.h\
 		 aboutdialog.h
 
 SOURCES += galileo.cc\
-		   ../src/iw.c\
+		   ../src/iw.cc\
 		   ../src/cfg80211.cc\
 		   ../src/ie.cc\
-		   ../src/util.c\
 		   ../src/attr.cc\
 		   ../src/logging.cc\
 		   mainwindow.cc\

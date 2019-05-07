@@ -38,7 +38,6 @@
 #include <linux/nl80211.h>
 
 #include "iw.h"
-#include "util.h"
 
 /* davep 20190505 ; TODO make a user configurable flag */
 static const bool iw_debug = false;
