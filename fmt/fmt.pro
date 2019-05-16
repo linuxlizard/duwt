@@ -10,26 +10,31 @@ TEMPLATE = lib
 
 TARGET = fmt
 
-QMAKE_EXT_CPP = .cc
-
 CONFIG += staticlib warn_on c++11
 
-FMT_SOURCES = \
+CONFIG -= qt
+
+INCLUDEPATH += ./include
+
+SOURCES = \
     ./src/format.cc \
     ./src/posix.cc
 
-fmt.name = libfmt
-fmt.input = FMT_SOURCES
-fmt.output = ${QMAKE_FILE_BASE}$$QMAKE_EXT_OBJ
-fmt.clean = ${QMAKE_FILE_BASE}$$QMAKE_EXT_OBJ
-fmt.depends = ${QMAKE_FILE_IN}
-# QMAKE_RUN_CXX will not be expanded
-fmt.commands = $$QMAKE_CXX -I./include -c $$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_WARN_ON $$QMAKE_CXXFLAGS_RELEASE_WITH_DEBUGINFO $$QMAKE_CXXFLAGS_CXX11 ${QMAKE_FILE_IN}
-fmt.variable_out = OBJECTS
-fmt.CONFIG = no_dependencies no_link
-#fmt.includepath += ../include
-#fmt.INCLUDEPATH += ../include
+message("foo bar baz")
 
-QMAKE_EXTRA_COMPILERS += fmt
+#fmt.name = libfmt
+#fmt.input = FMT_SOURCES
+#fmt.output = ${QMAKE_FILE_BASE}$$QMAKE_EXT_OBJ
+#fmt.clean = ${QMAKE_FILE_BASE}$$QMAKE_EXT_OBJ
+#fmt.depends = ${QMAKE_FILE_IN}
+## QMAKE_RUN_CXX will not be expanded
+#fmt.commands = $$QMAKE_CXX -I./include -c $$QMAKE_CXXFLAGS $$QMAKE_CXXFLAGS_WARN_ON $$QMAKE_CXXFLAGS_RELEASE_WITH_DEBUGINFO $$QMAKE_CXXFLAGS_CXX11 ${QMAKE_FILE_IN}
+#fmt.variable_out = OBJECTS
+#fmt.CONFIG = no_dependencies no_link
+#fmt.includepath += ../include foobarbaz
+#fmt.includepath += ../include/fmt
+#fmt.INCLUDEPATH += ./include
+
+#QMAKE_EXTRA_COMPILERS += fmt
 
 # vim: ft=make
