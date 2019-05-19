@@ -38,7 +38,7 @@ class IE
 			  bytes{std::move(src.bytes)}, 
 			  name{src.name},
 			  decode{std::move(src.decode)},
-			  logie{std::move(src.logie)}
+			  logger{std::move(src.logger)}
 		{
 			// https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c64-a-move-operation-should-move-and-leave-its-source-in-a-valid-state
 			src.id = -1;
@@ -54,7 +54,7 @@ class IE
 			bytes = std::move(src.bytes);
 			name = src.name;
 			decode = std::move(src.decode);
-			logie = std::move(src.logie);
+			logger = std::move(src.logger);
 
 			// https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c64-a-move-operation-should-move-and-leave-its-source-in-a-valid-state
 			src.id = -1;
@@ -68,17 +68,6 @@ class IE
 		virtual Json::Value make_json(void);
 
 		friend std::ostream& ::operator<< (std::ostream &, const IE&);
-
-		std::string str(void) { 
-//			return decode.at(0);
-			return std::string("TODO");
-			// FIXME this is so stupid dangerous. Find a less stupid way.
-			// Originally this was a quick hack to get the SSID.
-//			return std::string( 
-//						reinterpret_cast<const char *>(buf.data()), 
-//						static_cast<size_t>(len)
-//					); 
-		};
 
 		uint8_t get_id(void) { return id; };
 
@@ -98,7 +87,7 @@ class IE
 
 		std::vector<std::string> decode;
 
-		std::shared_ptr<spdlog::logger> logie;
+		std::shared_ptr<spdlog::logger> logger;
 
 };
 

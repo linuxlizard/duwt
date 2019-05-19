@@ -143,7 +143,7 @@ public:
 	std::string get_bssid(void) const { return bssid_str; };
 
 	void add_ie(std::shared_ptr<IE> ie) { ie_list.push_back(ie); }
-	size_t ie_count(void) { return ie_list.size(); }
+	size_t ie_count(void) const { return ie_list.size(); }
 
 	using IE_List = std::vector<std::shared_ptr<IE>>;
 	using const_iterator = typename IE_List::const_iterator;

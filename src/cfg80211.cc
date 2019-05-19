@@ -87,7 +87,7 @@ std::string BSS::get_ssid(void)
 	// https://en.cppreference.com/w/cpp/language/range-for
 	for (const auto& ie : ie_list) {
 		if ((*ie).get_id() == 0) {
-			return (*ie).str();
+//			return (*ie).str();
 		}
 	}
 
@@ -195,7 +195,7 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 
 		for (int msgidx=0 ; msgidx<NL80211_ATTR_MAX ; msgidx++ ) {
 			if (tb_msg[msgidx]) {
-				logger->debug("{} {}={} type={} len={}\n", __func__, 
+				logger->debug("{} {}={} type={} len={}", __func__, 
 						msgidx, (void *)tb_msg[msgidx], nla_type(tb_msg[msgidx]), nla_len(tb_msg[msgidx]));
 			}
 		}

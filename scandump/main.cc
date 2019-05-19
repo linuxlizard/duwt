@@ -11,8 +11,8 @@
 
 int main(int argc, char* argv[])
 {
-	if (argc != 2) {
-		fprintf(stderr, "usage: %s ifname\n", argv[0]);
+	if (argc == 1) {
+		fprintf(stderr, "usage: %s [--json|--text] ifname\n", argv[0]);
 		exit(1);
 	}
 
@@ -25,7 +25,11 @@ int main(int argc, char* argv[])
 
 //	spdlog::info("Hello, {}!", "World");
 
+	// TODO use getopt 
 	const char* ifname = argv[1];
+	if (ifname[0] == '-' && ifname[1] == '-') {
+		ifname = argv[2];
+	}
 
 	// quicky test code; deleteme
 	std::array<uint8_t, 10> buf {};
@@ -41,7 +45,8 @@ int main(int argc, char* argv[])
 		std::terminate();
 	}
 
-	for ( auto&& bss : bss_list ) {
+	Json::Value scan_dump;
+	for ( auto& bss : bss_list ) {
 //		fmt::print("found BSS {} num_ies={}\n", bss, bss.ie_count());
 //		spdlog::info(fmt::format("found BSS {} num_ies={}", bss, bss.ie_count()));
 		logger->info("found BSS {} num_ies={}", bss, bss.ie_count());
@@ -58,9 +63,13 @@ int main(int argc, char* argv[])
 //			fmt::print("\tie={}\n", **ie);
 			Json::Value v { (*ie)->make_json() };
 
-//			std::cout << v << "\n";
-
 			ie_list.append(v);
+
+			// brute force find the SSID and make a top level copy because it's
+			// most often required
+			if ((*ie)->get_id() == 0) {
+				bss_json["SSID"] = v["SSID"];
+			}
 
 //			for (auto&& s = ie->cbegin() ; s != ie->cend() ; ++s) {
 //				std::cout << "\t\t" << *s << "\n";
@@ -71,8 +80,16 @@ int main(int argc, char* argv[])
 //			}
 		}
 		bss_json["ie_list"] = ie_list;
-		std::cout << bss_json << "\n";
+		scan_dump["bss"].append(bss_json);
 	}
+
+//	std::cout << scan_dump << "\n";
+
+	Json::StreamWriterBuilder writer_builder;
+	writer_builder["indentation"] = " ";
+	std::unique_ptr<Json::StreamWriter> writer(writer_builder.newStreamWriter());
+	writer->write(scan_dump, &std::cout);
+	std::cout << "\n";
 
 //	auto sink = std::make_shared<spdlog::sinks::stdout_sink_mt>();
 //	auto my_logger= std::make_shared<spdlog::logger>("mylogger", sink);

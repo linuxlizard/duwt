@@ -748,17 +748,33 @@ IE_Names::IE_Names()
 
 static IE_Names ie_names;
 
+std::string hex_dump_bytes(std::vector<uint8_t> input)
+{
+	static const char hex_ascii[] ="0123456789abcdef";
+
+	std::stringstream ss;
+	std::ostreambuf_iterator<char> out_ss(ss);
+
+	std::for_each(input.cbegin(), input.cend(), 
+			[&out_ss](char c) { 
+				*out_ss++ = hex_ascii[(c>>4)&0x0f]; 
+				*out_ss++ = hex_ascii[c&0x0f]; 
+			});
+
+	return ss.str();
+}
+
 IE::IE(uint8_t id, uint8_t len, uint8_t *buf) 
 	: id{id}, 
 	  len{len},
 	  bytes{},
 	  name {nullptr},
 	  decode {},
-	  logie {nullptr}
+	  logger {nullptr}
 {
-	logie = spdlog::get("ie");
-	if (!logie) {
-		logie = spdlog::stdout_logger_mt("ie");
+	logger = spdlog::get("ie");
+	if (!logger) {
+		logger = spdlog::stdout_logger_mt("ie");
 	}
 
 	if (len && buf) {
@@ -768,8 +784,8 @@ IE::IE(uint8_t id, uint8_t len, uint8_t *buf)
 	name = ie_names.names.at(id);
 	if (!name) {
 		// TODO throw something (don't use assert)
-		logie->error("failed to find id={}", id);
-		logie->flush();
+		logger->error("failed to find id={}", id);
+		logger->flush();
 		assert(name);
 	}
 
@@ -777,7 +793,7 @@ IE::IE(uint8_t id, uint8_t len, uint8_t *buf)
 	size_t int_len = static_cast<size_t>(len);
 
 //	decode_ie(int_id, int_len, bytes, decode);
-	logie->debug("construct ie name=\"{}\" id={} len={}", 
+	logger->debug("construct ie name=\"{}\" id={} len={}", 
 			name, int_id, int_len);
 }
 
@@ -789,6 +805,7 @@ Json::Value IE::make_json(void)
 	v["id"] = id;
 	v["len"] = len;
 	v["name"] = std::string{name};
+	v["hex"] = hex_dump_bytes(bytes);
 	return v;
 }
 
@@ -821,12 +838,43 @@ Json::Value IE_SSID::make_json(void)
 IE_SupportedRates::IE_SupportedRates(uint8_t id_, uint8_t len_, uint8_t* buf)
 	: IE(id_, len_, buf)
 {
+	// decode supported rates 
+	// iw scan.c print_supprates()
+	size_t i;
+	std::string s;
+
+	// "bits 6 to 0 are set to the data rate ... in units of 500kb/s"
+	for (i = 0; i < bytes.size(); i++) {
+		uint8_t byte = bytes.data()[i];
+		int r = byte & 0x7f;
+
+		logger->debug("{} idx={} byte={:#x} r={}", __func__, i, byte, r);
+
+		if (r == BSS_MEMBERSHIP_SELECTOR_VHT_PHY && byte & 0x80)
+			s += "VHT";
+		else if (r == BSS_MEMBERSHIP_SELECTOR_HT_PHY && byte & 0x80)
+			s += "HT";
+		else {
+			s += fmt::format("{}.{}", r/2, 5*(r&1));
+			rates.push_back(r/2);
+//			printf("%d.%d", r/2, 5*(r&1));
+		}
+
+		s += (byte & 0x80) ? "* " : " ";
+	}
 }
 
 Json::Value IE_SupportedRates::make_json(void)
 {
 //	std::cout << "SupportedRates make_json id=" << static_cast<int>(id) << "\n";
 	Json::Value v { IE::make_json() };
+
+	v["rates"] = Json::Value(Json::arrayValue);
+
+	for (auto num : rates) {
+		v["rates"].append(num);
+	}
+
 
 	return v;
 }
