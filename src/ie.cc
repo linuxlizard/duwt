@@ -3,7 +3,6 @@
 #include <array>
 #include <vector>
 #include <cassert>
-
 #include <sys/socket.h>
 #include <linux/if_ether.h>
 #include <net/if.h>
@@ -15,6 +14,7 @@
 #include <linux/nl80211.h>
 
 #include "fmt/format.h"
+#include "json/json.h"
 #include "logging.h"
 #include "ie.h"
 
@@ -509,6 +509,7 @@ static void decode_rsn(const Blob& bytes, std::vector<std::string>& decode)
 
 // helper function to decode an Information Element blob
 // going to pretty much copy iw's scan.c decode fns
+#if 0
 static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& decode)
 {
 	(void)len;
@@ -550,7 +551,7 @@ static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& 
 			break;
 	}
 }
-
+#endif
 
 class IE_Names
 {
@@ -780,19 +781,41 @@ IE::IE(uint8_t id, uint8_t len, uint8_t *buf)
 			name, int_id, int_len);
 }
 
-void IE::make_json(void)
+Json::Value IE::make_json(void)
 {
-	std::cout << "IE make_json id=" << static_cast<int>(id) << "\n";
+//	std::cout << "IE make_json id=" << static_cast<int>(id) << "\n";
+	Json::Value v;
+
+	v["id"] = id;
+	v["len"] = len;
+	v["name"] = std::string{name};
+	return v;
 }
 
 IE_SSID::IE_SSID(uint8_t id_, uint8_t len_, uint8_t* buf)
 	: IE(id_, len_, buf)
+//	  , ssid(static_cast<const char*>(buf), static_cast<size_t>(len_))
 {
+	// TODO need to very very carefully validate the bytes in the SSID.
+	// Could be maliciously encoded UTF8 or invalid UTF8 or nulls or 
+	// generally could be garbage.
+
+	if (len_ > 32) {
+		// TODO throw something?
+		ssid = fmt::format("ERROR: SSID invalid len={}", len_);
+		return;
+	}
+
+	ssid.assign(reinterpret_cast<char *>(buf), static_cast<size_t>(len_));
 }
 
-void IE_SSID::make_json(void)
+Json::Value IE_SSID::make_json(void)
 {
-	std::cout << "SSID make_json id=" << static_cast<int>(id) << "\n";
+//	std::cout << "SSID make_json id=" << static_cast<int>(id) << "\n";
+	Json::Value v { IE::make_json() };
+	v["SSID"] = ssid;
+
+	return v;
 }
 
 IE_SupportedRates::IE_SupportedRates(uint8_t id_, uint8_t len_, uint8_t* buf)
@@ -800,9 +823,12 @@ IE_SupportedRates::IE_SupportedRates(uint8_t id_, uint8_t len_, uint8_t* buf)
 {
 }
 
-void IE_SupportedRates::make_json(void)
+Json::Value IE_SupportedRates::make_json(void)
 {
-	std::cout << "SupportedRates make_json id=" << static_cast<int>(id) << "\n";
+//	std::cout << "SupportedRates make_json id=" << static_cast<int>(id) << "\n";
+	Json::Value v { IE::make_json() };
+
+	return v;
 }
 
 // FIXME this seems ugly. Read namespaces again! I'm puzzled why this fn needs
@@ -812,10 +838,10 @@ std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 {
 	// TODO is there a way to make this a LUT ?
 	switch (id) {
-		case 1:
+		case 0:
 			return std::make_shared<IE_SSID>(id,len,buf);
 
-		case 2:
+		case 1:
 			return std::make_shared<IE_SupportedRates>(id,len,buf);
 
 		default:

@@ -170,7 +170,7 @@ int valid_handler(struct nl_msg *msg, void *arg)
 {
 	struct nlattr_list *attrs = (struct nlattr_list*)arg;
 
-	printf("%s %p %p\n", __func__, (void *)msg, arg);
+//	printf("%s %p %p\n", __func__, (void *)msg, arg);
 
 	struct nlmsghdr *hdr = nlmsg_hdr(msg);
 	struct genlmsghdr* gnlh = static_cast<struct genlmsghdr*>(nlmsg_data(hdr));
@@ -249,14 +249,14 @@ int iw_get_scan(struct nl80211_state* state, const char *ifname, struct nlattr_l
 	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, valid_handler, (void *)scan_attrs);
 
 	int retcode = nl_send_auto(state->nl_sock, msg);
-	printf("%s nl_send_auto retcode=%d\n", __func__, retcode);
+//	printf("%s nl_send_auto retcode=%d\n", __func__, retcode);
 
 	assert(err==1);
 	while (err > 0) {
-		printf("%s GET_SCAN calling nl_recvmsgs_default...\n", __func__);
+//		printf("%s GET_SCAN calling nl_recvmsgs_default...\n", __func__);
 		retcode = nl_recvmsgs(state->nl_sock, cb);
-		printf("%s GET_SCAN retcode=%d err=%d counter=%ld\n", 
-				__func__, retcode, err, scan_attrs->counter);
+//		printf("%s GET_SCAN retcode=%d err=%d counter=%ld\n", 
+//				__func__, retcode, err, scan_attrs->counter);
 	}
 
 	nlmsg_free(msg);

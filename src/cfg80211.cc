@@ -83,13 +83,15 @@ std::string BSS::get_ssid(void)
 	// FIXME this method is stupid and needs to be fixed.
 	// Dangerous to assume the SSID isn't UTF8.
 	// Linear search is stupid.
-	for (auto&& ie : ie_list) {
-//		if (ie.get_id() == 0) {
-//			return ie.str();
-//		}
+	//
+	// https://en.cppreference.com/w/cpp/language/range-for
+	for (const auto& ie : ie_list) {
+		if ((*ie).get_id() == 0) {
+			return (*ie).str();
+		}
 	}
 
-	return std::string("not found");
+	return std::string("(SSID)not found)");
 }
 
 
@@ -98,32 +100,32 @@ Cfg80211::Cfg80211() :
 	nl_cb(std::make_unique<NLCallback>()),
 	nl80211_id(-1)
 {
-	logcfg = spdlog::get("cfg80211");
-	if (!logcfg) {
-		logcfg = spdlog::stdout_logger_mt("cfg80211");
+	logger = spdlog::get("cfg80211");
+	if (!logger) {
+		logger = spdlog::stdout_logger_mt("cfg80211");
 	}
 
-	logcfg->info("hello world");
+	logger->info("hello world");
 
 	if (nl_sock == nullptr) {
-		logcfg->error("nl_socket_alloc() failed");
+		logger->error("nl_socket_alloc() failed");
 		// TODO throw something
 	}
 
 	if (nl_cb == nullptr) {
-		logcfg->error("nl_cb_alloc() failed");
+		logger->error("nl_cb_alloc() failed");
 		// TODO throw something
 	}
 
 	int retcode = genl_connect(nl_sock->my_sock);
 	if (retcode < 0) {
-		logcfg->error("genl_connect failed err={}", retcode);
+		logger->error("genl_connect failed err={}", retcode);
 		throw NetlinkException("genl_connect failed", retcode);
 	}
 
 	nl80211_id = genl_ctrl_resolve(nl_sock->my_sock, NL80211_GENL_NAME);
 	if (nl80211_id < 0) {
-		logcfg->error("genl_ctrl_resolve of {} failed err={}", NL80211_GENL_NAME, nl80211_id );
+		logger->error("genl_ctrl_resolve of {} failed err={}", NL80211_GENL_NAME, nl80211_id );
 		throw NetlinkException(fmt::format("genl_ctrl_resolve name={} failed err={}", NL80211_GENL_NAME, nl80211_id));
 	}
 }
@@ -137,7 +139,7 @@ Cfg80211::Cfg80211(Cfg80211&& src)
 	: nl_sock(std::move(src.nl_sock)), 
 	nl_cb(std::move(src.nl_cb)), 
 	nl80211_id(src.nl80211_id),
-	logcfg(std::move(src.logcfg))
+	logger(std::move(src.logger))
 {
 	// move constructor
 	src.nl80211_id = -1;
@@ -152,7 +154,7 @@ Cfg80211& Cfg80211::operator=(Cfg80211&& src)
 	nl80211_id = src.nl80211_id;
 	src.nl80211_id = -1;
 
-	logcfg = std::move(src.logcfg);
+	logger = std::move(src.logger);
 
 	return *this;
 }
@@ -167,11 +169,11 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 	};
 	struct nlattr_list attrlist {};
 
-	logcfg->info("get_scan iface={}", iface);
+	logger->info("get_scan iface={}", iface);
 
 	int retcode = iw_get_scan(&state, iface, &attrlist);
 	if (retcode < 0) {
-		logcfg->error("get_scan iface={} iw_get_scan failed err={}", iface, retcode);
+		logger->error("get_scan iface={} iw_get_scan failed err={}", iface, retcode);
 		assert(0);
 		// TODO throw something
 	}
@@ -179,7 +181,7 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 	BSS_Policy bss_policy;
 
 	for (size_t i=0 ; i<attrlist.counter ; i++) {
-		logcfg->debug("get_scan attr i={} len={}", i, attrlist.attr_len_list[i]);
+		logger->debug("get_scan attr i={} len={}", i, attrlist.attr_len_list[i]);
 
 //		hex_dump("attr", (unsigned char*)attrlist.attr_list[i], 
 //				attrlist.attr_len_list[i]);
@@ -189,11 +191,11 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 					attrlist.attr_list[i],
 			  				attrlist.attr_len_list[i], NULL);
 		assert(retcode==0);
-		logcfg->debug("get_scan parse retcode={}", retcode);
+		logger->debug("get_scan parse retcode={}", retcode);
 
 		for (int msgidx=0 ; msgidx<NL80211_ATTR_MAX ; msgidx++ ) {
 			if (tb_msg[msgidx]) {
-				printf("%s %d=%p type=%d len=%d\n", __func__, 
+				logger->debug("{} {}={} type={} len={}\n", __func__, 
 						msgidx, (void *)tb_msg[msgidx], nla_type(tb_msg[msgidx]), nla_len(tb_msg[msgidx]));
 			}
 		}
@@ -222,7 +224,7 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 			BSS& new_bss = bss_list.emplace_back((uint8_t*)nla_data(bss[NL80211_BSS_BSSID]));
 			auto ssid = new_bss.get_ssid();
 			auto bssid = new_bss.get_bssid();
-			logcfg->debug("found bssid={}", new_bss.get_bssid());
+			logger->debug("found bssid={}", new_bss.get_bssid());
 
 			if (bss[NL80211_BSS_FREQUENCY]) {
 				new_bss.freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
@@ -241,7 +243,7 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 					(bcnies && (nla_len(ies) != nla_len(bcnies) ||
 						memcmp(nla_data(ies), nla_data(bcnies),
 							   nla_len(ies))))) {
-					logcfg->debug("found bytes={} IEs in Probe Response frame", nla_len(ies));
+					logger->debug("found bytes={} IEs in Probe Response frame", nla_len(ies));
 					uint8_t *ie = (uint8_t *)nla_data(ies);
 					ssize_t ielen = (ssize_t)nla_len(ies);
 					uint8_t *ie_end = ie + ielen;
@@ -262,13 +264,13 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 						ie += ie[1] + 2;
 						counter++;
 					}
-					logcfg->debug("found count={} IEs in Probe Response frame", counter);
+					logger->debug("found count={} IEs in Probe Response frame", counter);
 				}
 			}
 			// following 'if' copied from iw scan.c
 			if (bss[NL80211_BSS_BEACON_IES] ) {
 				struct nlattr *bcnies = bss[NL80211_BSS_BEACON_IES];
-				logcfg->debug("found bytes={} IEs in Beacon frame", nla_len(bss[NL80211_BSS_BEACON_IES]));
+				logger->debug("found bytes={} IEs in Beacon frame", nla_len(bss[NL80211_BSS_BEACON_IES]));
 				uint8_t *ie = (uint8_t *)nla_data(bcnies);
 				ssize_t ielen = (ssize_t)nla_len(bcnies);
 				uint8_t *ie_end = ie + ielen;
@@ -284,7 +286,7 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 					ie += ie[1] + 2;
 					counter++;
 				}
-				logcfg->debug("found count={} IEs in Beacon frame", counter);
+				logger->debug("found count={} IEs in Beacon frame", counter);
 //				print_ies(nla_data(bss[NL80211_BSS_BEACON_IES]),
 //					  nla_len(bss[NL80211_BSS_BEACON_IES]),
 //					  params->unknown, params->type);

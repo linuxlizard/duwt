@@ -194,7 +194,7 @@ private:
 	nl_cb_ptr_class nl_cb;
 	int nl80211_id;
 
-	std::shared_ptr<spdlog::logger> logcfg;
+	std::shared_ptr<spdlog::logger> logger;
 };
 
 }; // end namespace cfg80211

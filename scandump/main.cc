@@ -42,15 +42,25 @@ int main(int argc, char* argv[])
 	}
 
 	for ( auto&& bss : bss_list ) {
-		fmt::print("found BSS {} num_ies={}\n", bss, bss.ie_count());
-		spdlog::info(fmt::format("found BSS {} num_ies={}", bss, bss.ie_count()));
+//		fmt::print("found BSS {} num_ies={}\n", bss, bss.ie_count());
+//		spdlog::info(fmt::format("found BSS {} num_ies={}", bss, bss.ie_count()));
 		logger->info("found BSS {} num_ies={}", bss, bss.ie_count());
 //		std::cout << "found BSS " << bss << " num_ies=" << bss.ie_list.size() << "\n";
 		logger->info("SSID={}", bss.get_ssid());
+
+		Json::Value bss_json;
+		bss_json["bssid"] = bss.get_bssid();
+
+		Json::Value ie_list;
 		for (auto&& ie = bss.cbegin() ; ie != bss.cend() ; ++ie) {
 			logger->info("ie={}", *ie);
 			// iterator across a shared ptr so one * for iterator and another * for deference
-			fmt::print("\tie={}\n", **ie);
+//			fmt::print("\tie={}\n", **ie);
+			Json::Value v { (*ie)->make_json() };
+
+//			std::cout << v << "\n";
+
+			ie_list.append(v);
 
 //			for (auto&& s = ie->cbegin() ; s != ie->cend() ; ++s) {
 //				std::cout << "\t\t" << *s << "\n";
@@ -60,6 +70,8 @@ int main(int argc, char* argv[])
 //				fmt::print("\t\t{}\n", s);
 //			}
 		}
+		bss_json["ie_list"] = ie_list;
+		std::cout << bss_json << "\n";
 	}
 
 //	auto sink = std::make_shared<spdlog::sinks::stdout_sink_mt>();

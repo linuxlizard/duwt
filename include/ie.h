@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "json/json.h"
+
 // forward declare class IE so can introduce operator<< before the 'friend' in
 // class IE
 namespace cfg80211 {
@@ -63,7 +65,7 @@ class IE
 			return *this;
 		};
 
-		virtual void make_json(void);
+		virtual Json::Value make_json(void);
 
 		friend std::ostream& ::operator<< (std::ostream &, const IE&);
 
@@ -105,7 +107,7 @@ class IE_SSID : public IE
 	public:
 		IE_SSID(uint8_t id_, uint8_t len_, uint8_t* buf);
 
-		virtual void make_json(void);
+		virtual Json::Value make_json(void);
 
 	protected:
 		std::string ssid;
@@ -157,7 +159,7 @@ class IE_SupportedRates : public IE
 	public:
 		IE_SupportedRates(uint8_t id_, uint8_t len_, uint8_t* buf);
 
-		virtual void make_json(void);
+		virtual Json::Value make_json(void);
 
 	protected:
 		std::vector<int> rates;
