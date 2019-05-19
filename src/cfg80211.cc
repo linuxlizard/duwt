@@ -84,36 +84,14 @@ std::string BSS::get_ssid(void)
 	// Dangerous to assume the SSID isn't UTF8.
 	// Linear search is stupid.
 	for (auto&& ie : ie_list) {
-		if (ie.get_id() == 0) {
-			return ie.str();
-		}
+//		if (ie.get_id() == 0) {
+//			return ie.str();
+//		}
 	}
 
 	return std::string("not found");
 }
 
-#if 0
-BSS::BSS(BSS&& src)
-	: bssid(std::move(src.bssid)),
-	  channel_width(src.channel_width),
-	  freq(src.freq),
-	  center_freq1(src.center_freq1),
-	  center_freq2(src.center_freq2),
-	  age(src.age),
-	  ie_list(std::move(src.ie_list))
-{
-	// Move constructor
-	std::cout << "BSS move constructor\n";
-}
-
-BSS& BSS::operator=(BSS&& bss)
-{
-	// Move assignment operator
-	std::cout << "BSS move assignment\n";
-	// TODO
-	return bss;
-}
-#endif
 
 Cfg80211::Cfg80211() :
 	nl_sock(std::make_unique<NLSock>()),
@@ -272,7 +250,7 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 						// XXX temp debug
 //						IE new_ie = IE(ie[0], ie[1], ie+2);
 
-						new_bss.add_ie(IE(ie[0], ie[1], ie+2));
+						new_bss.add_ie(cfg80211::make_ie(ie[0], ie[1], ie+2));
 //						new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
 
 //						if (ie[0] == 0) {
@@ -296,7 +274,7 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 				uint8_t *ie_end = ie + ielen;
 				size_t counter = 0;
 				while (ie < ie_end) {
-					new_bss.add_ie(IE(ie[0], ie[1], ie+2));
+					new_bss.add_ie(cfg80211::make_ie(ie[0], ie[1], ie+2));
 //					new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
 
 //					if (ie[0] == 0) {

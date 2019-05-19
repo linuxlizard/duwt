@@ -20,7 +20,7 @@ class IE
 {
 	public:
 		IE(uint8_t id, uint8_t len, uint8_t *buf) ; 
-		~IE() = default;
+		virtual ~IE() = default;
 
 		// https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#cctor-constructors-assignments-and-destructors
 
@@ -63,12 +63,13 @@ class IE
 			return *this;
 		};
 
+		virtual void make_json(void);
 
 		friend std::ostream& ::operator<< (std::ostream &, const IE&);
 
 		std::string str(void) { 
-			return decode.at(0);
-//			return std::string("TODO");
+//			return decode.at(0);
+			return std::string("TODO");
 			// FIXME this is so stupid dangerous. Find a less stupid way.
 			// Originally this was a quick hack to get the SSID.
 //			return std::string( 
@@ -86,7 +87,7 @@ class IE
 		const_iterator cbegin() const { return std::cbegin(decode); }
 		const_iterator cend() const { return std::cend(decode); }
 
-	private:
+	protected:
 		uint8_t id;
 		uint8_t len;
 		std::vector<uint8_t> bytes;
@@ -96,6 +97,18 @@ class IE
 		std::vector<std::string> decode;
 
 		std::shared_ptr<spdlog::logger> logie;
+
+};
+
+class IE_SSID : public IE
+{
+	public:
+		IE_SSID(uint8_t id_, uint8_t len_, uint8_t* buf);
+
+		virtual void make_json(void);
+
+	protected:
+		std::string ssid;
 
 		/* quick notes while I'm thinking of it: SSID could be utf8 
 		 * https://www.gnu.org/software/libc/manual/html_node/Extended-Char-Intro.html
@@ -138,6 +151,19 @@ class IE
 		// I'm using sqlite in Galileo itself.
 		// https://www.sqlite.org/pragma.html#pragma_encoding
 };
+
+class IE_SupportedRates : public IE
+{
+	public:
+		IE_SupportedRates(uint8_t id_, uint8_t len_, uint8_t* buf);
+
+		virtual void make_json(void);
+
+	protected:
+		std::vector<int> rates;
+};
+
+std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf);
 
 };  // end namespace cfg80211
 

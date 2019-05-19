@@ -37,6 +37,7 @@
 
 #include <linux/nl80211.h>
 
+#include "logging.h"
 #include "iw.h"
 
 /* davep 20190505 ; TODO make a user configurable flag */

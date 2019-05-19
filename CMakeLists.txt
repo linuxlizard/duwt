@@ -1,7 +1,12 @@
+# hint: command line invocation
+# cmake -DCMAKE_BUILD_TYPE=Debug ..
+# cmake -DCMAKE_BUILD_TYPE=Release ..
+
 cmake_minimum_required(VERSION 3.7)
 
 project(duwt)
 
+set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 17)
 
 enable_testing()

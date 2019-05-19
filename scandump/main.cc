@@ -49,11 +49,12 @@ int main(int argc, char* argv[])
 		logger->info("SSID={}", bss.get_ssid());
 		for (auto&& ie = bss.cbegin() ; ie != bss.cend() ; ++ie) {
 			logger->info("ie={}", *ie);
-			fmt::print("\tie={}\n", *ie);
+			// iterator across a shared ptr so one * for iterator and another * for deference
+			fmt::print("\tie={}\n", **ie);
 
-			for (auto&& s = ie->cbegin() ; s != ie->cend() ; ++s) {
-				std::cout << "\t\t" << *s << "\n";
-			}
+//			for (auto&& s = ie->cbegin() ; s != ie->cend() ; ++s) {
+//				std::cout << "\t\t" << *s << "\n";
+//			}
 
 //			for (auto& const s : ie) {
 //				fmt::print("\t\t{}\n", s);

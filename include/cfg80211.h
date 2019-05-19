@@ -142,16 +142,18 @@ public:
 
 	std::string get_bssid(void) const { return bssid_str; };
 
-	void add_ie(IE&& ie) { ie_list.push_back(std::move(ie)); }
+	void add_ie(std::shared_ptr<IE> ie) { ie_list.push_back(ie); }
 	size_t ie_count(void) { return ie_list.size(); }
 
-	using const_iterator = typename std::vector<IE>::const_iterator;
+	using IE_List = std::vector<std::shared_ptr<IE>>;
+	using const_iterator = typename IE_List::const_iterator;
 
 	const_iterator cbegin() const { return std::cbegin(ie_list); }
 	const_iterator cend() const { return std::cend(ie_list); }
 
 private:
-	std::vector<IE> ie_list;
+//	std::vector<IE> ie_list;
+	IE_List ie_list;
 
 	std::string bssid_str;
 };

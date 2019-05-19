@@ -1,8 +1,8 @@
 #include <iostream>
+#include <memory>
 #include <array>
 #include <vector>
 #include <cassert>
-#include <boost/assert.hpp>
 
 #include <sys/socket.h>
 #include <linux/if_ether.h>
@@ -549,8 +549,8 @@ static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& 
 			decode.emplace_back("(no decode)");
 			break;
 	}
-	BOOST_ASSERT(decode.size() > 0);
 }
+
 
 class IE_Names
 {
@@ -760,10 +760,13 @@ IE::IE(uint8_t id, uint8_t len, uint8_t *buf)
 		logie = spdlog::stdout_logger_mt("ie");
 	}
 
-	bytes.assign(buf, buf+len);
+	if (len && buf) {
+		bytes.assign(buf, buf+len);
+	}
 
 	name = ie_names.names.at(id);
 	if (!name) {
+		// TODO throw something (don't use assert)
 		logie->error("failed to find id={}", id);
 		logie->flush();
 		assert(name);
@@ -772,9 +775,55 @@ IE::IE(uint8_t id, uint8_t len, uint8_t *buf)
 	int int_id = static_cast<int>(id);
 	size_t int_len = static_cast<size_t>(len);
 
-	decode_ie(int_id, int_len, bytes, decode);
-	logie->debug("construct ie name=\"{}\" id={} len={} {}", 
-			name, int_id, int_len, decode.at(0));
+//	decode_ie(int_id, int_len, bytes, decode);
+	logie->debug("construct ie name=\"{}\" id={} len={}", 
+			name, int_id, int_len);
+}
+
+void IE::make_json(void)
+{
+	std::cout << "IE make_json id=" << static_cast<int>(id) << "\n";
+}
+
+IE_SSID::IE_SSID(uint8_t id_, uint8_t len_, uint8_t* buf)
+	: IE(id_, len_, buf)
+{
+}
+
+void IE_SSID::make_json(void)
+{
+	std::cout << "SSID make_json id=" << static_cast<int>(id) << "\n";
+}
+
+IE_SupportedRates::IE_SupportedRates(uint8_t id_, uint8_t len_, uint8_t* buf)
+	: IE(id_, len_, buf)
+{
+}
+
+void IE_SupportedRates::make_json(void)
+{
+	std::cout << "SupportedRates make_json id=" << static_cast<int>(id) << "\n";
+}
+
+// FIXME this seems ugly. Read namespaces again! I'm puzzled why this fn needs
+// the namespace {} but the classes above don't
+namespace cfg80211 {
+std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf)
+{
+	// TODO is there a way to make this a LUT ?
+	switch (id) {
+		case 1:
+			return std::make_shared<IE_SSID>(id,len,buf);
+
+		case 2:
+			return std::make_shared<IE_SupportedRates>(id,len,buf);
+
+		default:
+			return std::make_shared<IE>(id,len,buf);
+
+	}
+
+}
 }
 
 std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie)
@@ -786,8 +835,7 @@ std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie)
 //		<< " name=" << (ie.name?ie.name:"undefined") << std::endl;
 
 	os << "id=" << static_cast<int>(ie.id) << " len=" << static_cast<int>(ie.len) 
-		<< " name=" << (ie.name?ie.name:"undefined") 
-		<< " \"" << ie.decode.at(0) << "\"";
+		<< " name=" << (ie.name?ie.name:"undefined") ;
 	return os;
 }
 
