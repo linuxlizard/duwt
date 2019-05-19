@@ -19,7 +19,7 @@ message("hello libnl_genl_genl found=${libnl_genl_FOUND} ${libnl_genl_INCLUDE_DI
 
 add_subdirectory(fmt)
 
-add_library(duwt OBJECT src/cfg80211.cc src/ie.cc src/iw.cc src/logging.cc)
+add_library(duwt OBJECT src/cfg80211.cc src/ie.cc src/iw.cc src/logging.cc src/jsoncpp.cc)
 target_compile_features(duwt PUBLIC cxx_std_17)
 target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS})
 target_include_directories(duwt PUBLIC fmt/include)
