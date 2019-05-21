@@ -197,7 +197,7 @@ private:
 	std::shared_ptr<spdlog::logger> logger;
 };
 
-}; // end namespace cfg80211
+} // end namespace cfg80211
 
 // TODO re-read Stroustrup to make sure I'm doing this right
 std::ostream& operator<<(std::ostream& os, const cfg80211::BSS& bss);

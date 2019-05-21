@@ -101,6 +101,7 @@ Cfg80211::Cfg80211() :
 	nl80211_id(-1)
 {
 	logger = spdlog::get("cfg80211");
+	assert(logger);
 	if (!logger) {
 		logger = spdlog::stdout_logger_mt("cfg80211");
 	}
@@ -221,7 +222,10 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 				continue;
 			}
 
-			BSS& new_bss = bss_list.emplace_back((uint8_t*)nla_data(bss[NL80211_BSS_BSSID]));
+			/* davep 20190520 ; restrict to C++14 for cross compiling */
+			bss_list.emplace_back((uint8_t*)nla_data(bss[NL80211_BSS_BSSID]));
+			BSS& new_bss = bss_list.back();
+//			BSS& new_bss = bss_list.emplace_back((uint8_t*)nla_data(bss[NL80211_BSS_BSSID]));
 			auto ssid = new_bss.get_ssid();
 			auto bssid = new_bss.get_bssid();
 			logger->debug("found bssid={}", new_bss.get_bssid());

@@ -11,7 +11,7 @@
 // class IE
 namespace cfg80211 {
 	class IE;
-};
+}
 
 std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie);
 
@@ -156,6 +156,6 @@ class IE_SupportedRates : public IE
 
 std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf);
 
-};  // end namespace cfg80211
+}  // end namespace cfg80211
 
 #endif

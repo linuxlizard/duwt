@@ -64,7 +64,7 @@ namespace {
 };
 
 // iw scan.c print_ds()
-static std::string decode_ds(Blob bytes)
+std::string decode_ds(Blob bytes)
 {
 	return std::to_string(static_cast<int>(bytes[0]));
 }
@@ -72,7 +72,7 @@ static std::string decode_ds(Blob bytes)
 // iw scan.c print_supprates()
 #define BSS_MEMBERSHIP_SELECTOR_VHT_PHY 126
 #define BSS_MEMBERSHIP_SELECTOR_HT_PHY 127
-static std::string decode_supprates(Blob bytes)
+std::string decode_supprates(Blob bytes)
 {
 	size_t i;
 	std::string s;
@@ -96,7 +96,7 @@ static std::string decode_supprates(Blob bytes)
 }
 
 // iw scan.c print_tim()
-static std::string decode_tim(Blob bytes)
+std::string decode_tim(Blob bytes)
 {
 	std::string s = fmt::format(" DTIM Count {:d} DTIM Period {:d} Bitmap Control {:#x} Bitmap[0] {:#x}",
 	       bytes.data()[0], bytes.data()[1], bytes.data()[2], bytes.data()[3]);
@@ -123,7 +123,7 @@ union ieee80211_country_ie_triplet {
 	} __attribute__ ((packed)) ext;
 } __attribute__ ((packed));
 
-static const char *country_env_str(char environment)
+const char *country_env_str(char environment)
 {
 	switch (environment) {
 	case 'I':
@@ -147,7 +147,7 @@ static const char *country_env_str(char environment)
 // https://stackoverflow.com/questions/10231349/are-the-days-of-passing-const-stdstring-as-a-parameter-over?rq=1
 //
 // https://web.archive.org/web/20140113221447/http://cpp-next.com/archive/2009/08/want-speed-pass-by-value/
-static void decode_country(Blob bytes, std::vector<std::string>& decode)
+void decode_country(Blob bytes, std::vector<std::string>& decode)
 {
 	uint8_t *data = bytes.data();
 	ssize_t len = bytes.size();
@@ -195,14 +195,14 @@ static void decode_country(Blob bytes, std::vector<std::string>& decode)
 
 }
 
-static std::string unknown_suite(const uint8_t* data)
+std::string unknown_suite(const uint8_t* data)
 {
 	return fmt::format("{0:02x}-{1:02x}-{2:02x}:{3:d}",
 		data[0], data[1] ,data[2], data[3]);
 }
 
 // iw scan.c print_cipher()
-static std::string decode_cipher(const uint8_t *data)
+std::string decode_cipher(const uint8_t *data)
 {
 	if (memcmp(data, ms_oui, 3) == 0) {
 		switch (data[3]) {
@@ -261,7 +261,7 @@ static std::string decode_cipher(const uint8_t *data)
 }
 
 // iw scan.c print_auth() 
-static std::string decode_auth(const uint8_t *data)
+std::string decode_auth(const uint8_t *data)
 {
 	if (memcmp(data, ms_oui, 3) == 0) {
 		switch (data[3]) {
@@ -351,7 +351,7 @@ static std::string decode_auth(const uint8_t *data)
 
 // iw scan.c _print_rsn_ie()
 // is_osen seems to be a HotSpot thing
-static void _decode_rsn_ie(const Blob& bytes, const char *defcipher, const char *defauth, int is_osen, std::vector<std::string>& decode)
+void _decode_rsn_ie(const Blob& bytes, const char *defcipher, const char *defauth, int is_osen, std::vector<std::string>& decode)
 {
 	__u16 count, capa;
 	int i;
@@ -499,7 +499,7 @@ static void _decode_rsn_ie(const Blob& bytes, const char *defcipher, const char 
 }
 
 // iw scan.c print_rsn()
-static void decode_rsn(const Blob& bytes, std::vector<std::string>& decode)
+void decode_rsn(const Blob& bytes, std::vector<std::string>& decode)
 {
 	const char *defcipher = "CCMP";
 	const char *defauth = "IEEE 802.1X";
@@ -510,7 +510,7 @@ static void decode_rsn(const Blob& bytes, std::vector<std::string>& decode)
 // helper function to decode an Information Element blob
 // going to pretty much copy iw's scan.c decode fns
 #if 0
-static void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& decode)
+void decode_ie(int id, size_t len, Blob bytes, std::vector<std::string>& decode)
 {
 	(void)len;
 

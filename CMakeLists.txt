@@ -7,7 +7,7 @@ cmake_minimum_required(VERSION 3.7)
 project(duwt)
 
 set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 
 enable_testing()
 
@@ -19,14 +19,21 @@ message("hello libnl_genl_genl found=${libnl_genl_FOUND} ${libnl_genl_INCLUDE_DI
 
 add_subdirectory(fmt)
 
+#https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Available.md
+#-Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic
+set(MY_DEBUG_OPTIONS -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wold-style-cast)
+# TODO fmtlib has warnings with -Wshadow
+#set(MY_DEBUG_OPTIONS -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -Wold-style-cast)
+
 add_library(duwt OBJECT src/cfg80211.cc src/ie.cc src/iw.cc src/logging.cc src/jsoncpp.cc)
-target_compile_features(duwt PUBLIC cxx_std_17)
+#target_compile_features(duwt PUBLIC cxx_std_17)
 target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS})
 target_include_directories(duwt PUBLIC fmt/include)
 target_include_directories(duwt PUBLIC include)
+target_compile_options(duwt PUBLIC $<$<CONFIG:DEBUG>:${MY_DEBUG_OPTIONS}>)
 
 add_executable(scandump scandump/main.cc)
-target_compile_features(scandump PUBLIC cxx_std_17)
+#target_compile_features(scandump PUBLIC cxx_std_17)
 target_link_libraries(scandump duwt)
 target_link_libraries(scandump fmt)
 target_link_options(scandump PUBLIC ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})

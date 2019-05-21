@@ -32,8 +32,8 @@ int main(int argc, char* argv[])
 	}
 
 	// quicky test code; deleteme
-	std::array<uint8_t, 10> buf {};
-	auto ie = cfg80211::IE(255,12, buf.data());
+//	std::array<uint8_t, 10> buf {};
+//	auto ie = cfg80211::IE(255,12, buf.data());
 
 	std::vector<cfg80211::BSS> bss_list;
 	try {
