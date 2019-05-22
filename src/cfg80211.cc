@@ -321,7 +321,7 @@ int Cfg80211::listen_scan_events(void)
 	(void)err;
 
 	return 0;
-};
+}
 
 void Cfg80211::fetch_scan_events(ScanEvent& sev)
 {
@@ -347,11 +347,11 @@ void Cfg80211::fetch_scan_events(ScanEvent& sev)
 	// TODO check error
 	assert(err==0);
 
-	for (int i=0 ; i<NL80211_ATTR_MAX ; i++ ) {
-		if (tb_msg[i]) {
-			printf("%s %d=%p type=%d len=%d\n", __func__, i, (void *)tb_msg[i], nla_type(tb_msg[i]), nla_len(tb_msg[i]));
-		}
-	}
+//	for (int i=0 ; i<NL80211_ATTR_MAX ; i++ ) {
+//		if (tb_msg[i]) {
+//			printf("%s %d=%p type=%d len=%d\n", __func__, i, (void *)tb_msg[i], nla_type(tb_msg[i]), nla_len(tb_msg[i]));
+//		}
+//	}
 
 //	decode_nl80211_attr(tb_msg, NL80211_ATTR_MAX);
 
@@ -404,7 +404,7 @@ void Cfg80211::fetch_scan_events(ScanEvent& sev)
 	joined.pop_back();
 	std::cout << joined << "*\n";
 #endif
-};
+}
 
 std::ostream& operator<<(std::ostream& os, const BSS& bss)
 {

@@ -61,7 +61,7 @@ namespace {
 	unsigned char ms_oui[3]		= { 0x00, 0x50, 0xf2 };
 	unsigned char ieee80211_oui[3]	= { 0x00, 0x0f, 0xac };
 	unsigned char wfa_oui[3]		= { 0x50, 0x6f, 0x9a };
-};
+}
 
 // iw scan.c print_ds()
 std::string decode_ds(Blob bytes)
@@ -875,7 +875,19 @@ Json::Value IE_SupportedRates::make_json(void)
 		v["rates"].append(num);
 	}
 
+	return v;
+}
 
+IE_Integer::IE_Integer(uint8_t id_, uint8_t len_, uint8_t* buf)
+	: IE(id_, len_, buf)
+{
+	value = static_cast<int>(bytes[0]);
+}
+
+Json::Value IE_Integer::make_json(void)
+{
+	Json::Value v { IE::make_json() };
+	v["value"] = value;
 	return v;
 }
 
@@ -891,6 +903,9 @@ std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 
 		case 1:
 			return std::make_shared<IE_SupportedRates>(id,len,buf);
+
+		case 3:
+			return std::make_shared<IE_Integer>(id,len,buf);
 
 		default:
 			return std::make_shared<IE>(id,len,buf);

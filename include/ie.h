@@ -154,6 +154,18 @@ class IE_SupportedRates : public IE
 		std::vector<int> rates;
 };
 
+class IE_Integer : public IE
+{
+	// IE element that contains just a single 8-bit value as an integer
+	public:
+		IE_Integer(uint8_t id_, uint8_t len_, uint8_t* buf);
+
+		virtual Json::Value make_json(void);
+
+	protected:
+		int value;
+};
+
 std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf);
 
 }  // end namespace cfg80211

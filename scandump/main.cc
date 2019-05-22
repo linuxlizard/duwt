@@ -50,25 +50,25 @@ int main(int argc, char* argv[])
 //		fmt::print("found BSS {} num_ies={}\n", bss, bss.ie_count());
 //		spdlog::info(fmt::format("found BSS {} num_ies={}", bss, bss.ie_count()));
 		logger->info("found BSS {} num_ies={}", bss, bss.ie_count());
-//		std::cout << "found BSS " << bss << " num_ies=" << bss.ie_list.size() << "\n";
+//		std::cout << "found BSS " << bss << " num_ies=" << bss.ie_list_js.size() << "\n";
 		logger->info("SSID={}", bss.get_ssid());
 
-		Json::Value bss_json;
-		bss_json["bssid"] = bss.get_bssid();
+		Json::Value bss_js;
+		bss_js["bssid"] = bss.get_bssid();
 
-		Json::Value ie_list;
+		Json::Value ie_list_js;
 		for (auto&& ie = bss.cbegin() ; ie != bss.cend() ; ++ie) {
-			logger->info("ie={}", *ie);
 			// iterator across a shared ptr so one * for iterator and another * for deference
+			logger->info("ie={}", **ie);
 //			fmt::print("\tie={}\n", **ie);
 			Json::Value v { (*ie)->make_json() };
 
-			ie_list.append(v);
+			ie_list_js.append(v);
 
 			// brute force find the SSID and make a top level copy because it's
 			// most often required
 			if ((*ie)->get_id() == 0) {
-				bss_json["SSID"] = v["SSID"];
+				bss_js["SSID"] = v["SSID"];
 			}
 
 //			for (auto&& s = ie->cbegin() ; s != ie->cend() ; ++s) {
@@ -79,8 +79,8 @@ int main(int argc, char* argv[])
 //				fmt::print("\t\t{}\n", s);
 //			}
 		}
-		bss_json["ie_list"] = ie_list;
-		scan_dump["bss"].append(bss_json);
+		bss_js["ie_list"] = ie_list_js;
+		scan_dump["bss"].append(bss_js);
 	}
 
 //	std::cout << scan_dump << "\n";
