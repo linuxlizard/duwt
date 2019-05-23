@@ -151,7 +151,25 @@ class IE_SupportedRates : public IE
 		virtual Json::Value make_json(void);
 
 	protected:
-		std::vector<int> rates;
+		struct Rate {
+		public:
+			Rate(float rate_, bool basic_):
+				rate(rate_),
+				basic(basic_) {};
+			Json::Value make_json(void)
+			{
+				Json::Value v {Json::Value(Json::objectValue)};
+				v["rate"] = rate;
+				v["basic"] = basic;
+				return v;
+			}
+
+		private:
+			float rate;
+			bool basic;
+		};
+
+		std::vector<struct Rate> rates_list;
 };
 
 class IE_Integer : public IE
@@ -164,6 +182,19 @@ class IE_Integer : public IE
 
 	protected:
 		int value;
+};
+
+class IE_Country : public IE
+{
+	public:
+		IE_Country(uint8_t id_, uint8_t len_, uint8_t* buf);
+
+		virtual Json::Value make_json(void);
+
+	protected:
+		std::string country;
+		std::string environment;
+		// country IE triplets
 };
 
 std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf);

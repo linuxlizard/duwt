@@ -27,16 +27,7 @@
 #include <errno.h>
 #include <assert.h>
 
-#include <net/if.h>
-#include <linux/netlink.h>
-#include <netlink/genl/genl.h>
-#include <netlink/genl/family.h>
-#include <netlink/genl/ctrl.h>
-#include <netlink/msg.h>
-#include <netlink/attr.h>
-
-#include <linux/nl80211.h>
-
+#include "netlink.h"
 #include "logging.h"
 #include "iw.h"
 
@@ -359,7 +350,7 @@ static int family_handler(struct nl_msg *msg, void *arg)
 	if (!tb[CTRL_ATTR_MCAST_GROUPS])
 		return NL_SKIP;
 
-	nla_for_each_nested(mcgrp, tb[CTRL_ATTR_MCAST_GROUPS], rem_mcgrp) {
+	my_nla_for_each_nested(mcgrp, tb[CTRL_ATTR_MCAST_GROUPS], rem_mcgrp) {
 		struct nlattr *tb_mcgrp[CTRL_ATTR_MCAST_GRP_MAX + 1];
 
 		nla_parse(tb_mcgrp, CTRL_ATTR_MCAST_GRP_MAX,

@@ -152,6 +152,8 @@ void decode_country(Blob bytes, std::vector<std::string>& decode)
 	uint8_t *data = bytes.data();
 	ssize_t len = bytes.size();
 
+	/* iw scan.c print_country() */
+
 	decode.emplace_back(std::string(reinterpret_cast<char *>(data), 2));
 
 	decode.push_back(fmt::format("Environment: {}", country_env_str(data[2])));
@@ -856,7 +858,7 @@ IE_SupportedRates::IE_SupportedRates(uint8_t id_, uint8_t len_, uint8_t* buf)
 			s += "HT";
 		else {
 			s += fmt::format("{}.{}", r/2, 5*(r&1));
-			rates.push_back(r/2);
+			rates_list.emplace_back( r/2, true && (byte & 0x80) );
 //			printf("%d.%d", r/2, 5*(r&1));
 		}
 
@@ -871,8 +873,8 @@ Json::Value IE_SupportedRates::make_json(void)
 
 	v["rates"] = Json::Value(Json::arrayValue);
 
-	for (auto num : rates) {
-		v["rates"].append(num);
+	for (auto& rate : rates_list) {
+		v["rates"].append(rate.make_json());
 	}
 
 	return v;
@@ -891,11 +893,27 @@ Json::Value IE_Integer::make_json(void)
 	return v;
 }
 
+IE_Country::IE_Country(uint8_t id_, uint8_t len_, uint8_t* buf)
+	: IE(id_, len_, buf)
+{
+}
+
+Json::Value IE_Country::make_json(void)
+{
+	Json::Value v { IE::make_json() };
+	return v;
+}
+
 // FIXME this seems ugly. Read namespaces again! I'm puzzled why this fn needs
 // the namespace {} but the classes above don't
 namespace cfg80211 {
 std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 {
+	auto make_fn = [](uint8_t id, uint8_t len, uint8_t* buf) -> std::shared_ptr<IE> {
+		return std::make_shared<IE_SSID>(id,len,buf);
+	};
+	make_fn(id,len,buf);
+
 	// TODO is there a way to make this a LUT ?
 	switch (id) {
 		case 0:
@@ -907,11 +925,20 @@ std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 		case 3:
 			return std::make_shared<IE_Integer>(id,len,buf);
 
+		case 7:
+			return std::make_shared<IE_Country>(id,len,buf);
+
+//		case 48:
+//			return std::make_shared<IE_RSN>(id,len,buf);
+
 		default:
 			return std::make_shared<IE>(id,len,buf);
 
 	}
 
+//	make_fn = [](uint8_t id, uint8_t len, uint8_t* buf) -> std::shared_ptr<IE> {
+//		return std::make_shared<IE_Integer>(id,len,buf);
+//	};
 }
 }
 

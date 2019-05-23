@@ -6,16 +6,7 @@
 #include <sstream>
 #include <vector>
 
-#include <sys/socket.h>
-#include <linux/if_ether.h>
-#include <net/if.h>
-#include <netlink/genl/genl.h>
-#include <netlink/genl/family.h>
-#include <netlink/genl/ctrl.h>
-#include <netlink/msg.h>
-#include <netlink/attr.h>
-#include <linux/nl80211.h>
-
+#include "netlink.h"
 #include "fmt/format.h"
 #include "logging.h"
 #include "cfg80211.h"
@@ -379,7 +370,8 @@ void Cfg80211::fetch_scan_events(ScanEvent& sev)
 		int rem_nst;
 		size_t len = nla_len(tb_msg[NL80211_ATTR_SCAN_FREQUENCIES]);
 		std::cout << "len=" << len << "\n";
-		nla_for_each_nested(nst, tb_msg[NL80211_ATTR_SCAN_FREQUENCIES], rem_nst) {
+
+		my_nla_for_each_nested(nst, tb_msg[NL80211_ATTR_SCAN_FREQUENCIES], rem_nst) {
 			sev.frequencies.push_back(nla_get_u32(nst));
 		}
 	}

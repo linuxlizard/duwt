@@ -1,5 +1,16 @@
+# CMake quick start:
+# 	mkdir build
+# 	cd build
+# 	cmake ..
+#
+# Debian packages install (possibly incomplete)
+# apt install build-essential cmake libnl-3-dev libnl-genl-3-dev
+
+# Fedora packages install
+# TODO
+
 # hint: command line invocation
-# cmake -DCMAKE_BUILD_TYPE=Debug ..
+# cmake -DCMAKE_BUILD_TYPE=Debug ..  <-- default
 # cmake -DCMAKE_BUILD_TYPE=Release ..
 
 cmake_minimum_required(VERSION 3.7)
@@ -25,7 +36,7 @@ set(MY_DEBUG_OPTIONS -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wold-style-cast
 # TODO fmtlib has warnings with -Wshadow
 #set(MY_DEBUG_OPTIONS -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -Wold-style-cast)
 
-add_library(duwt OBJECT src/cfg80211.cc src/ie.cc src/iw.cc src/logging.cc src/jsoncpp.cc)
+add_library(duwt STATIC src/cfg80211.cc src/ie.cc src/iw.cc src/logging.cc src/jsoncpp.cc)
 #target_compile_features(duwt PUBLIC cxx_std_17)
 target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS})
 target_include_directories(duwt PUBLIC fmt/include)
@@ -36,7 +47,7 @@ add_executable(scandump scandump/main.cc)
 #target_compile_features(scandump PUBLIC cxx_std_17)
 target_link_libraries(scandump duwt)
 target_link_libraries(scandump fmt)
-target_link_options(scandump PUBLIC ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
-#target_link_options(scandump PUBLIC ${libnl_genl_LDFLAGS})
+target_link_libraries(scandump ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
+#target_link_options(scandump PUBLIC ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 
 
