@@ -161,7 +161,7 @@ static int ack_handler(struct nl_msg *msg, void *arg)
 
 int valid_handler(struct nl_msg *msg, void *arg)
 {
-	struct nlattr_list *attrs = (struct nlattr_list*)arg;
+	struct nlattr_list *attrs = static_cast<struct nlattr_list*>(arg);
 
 //	printf("%s %p %p\n", __func__, (void *)msg, arg);
 
@@ -178,10 +178,15 @@ int valid_handler(struct nl_msg *msg, void *arg)
 	// copy the attrs blob to the caller
 	size_t buflen = genlmsg_attrlen(gnlh, 0);
 	struct nlattr *ptr = genlmsg_attrdata(gnlh, 0);
-	struct nlattr *buf = (struct nlattr *)malloc(buflen);
+	// TODO get rid of malloc
+	// XXX why was I memcpy-ing these out again?  Why can't I decode them here?
+	// IIRC this file was originally meant to be pure C so I could do the NLA
+	// decode in C++. But then I converted this file to C++ so now it's stupid
+	// extra work to do this malloc+memcpy
+	struct nlattr *buf = static_cast<struct nlattr *>(malloc(buflen));
 	if (buf) {
 		memcpy(buf, ptr, buflen);
-		attrs->attr_list[attrs->counter] = (struct nlattr *)buf;
+		attrs->attr_list[attrs->counter] = static_cast<struct nlattr *>(buf);
 		attrs->attr_len_list[attrs->counter] = buflen;
 		attrs->counter++;
 	}
@@ -277,7 +282,7 @@ static int scan_event_handler(struct nl_msg *msg, void *arg)
 {
 	struct nlattr_list *attrs = (struct nlattr_list*)arg;
 
-	printf("%s %p %p\n", __func__, (void *)msg, arg);
+//	printf("%s %p %p\n", __func__, (void *)msg, arg);
 
 	struct nlmsghdr *hdr = nlmsg_hdr(msg);
 
@@ -306,10 +311,10 @@ static int scan_event_handler(struct nl_msg *msg, void *arg)
 	// copy the nlattr blob to the caller
 	size_t buflen = genlmsg_attrlen(gnlh, 0);
 	struct nlattr *ptr = genlmsg_attrdata(gnlh, 0);
-	struct nlattr *buf = (struct nlattr *)malloc(buflen);
+	struct nlattr *buf = static_cast<struct nlattr *>(malloc(buflen));
 	if (buf) {
 		memcpy(buf, ptr, buflen);
-		attrs->attr_list[attrs->counter] = (struct nlattr *)buf;
+		attrs->attr_list[attrs->counter] = static_cast<struct nlattr *>(buf);
 		attrs->attr_len_list[attrs->counter] = buflen;
 		attrs->counter++;
 	}
@@ -380,9 +385,12 @@ int iw_get_multicast_id(struct nl_sock *sock, const char *family, const char *gr
 	struct nl_cb *cb;
 	int ret, ctrlid;
 	struct handler_args grp = {
-		.group = group,
-		.id = -ENOENT,
+//		.group = group,
+//		.id = -ENOENT,
 	};
+
+	grp.group = group;
+	grp.id = -ENOENT;
 
 	msg = nlmsg_alloc();
 	if (!msg)
@@ -461,7 +469,7 @@ int iw_fetch_scan_events(struct nl80211_state* state, struct nlattr_list* evt_at
 
 	printf("%s\n", __func__);
 
-	err = nl_cb_set(state->cb, NL_CB_VALID, NL_CB_CUSTOM, scan_event_handler, (void*)evt_attrs);
+	err = nl_cb_set(state->cb, NL_CB_VALID, NL_CB_CUSTOM, scan_event_handler, evt_attrs);
 	if (err < 0) {
 		// TODO complain loudly
 		return err;

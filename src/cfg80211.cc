@@ -82,7 +82,7 @@ std::string BSS::get_ssid(void)
 		}
 	}
 
-	return std::string("(SSID)not found)");
+	return std::string("(SSID not found)");
 }
 
 
