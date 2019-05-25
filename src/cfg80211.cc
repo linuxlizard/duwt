@@ -6,7 +6,7 @@
 #include <sstream>
 #include <vector>
 
-#include "netlink.h"
+#include "mynetlink.h"
 #include "fmt/format.h"
 #include "logging.h"
 #include "cfg80211.h"

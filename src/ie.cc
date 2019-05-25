@@ -3,16 +3,18 @@
 #include <array>
 #include <vector>
 #include <cassert>
-#include <sys/socket.h>
-#include <linux/if_ether.h>
-#include <net/if.h>
-#include <netlink/genl/genl.h>
-#include <netlink/genl/family.h>
-#include <netlink/genl/ctrl.h>
-#include <netlink/msg.h>
-#include <netlink/attr.h>
-#include <linux/nl80211.h>
 
+//#include <sys/socket.h>
+//#include <linux/if_ether.h>
+//#include <net/if.h>
+//#include <netlink/genl/genl.h>
+//#include <netlink/genl/family.h>
+//#include <netlink/genl/ctrl.h>
+//#include <netlink/msg.h>
+//#include <netlink/attr.h>
+//#include <linux/nl80211.h>
+
+#include "mynetlink.h"
 #include "fmt/format.h"
 #include "json/json.h"
 #include "logging.h"
@@ -562,7 +564,13 @@ class IE_Names
 
 		// "IEEE Std 802.11-2012"
 		// Table 8-54—Element IDs
-		std::array<const char*, 256> names {
+		std::array<const char*, 256> names; 
+};
+
+IE_Names::IE_Names()
+{
+	names = 
+		{
 			"SSID",
 			"Supported rates",
 			"FH parameter set",
@@ -722,10 +730,6 @@ class IE_Names
 			"U-APSD coexistence", 
 			"Reserved", // 143
 		};
-};
-
-IE_Names::IE_Names()
-{
 	// fill in some holes
 	names[221] = "Vendor specific";
 

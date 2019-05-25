@@ -4,7 +4,7 @@
 # 	cmake ..
 #
 # Debian packages install (possibly incomplete)
-# apt install build-essential cmake libnl-3-dev libnl-genl-3-dev
+# apt install build-essential pkg-config cmake libnl-3-dev libnl-genl-3-dev
 
 # Fedora packages install
 # TODO
@@ -13,7 +13,7 @@
 # cmake -DCMAKE_BUILD_TYPE=Debug ..  <-- default
 # cmake -DCMAKE_BUILD_TYPE=Release ..
 
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.5)
 
 project(duwt)
 

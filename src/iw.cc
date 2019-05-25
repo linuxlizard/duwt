@@ -27,7 +27,7 @@
 #include <errno.h>
 #include <assert.h>
 
-#include "netlink.h"
+#include "mynetlink.h"
 #include "logging.h"
 #include "iw.h"
 
@@ -96,9 +96,11 @@ int nl80211_init(struct nl80211_state* state)
 	nl_socket_set_buffer_size(state->nl_sock, 8192, 8192);
 
 	/* try to set NETLINK_EXT_ACK to 1, ignoring errors */
+#ifdef NETLINK_EXT_ACK
 	err = 1;
 	setsockopt(nl_socket_get_fd(state->nl_sock), SOL_NETLINK,
 		   NETLINK_EXT_ACK, &err, sizeof(err));
+#endif
 
 	state->nl80211_id = genl_ctrl_resolve(state->nl_sock, "nl80211");
 	if (state->nl80211_id < 0) {

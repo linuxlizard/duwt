@@ -1,7 +1,10 @@
 #ifndef CPP_NETLINK_H
 #define CPP_NETLINK_H
 
+#include <asm/types.h>
 #include <sys/socket.h>
+#include <linux/socket.h>
+#include <linux/netlink.h>
 #include <linux/if_ether.h>
 #include <net/if.h>
 #include <netlink/genl/genl.h>
