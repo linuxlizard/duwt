@@ -32,7 +32,7 @@ add_subdirectory(fmt)
 
 #https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Available.md
 #-Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic
-set(MY_DEBUG_OPTIONS -Wall -Wextra -Wnon-virtual-dtor -pedantic -Wold-style-cast)
+set(MY_DEBUG_OPTIONS -Wall -Wextra -Wnon-virtual-dtor -pedantic )
 # TODO fmtlib has warnings with -Wshadow
 #set(MY_DEBUG_OPTIONS -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -Wold-style-cast)
 
@@ -49,5 +49,13 @@ target_link_libraries(scandump duwt)
 target_link_libraries(scandump fmt)
 target_link_libraries(scandump ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 #target_link_options(scandump PUBLIC ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
+
+
+add_executable(scanevent scanevent/main.cc)
+#target_compile_features(scanevent PUBLIC cxx_std_17)
+target_link_libraries(scanevent duwt)
+target_link_libraries(scanevent fmt)
+target_link_libraries(scanevent ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
+#target_link_options(scanevent PUBLIC ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 
 
