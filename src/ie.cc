@@ -65,40 +65,12 @@ namespace {
 	unsigned char wfa_oui[3]		= { 0x50, 0x6f, 0x9a };
 }
 
-// iw scan.c print_ds()
-std::string decode_ds(Blob bytes)
-{
-	return std::to_string(static_cast<int>(bytes[0]));
-}
-
 // iw scan.c print_supprates()
 #define BSS_MEMBERSHIP_SELECTOR_VHT_PHY 126
 #define BSS_MEMBERSHIP_SELECTOR_HT_PHY 127
-std::string decode_supprates(Blob bytes)
-{
-	size_t i;
-	std::string s;
-
-	for (i = 0; i < bytes.size(); i++) {
-		uint8_t byte = bytes.data()[i];
-		int r = byte & 0x7f;
-
-		if (r == BSS_MEMBERSHIP_SELECTOR_VHT_PHY && byte & 0x80)
-			s += "VHT";
-		else if (r == BSS_MEMBERSHIP_SELECTOR_HT_PHY && byte & 0x80)
-			s += "HT";
-		else
-			s += fmt::format("{}.{}", r/2, 5*(r&1));
-//			printf("%d.%d", r/2, 5*(r&1));
-
-		s += (byte & 0x80) ? "* " : " ";
-	}
-
-	return s;
-}
 
 // iw scan.c print_tim()
-std::string decode_tim(Blob bytes)
+static std::string decode_tim(Blob bytes)
 {
 	std::string s = fmt::format(" DTIM Count {:d} DTIM Period {:d} Bitmap Control {:#x} Bitmap[0] {:#x}",
 	       bytes.data()[0], bytes.data()[1], bytes.data()[2], bytes.data()[3]);
@@ -149,7 +121,7 @@ const char *country_env_str(char environment)
 // https://stackoverflow.com/questions/10231349/are-the-days-of-passing-const-stdstring-as-a-parameter-over?rq=1
 //
 // https://web.archive.org/web/20140113221447/http://cpp-next.com/archive/2009/08/want-speed-pass-by-value/
-void decode_country(Blob bytes, std::vector<std::string>& decode)
+static void decode_country(Blob bytes, std::vector<std::string>& decode)
 {
 	uint8_t *data = bytes.data();
 	ssize_t len = bytes.size();
@@ -875,7 +847,7 @@ Json::Value IE_SupportedRates::make_json(void)
 //	std::cout << "SupportedRates make_json id=" << static_cast<int>(id) << "\n";
 	Json::Value v { IE::make_json() };
 
-	v["rates"] = Json::Value(Json::arrayValue);
+	v["rates"] = Json::Value{Json::arrayValue};
 
 	for (auto& rate : rates_list) {
 		v["rates"].append(rate.make_json());
@@ -897,28 +869,154 @@ Json::Value IE_Integer::make_json(void)
 	return v;
 }
 
+IE_Country::Triplet::Triplet(unsigned int n1, unsigned int n2, unsigned int n3) 
+{
+	auto logger = spdlog::get("ie");
+	logger->debug("Country Triplet values={},{},{}", n1, n2, n3);
+
+	if (n1 >= IEEE80211_COUNTRY_EXTENSION_ID) {
+		chans = {0,0,0,0};
+		ext = {n1,n2,n3};
+	}
+	else {
+		chans = {n1,n2,n3,0};
+		ext = {0,0,0};
+
+		// iw scan.c print_country()
+		if (chans.first_channel <= 14)
+			chans.end_channel = chans.first_channel + (chans.num_channels - 1);
+		else
+			chans.end_channel =  chans.first_channel + (4 * (chans.num_channels - 1));
+	}
+}
+
+Json::Value IE_Country::Triplet::make_json(void)
+{
+	Json::Value v { Json::objectValue };
+
+	// iw scan.c print_country() 
+	if (ext.reg_extension_id >= IEEE80211_COUNTRY_EXTENSION_ID) {
+		v["extension_id"] = ext.reg_extension_id;
+		v["regulator_class"] = ext.reg_class;
+		v["coverage_class"] = ext.coverage_class;
+		v["m"] = ext.coverage_class * 450;
+	}
+	else {
+		v["first_channel"] = chans.first_channel;
+		v["num_channels"] = chans.num_channels;
+		v["dBm"] = chans.max_power;
+		v["end_channel"] = chans.end_channel;
+	}
+
+	return v;
+}
+
 IE_Country::IE_Country(uint8_t id_, uint8_t len_, uint8_t* buf)
 	: IE(id_, len_, buf)
 {
+	char* data = reinterpret_cast<char*>(bytes.data());
+	ssize_t len = bytes.size();
+
+	/* iw scan.c print_country() */
+	// http://www.ieee802.org/11/802.11mib.txt
+	country.assign(data, 2);
+
+	switch (data[2]) {
+		case 'I':
+			environment = Environment::INDOOR_ONLY;
+			break;
+		case 'O':
+			environment = Environment::OUTDOOR_ONLY;
+			break;
+		case ' ':
+			environment = Environment::INDOOR_OUTDOOR;
+			break;
+		default:
+			environment = Environment::INVALID;
+			break;
+	}
+
+	data += 3;
+	len -= 3;
+
+	if (len < 3) {
+		// no country codes
+		return;
+	}
+
+	while (len >= 3) {
+		union ieee80211_country_ie_triplet *triplet = reinterpret_cast<union ieee80211_country_ie_triplet*>(data);
+
+		if (triplet->ext.reg_extension_id >= IEEE80211_COUNTRY_EXTENSION_ID) {
+			triplets.emplace_back(
+				triplet->ext.reg_extension_id,
+				triplet->ext.reg_class,
+				triplet->ext.coverage_class);
+			data += 3;
+			len -= 3;
+			continue;
+		}
+
+		// TODO I could probably just use the same values from the 3 bytes in data.. 
+		triplets.emplace_back(triplet->chans.first_channel, triplet->chans.num_channels, triplet->chans.max_power);
+
+		data += 3;
+		len -= 3;
+	}
 }
 
 Json::Value IE_Country::make_json(void)
 {
 	Json::Value v { IE::make_json() };
+	v["country"] = country;
+
+	switch (environment) {
+		case Environment::INDOOR_ONLY:
+			v["environment"] = std::string("Indoor only");
+			break;
+		case Environment::OUTDOOR_ONLY:
+			v["environment"] = std::string("Outdoor only");
+			break;
+		case Environment::INDOOR_OUTDOOR:
+			v["environment"] = std::string("Indoor/Outdoor ");
+			break;
+		default:
+			v["environment"] = std::string("Invalid");
+			break;
+	}
+
+	v["triplets"] = Json::Value{Json::arrayValue};
+	for (auto& triplet : triplets) {
+		v["triplets"].append(triplet.make_json());
+	}
+
+
 	return v;
 }
 
-// FIXME this seems ugly. Read namespaces again! I'm puzzled why this fn needs
-// the namespace {} but the classes above don't
-namespace cfg80211 {
-std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf)
+IE_RSN::IE_RSN(uint8_t id_, uint8_t len_, uint8_t* buf)
+	: IE(id_, len_, buf)
 {
-	auto make_fn = [](uint8_t id, uint8_t len, uint8_t* buf) -> std::shared_ptr<IE> {
-		return std::make_shared<IE_SSID>(id,len,buf);
-	};
-	make_fn(id,len,buf);
+}
 
-	// TODO is there a way to make this a LUT ?
+Json::Value IE_RSN::make_json(void)
+{
+	Json::Value v { IE::make_json() };
+	return v;
+}
+
+std::shared_ptr<IE> cfg80211::make_ie(uint8_t id, uint8_t len, uint8_t* buf)
+{
+	// TODO is there a way to make this whole function a LUT ?
+	// something with lambdas?
+//	auto make_fn = [](uint8_t id, uint8_t len, uint8_t* buf) -> std::shared_ptr<IE> {
+//		return std::make_shared<IE_SSID>(id,len,buf);
+//	};
+//	make_fn(id,len,buf);
+
+	auto logger = spdlog::get("ie");
+	logger->debug("{} id={} len={}", __func__, id, len);
+
 	switch (id) {
 		case 0:
 			return std::make_shared<IE_SSID>(id,len,buf);
@@ -932,8 +1030,8 @@ std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 		case 7:
 			return std::make_shared<IE_Country>(id,len,buf);
 
-//		case 48:
-//			return std::make_shared<IE_RSN>(id,len,buf);
+		case 48:
+			return std::make_shared<IE_RSN>(id,len,buf);
 
 		default:
 			return std::make_shared<IE>(id,len,buf);
@@ -943,7 +1041,6 @@ std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 //	make_fn = [](uint8_t id, uint8_t len, uint8_t* buf) -> std::shared_ptr<IE> {
 //		return std::make_shared<IE_Integer>(id,len,buf);
 //	};
-}
 }
 
 std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie)

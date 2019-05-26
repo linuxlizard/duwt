@@ -191,10 +191,62 @@ class IE_Country : public IE
 
 		virtual Json::Value make_json(void);
 
+		enum class Environment {
+			INVALID, INDOOR_ONLY, OUTDOOR_ONLY, INDOOR_OUTDOOR
+		};
+
+		static const int IEEE80211_COUNTRY_EXTENSION_ID = 201;
+
+		// country IE triplets 
+		// I'd use std::variant but I'm limited to C++14
+		// I'm trying to make something easy to use, not something memory minimal.
+		//
+		// (My hat is off to the iw developers who understand the standard's
+		// Country element docs.)
+		struct Triplet
+		{
+			static const int IEEE80211_COUNTRY_EXTENSION_ID = 201;
+
+			Triplet(unsigned int n1, unsigned int n2, unsigned int n3);
+			Json::Value make_json(void);
+
+
+			// if (ext.reg_extension_id >= IEEE80211_COUNTRY_EXTENSION_ID) {
+			//    use ext
+			// else
+			//    use chans
+			struct {
+				unsigned int first_channel;
+				unsigned int num_channels;
+				unsigned int max_power;
+				// not part of the ieee80211_country_ie_triplet but I'm adding
+				// it here rather than recalculating it every time
+				unsigned int end_channel;
+			} chans;
+			// OR
+			struct {
+				unsigned int reg_extension_id;
+				unsigned int reg_class;
+				unsigned int coverage_class;
+			} ext;
+		};
+
 	protected:
 		std::string country;
-		std::string environment;
-		// country IE triplets
+
+		Environment environment;
+
+		std::vector<struct Triplet> triplets;
+};
+
+class IE_RSN : public IE
+{
+	public:
+		IE_RSN(uint8_t id_, uint8_t len_, uint8_t* buf);
+
+		virtual Json::Value make_json(void);
+
+	protected:
 };
 
 std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf);
