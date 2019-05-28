@@ -38,5 +38,10 @@ void logging_init(const char* logfilename)
 	spdlog::register_logger(logger);
 	logger->set_level(spdlog::level::debug);
 	logger->info("logging started");
+
+       logger = std::make_shared<spdlog::logger>("bss", rotating);
+       spdlog::register_logger(logger);
+       logger->set_level(spdlog::level::debug);
+       logger->info("logging started");
 }
 

@@ -69,17 +69,6 @@ namespace {
 #define BSS_MEMBERSHIP_SELECTOR_VHT_PHY 126
 #define BSS_MEMBERSHIP_SELECTOR_HT_PHY 127
 
-// iw scan.c print_tim()
-static std::string decode_tim(Blob bytes)
-{
-	std::string s = fmt::format(" DTIM Count {:d} DTIM Period {:d} Bitmap Control {:#x} Bitmap[0] {:#x}",
-	       bytes.data()[0], bytes.data()[1], bytes.data()[2], bytes.data()[3]);
-
-	if (bytes.size() - 4)
-		s += fmt::format(" (+ {:d} octet{:s})", bytes.size() - 4, bytes.size() - 4 == 1 ? "" : "s");
-	return s;
-}
-
 // iw scan.c print_country()
 
 #define IEEE80211_COUNTRY_EXTENSION_ID 201
@@ -97,88 +86,25 @@ union ieee80211_country_ie_triplet {
 	} __attribute__ ((packed)) ext;
 } __attribute__ ((packed));
 
-const char *country_env_str(char environment)
+// iw scan.c print_tim()
+static std::string decode_tim(Blob bytes)
 {
-	switch (environment) {
-	case 'I':
-		return "Indoor only";
-	case 'O':
-		return "Outdoor only";
-	case ' ':
-		return "Indoor/Outdoor";
-	default:
-		return "bogus";
-	}
+	std::string s = fmt::format(" DTIM Count {:d} DTIM Period {:d} Bitmap Control {:#x} Bitmap[0] {:#x}",
+	       bytes.data()[0], bytes.data()[1], bytes.data()[2], bytes.data()[3]);
+
+	if (bytes.size() - 4)
+		s += fmt::format(" (+ {:d} octet{:s})", bytes.size() - 4, bytes.size() - 4 == 1 ? "" : "s");
+	return s;
 }
 
-// TODO learn more C++ because passing my decode by ref like this is wrong
-// these days ????
-//
-// "I heard a recent talk by Herb Sutter who suggested that the reasons to pass
-// std::vector and std::string by const & are largely gone. He suggested that
-// writing a function such as the following is now preferable:"
-//
-// https://stackoverflow.com/questions/10231349/are-the-days-of-passing-const-stdstring-as-a-parameter-over?rq=1
-//
-// https://web.archive.org/web/20140113221447/http://cpp-next.com/archive/2009/08/want-speed-pass-by-value/
-static void decode_country(Blob bytes, std::vector<std::string>& decode)
-{
-	uint8_t *data = bytes.data();
-	ssize_t len = bytes.size();
-
-	/* iw scan.c print_country() */
-
-	decode.emplace_back(std::string(reinterpret_cast<char *>(data), 2));
-
-	decode.push_back(fmt::format("Environment: {}", country_env_str(data[2])));
-
-	data += 3;
-	len -= 3;
-
-	if (len < 3) {
-		decode.push_back("No country IE triplets present");
-		return;
-	}
-
-	while (len >= 3) {
-		int end_channel;
-		union ieee80211_country_ie_triplet *triplet = reinterpret_cast<union ieee80211_country_ie_triplet*>(data);
-
-		if (triplet->ext.reg_extension_id >= IEEE80211_COUNTRY_EXTENSION_ID) {
-			decode.push_back(fmt::format("Extension ID: {:d} Regulatory Class: {:d} Coverage class: {:d} (up to {:d}m)",
-			       triplet->ext.reg_extension_id,
-			       triplet->ext.reg_class,
-			       triplet->ext.coverage_class,
-			       triplet->ext.coverage_class * 450));
-
-			data += 3;
-			len -= 3;
-			continue;
-		}
-
-		/* 2 GHz */
-		if (triplet->chans.first_channel <= 14)
-			end_channel = triplet->chans.first_channel + (triplet->chans.num_channels - 1);
-		else
-			end_channel =  triplet->chans.first_channel + (4 * (triplet->chans.num_channels - 1));
-
-		decode.push_back(fmt::format("Channels [{:d} - {:d}] @ {:d} dBm", 
-					triplet->chans.first_channel, end_channel, triplet->chans.max_power));
-
-		data += 3;
-		len -= 3;
-	}
-
-}
-
-std::string unknown_suite(const uint8_t* data)
+static std::string unknown_suite(const uint8_t* data)
 {
 	return fmt::format("{0:02x}-{1:02x}-{2:02x}:{3:d}",
 		data[0], data[1] ,data[2], data[3]);
 }
 
 // iw scan.c print_cipher()
-std::string decode_cipher(const uint8_t *data)
+static std::string decode_cipher(const uint8_t *data)
 {
 	if (memcmp(data, ms_oui, 3) == 0) {
 		switch (data[3]) {
@@ -237,7 +163,7 @@ std::string decode_cipher(const uint8_t *data)
 }
 
 // iw scan.c print_auth() 
-std::string decode_auth(const uint8_t *data)
+static std::string decode_auth(const uint8_t *data)
 {
 	if (memcmp(data, ms_oui, 3) == 0) {
 		switch (data[3]) {
@@ -327,7 +253,7 @@ std::string decode_auth(const uint8_t *data)
 
 // iw scan.c _print_rsn_ie()
 // is_osen seems to be a HotSpot thing
-void _decode_rsn_ie(const Blob& bytes, const char *defcipher, const char *defauth, int is_osen, std::vector<std::string>& decode)
+static void _decode_rsn_ie(const Blob& bytes, const char *defcipher, const char *defauth, int is_osen, std::vector<std::string>& decode)
 {
 	__u16 count, capa;
 	int i;
@@ -475,7 +401,7 @@ void _decode_rsn_ie(const Blob& bytes, const char *defcipher, const char *defaut
 }
 
 // iw scan.c print_rsn()
-void decode_rsn(const Blob& bytes, std::vector<std::string>& decode)
+static void decode_rsn(const Blob& bytes, std::vector<std::string>& decode)
 {
 	const char *defcipher = "CCMP";
 	const char *defauth = "IEEE 802.1X";
@@ -978,7 +904,7 @@ Json::Value IE_Country::make_json(void)
 			v["environment"] = std::string("Outdoor only");
 			break;
 		case Environment::INDOOR_OUTDOOR:
-			v["environment"] = std::string("Indoor/Outdoor ");
+			v["environment"] = std::string("Indoor/Outdoor");
 			break;
 		default:
 			v["environment"] = std::string("Invalid");
@@ -997,14 +923,246 @@ Json::Value IE_Country::make_json(void)
 IE_RSN::IE_RSN(uint8_t id_, uint8_t len_, uint8_t* buf)
 	: IE(id_, len_, buf)
 {
+	// iw scan.c print_rsn()
+	const char *defcipher = "CCMP";
+	const char *defauth = "IEEE 802.1X";
+
+	decode_rsn_ie(defcipher, defauth, 0);
 }
 
 Json::Value IE_RSN::make_json(void)
 {
 	Json::Value v { IE::make_json() };
+	v["version"] = version;
+	v["group_cipher"] = group_cipher;
+	v["pairwise_ciphers"] = Json::Value { Json::arrayValue };
+	v["pairwise_ciphers"].append(pairwise_cipher);
 	return v;
 }
 
+// iw scan.c print_cipher()
+IE_RSN::CipherSuite::CipherSuite(const uint8_t *data)
+{
+	memcpy(oui.data(), data, 3);
+	cipher = data[3];
+
+	oui_hex = fmt::format("{0:02x}-{1:02x}-{2:02x}",
+		data[0], data[1] ,data[2]);
+#if 0
+	// TODO this is a transcription of scan.c print_cipher() but should I make
+	// it a LUT?
+	if (memcmp(data, ms_oui, 3) == 0) {
+		switch (data[3]) {
+		case 0:
+			return CipherSuite::USE_GROUP_CIPHER;
+			break;
+		case 1:
+			return CipherSuite::WEP_40;
+			break;
+		case 2:
+			return CipherSuite::TKIP;
+			break;
+		case 4:
+			return CipherSuite::CCMP;
+			break;
+		case 5:
+			return CipherSuite::WEP_104;
+			break;
+		default:
+			return unknown_suite(data);
+			break;
+		}
+	} else if (memcmp(data, ieee80211_oui, 3) == 0) {
+		switch (data[3]) {
+		case 0:
+			return "Use group cipher suite";
+			break;
+		case 1:
+			return "WEP-40";
+			break;
+		case 2:
+			return "TKIP";
+			break;
+		case 4:
+			return "CCMP";
+			break;
+		case 5:
+			return "WEP-104";
+			break;
+		case 6:
+			return "AES-128-CMAC";
+			break;
+		case 7:
+			return "NO-GROUP";
+			break;
+		case 8:
+			return "GCMP";
+			break;
+		default:
+			return unknown_suite(data);
+			break;
+		}
+	} else {
+		return unknown_suite(data);
+	}
+#endif
+}
+
+// iw scan.c _print_rsn_ie()
+// is_osen seems to be a HotSpot thing
+void IE_RSN::decode_rsn_ie(const char *defcipher, const char *defauth, int is_osen)
+{
+	__u16 count, capa;
+	int i;
+	std::string s;
+	const uint8_t* data = bytes.data();
+	ssize_t len = bytes.size();
+
+	if (!is_osen) {
+		version = data[0] + (data[1] << 8);
+//		decode.push_back(fmt::format("Version: {:d}", version));
+
+		data += 2;
+		len -= 2;
+	}
+
+	if (len < 4) {
+//		decode.push_back(fmt::format("Group cipher: {:s}", defcipher));
+//		decode.push_back(fmt::format("Pairwise ciphers: {:s}", defcipher));
+		group_cipher.assign(defcipher);
+		pairwise_cipher.assign(defcipher);
+		return;
+	}
+
+	auto cipher = IE_RSN::CipherSuite(data);
+//	s = "Group cipher: " + decode_cipher(data);
+//	decode.push_back(s);
+
+	data += 4;
+	len -= 4;
+
+	if (len < 2) {
+//		decode.push_back(fmt::format("Pairwise ciphers: {:s}", defcipher));
+		return;
+	}
+
+	count = data[0] | (data[1] << 8);
+	if (2 + (count * 4) > len)
+		goto invalid;
+
+	s = "Pairwise ciphers:";
+	for (i = 0; i < count; i++) {
+		s += " " + decode_cipher(data + 2 + (i * 4));
+	}
+//	decode.push_back(s);
+
+	data += 2 + (count * 4);
+	len -= 2 + (count * 4);
+
+	if (len < 2) {
+//		decode.push_back(fmt::format("Authentication suites: {:s}", defauth));
+		return;
+	}
+
+	count = data[0] | (data[1] << 8);
+	if (2 + (count * 4) > len)
+		goto invalid;
+
+	s = "Authentication suites:";
+	for (i = 0; i < count; i++) {
+		s += " " + decode_auth(data + 2 + (i * 4));
+	}
+//	decode.push_back(s);
+
+	data += 2 + (count * 4);
+	len -= 2 + (count * 4);
+
+	if (len >= 2) {
+		capa = data[0] | (data[1] << 8);
+		s = "Capabilities:";
+		if (capa & 0x0001)
+			s += " PreAuth";
+		if (capa & 0x0002)
+			s += " NoPairwise";
+		switch ((capa & 0x000c) >> 2) {
+		case 0:
+			s += " 1-PTKSA-RC";
+			break;
+		case 1:
+			s += " 2-PTKSA-RC";
+			break;
+		case 2:
+			s += " 4-PTKSA-RC";
+			break;
+		case 3:
+			s += " 16-PTKSA-RC";
+			break;
+		}
+		switch ((capa & 0x0030) >> 4) {
+		case 0:
+			s += " 1-GTKSA-RC";
+			break;
+		case 1:
+			s += " 2-GTKSA-RC";
+			break;
+		case 2:
+			s += " 4-GTKSA-RC";
+			break;
+		case 3:
+			s += " 16-GTKSA-RC";
+			break;
+		}
+		if (capa & 0x0040)
+			s += " MFP-required";
+		if (capa & 0x0080)
+			s += " MFP-capable";
+		if (capa & 0x0200)
+			s += " Peerkey-enabled";
+		if (capa & 0x0400)
+			s += " SPP-AMSDU-capable";
+		if (capa & 0x0800)
+			s += " SPP-AMSDU-required";
+		s += fmt::format(" ({:#4x})", capa);
+		data += 2;
+		len -= 2;
+//		decode.push_back(s);
+	}
+
+	if (len >= 2) {
+		int pmkid_count = data[0] | (data[1] << 8);
+
+		if (len >= 2 + 16 * pmkid_count) {
+//			decode.push_back(fmt::format("{:d} PMKIDs", pmkid_count));
+			/* not printing PMKID values */
+			data += 2 + 16 * pmkid_count;
+			len -= 2 + 16 * pmkid_count;
+		} else
+			goto invalid;
+	}
+
+	if (len >= 4) {
+		s = "Group mgmt cipher suite: ";
+		s += decode_cipher(data);
+//		decode.push_back(s);
+		data += 4;
+		len -= 4;
+	}
+
+ invalid:
+	if (len != 0) {
+		// FIXME
+		assert(0);
+//		std::vector<uint8_t> tail;
+//		tail.assign(data, len);
+//		logger->error("bogus tail data ({:d}):{}", len, hex_dump_bytes(tail));
+		
+//		while (len) {
+//			printf(" %.2x", *data);
+//			data++;
+//			len--;
+//		}
+	}
+}
 std::shared_ptr<IE> cfg80211::make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 {
 	// TODO is there a way to make this whole function a LUT ?
@@ -1030,8 +1188,8 @@ std::shared_ptr<IE> cfg80211::make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 		case 7:
 			return std::make_shared<IE_Country>(id,len,buf);
 
-		case 48:
-			return std::make_shared<IE_RSN>(id,len,buf);
+//		case 48:
+//			return std::make_shared<IE_RSN>(id,len,buf);
 
 		default:
 			return std::make_shared<IE>(id,len,buf);

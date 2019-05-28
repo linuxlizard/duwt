@@ -246,7 +246,34 @@ class IE_RSN : public IE
 
 		virtual Json::Value make_json(void);
 
+		// 80211-2016 Table 9-131 page 884
+//		enum class Suite {
+//			INVALID, // use 0 as uninitialized/invalid
+//			USE_GROUP_CIPHER,
+//			WEP_40, TKIP, CCMP, WEP_104, BIP_CMAC_128, 
+//			GROUP_TRAFFIC_FORBIDDEN,
+//			GCMP_128, GCMP_256, CCMP_256, 
+//			BIP_GMAC_128, BIP_GMAC_256, BIP_CMAC_256,
+//		};
+
+		struct CipherSuite
+		{
+			CipherSuite(const uint8_t* data);
+
+			std::array<uint8_t,3> oui;
+			uint8_t cipher;
+
+			std::string oui_hex; // hex dump of oui
+			std::string cipher_text; // human name of cipher
+		};
+
+
 	protected:
+		void decode_rsn_ie(const char *defcipher, const char *defauth, int is_osen);
+
+		unsigned int version;
+		std::string group_cipher;
+		std::string pairwise_cipher;
 };
 
 std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf);

@@ -156,6 +156,7 @@ private:
 	IE_List ie_list;
 
 	std::string bssid_str;
+       std::shared_ptr<spdlog::logger> logger;
 };
 
 // https://wireless.wiki.kernel.org/en/developers/Documentation/cfg80211

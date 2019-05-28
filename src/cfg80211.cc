@@ -63,10 +63,16 @@ BSS_Policy::BSS_Policy() : NLA_Policy()
 
 BSS::BSS(uint8_t *bssid)
 {
+       logger = spdlog::get("bss");
+       if (!logger) {
+               logger = spdlog::stdout_logger_mt("bss");
+       }
+
 	memcpy(this->bssid.data(), bssid, ETH_ALEN);
 
 	bssid_str = fmt::format("{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
 					bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]);
+	logger->info("create bss={}", bssid_str);
 }
 
 std::string BSS::get_ssid(void)
@@ -192,18 +198,22 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 			}
 		}
 
-		struct nlattr *bss[NL80211_BSS_MAX + 1] { };
-
 		// TODO capture other fields in the tb_msg[]
 
 		if (tb_msg[NL80211_ATTR_BSS]) {
+			// enum nl80211_bss
+			struct nlattr *bss[NL80211_BSS_MAX + 1] { };
+
 //			decode_attr_bss(tb_msg[NL80211_ATTR_BSS]);
 
-			if (nla_parse_nested(bss, NL80211_BSS_MAX,
+			retcode = nla_parse_nested(bss, NL80211_BSS_MAX,
 						 tb_msg[NL80211_ATTR_BSS],
-						 bss_policy.policy)) {
+						 bss_policy.policy);
+			logger->debug("bss nla_parse_nested retcode={}", retcode);
+			if (retcode != 0) {
 				// TODO throw something
 				std::cerr << "failed to parse nested attributes!\n";
+				assert(0);
 				continue;
 			}
 
@@ -211,6 +221,13 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 				std::cerr << "bssid missing\n";
 				// TODO throw something (?)
 				continue;
+			}
+
+			for (int idx=0 ; idx<NL80211_BSS_MAX ; idx++ ) {
+				if (bss[idx]) {
+					logger->debug("{} bss {}={} type={} len={}", __func__, 
+							idx, (void *)bss[idx], nla_type(bss[idx]), nla_len(bss[idx]));
+				}
 			}
 
 			/* davep 20190520 ; restrict to C++14 for cross compiling */
@@ -233,35 +250,38 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 				struct nlattr *ies = bss[NL80211_BSS_INFORMATION_ELEMENTS];
 				struct nlattr *bcnies = bss[NL80211_BSS_BEACON_IES];
 
+				logger->debug("found bytes={} IEs", nla_len(ies));
+
 				if (bss[NL80211_BSS_PRESP_DATA] ||
 					// TODO wtf does this test do?
 					(bcnies && (nla_len(ies) != nla_len(bcnies) ||
 						memcmp(nla_data(ies), nla_data(bcnies),
 							   nla_len(ies))))) {
 					logger->debug("found bytes={} IEs in Probe Response frame", nla_len(ies));
-					uint8_t *ie = (uint8_t *)nla_data(ies);
-					ssize_t ielen = (ssize_t)nla_len(ies);
-					uint8_t *ie_end = ie + ielen;
-					size_t counter=0;
-					while (ie < ie_end) {
-						// XXX temp debug
+				}
+				uint8_t *ie = (uint8_t *)nla_data(ies);
+				ssize_t ielen = (ssize_t)nla_len(ies);
+				uint8_t *ie_end = ie + ielen;
+				size_t counter=0;
+				while (ie < ie_end) {
+					// XXX temp debug
 //						IE new_ie = IE(ie[0], ie[1], ie+2);
 
-						new_bss.add_ie(cfg80211::make_ie(ie[0], ie[1], ie+2));
+					new_bss.add_ie(cfg80211::make_ie(ie[0], ie[1], ie+2));
 //						new_bss.ie_list.emplace_back(ie[0], ie[1], ie+2);
 
 //						if (ie[0] == 0) {
 //							std::cout << "P BSS=" << new_bss << " SSID:" << new_bss.ie_list.back().str() << std::endl;
 //						}
-						// XXX temp debug
+					// XXX temp debug
 //						std::cout << __func__ << " ie_list last=" << new_bss.ie_list.back() << "\n";
 
-						ie += ie[1] + 2;
-						counter++;
-					}
-					logger->debug("found count={} IEs in Probe Response frame", counter);
+					ie += ie[1] + 2;
+					counter++;
 				}
+				logger->debug("found count={} IEs", counter);
 			}
+
 			// following 'if' copied from iw scan.c
 			if (bss[NL80211_BSS_BEACON_IES] ) {
 				struct nlattr *bcnies = bss[NL80211_BSS_BEACON_IES];
