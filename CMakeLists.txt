@@ -36,7 +36,7 @@ set(MY_DEBUG_OPTIONS -Wall -Wextra -Wnon-virtual-dtor -pedantic )
 # TODO fmtlib has warnings with -Wshadow
 #set(MY_DEBUG_OPTIONS -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -Wold-style-cast)
 
-add_library(duwt STATIC src/cfg80211.cc src/ie.cc src/iw.cc src/logging.cc src/jsoncpp.cc)
+add_library(duwt OBJECT src/ie.cc src/bss.cc src/cfg80211.cc src/iw.cc src/logging.cc src/jsoncpp.cc)
 #target_compile_features(duwt PUBLIC cxx_std_17)
 target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS})
 target_include_directories(duwt PUBLIC fmt/include)

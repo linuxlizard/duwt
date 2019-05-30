@@ -61,37 +61,6 @@ BSS_Policy::BSS_Policy() : NLA_Policy()
 	policy[NL80211_BSS_BEACON_IES].type = NLA_UNSPEC;
 }
 
-BSS::BSS(uint8_t *bssid)
-{
-       logger = spdlog::get("bss");
-       if (!logger) {
-               logger = spdlog::stdout_logger_mt("bss");
-       }
-
-	memcpy(this->bssid.data(), bssid, ETH_ALEN);
-
-	bssid_str = fmt::format("{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-					bssid[0], bssid[1], bssid[2], bssid[3], bssid[4], bssid[5]);
-	logger->info("create bss={}", bssid_str);
-}
-
-std::string BSS::get_ssid(void)
-{
-	// FIXME this method is stupid and needs to be fixed.
-	// Dangerous to assume the SSID isn't UTF8.
-	// Linear search is stupid.
-	//
-	// https://en.cppreference.com/w/cpp/language/range-for
-	for (const auto& ie : ie_list) {
-		if ((*ie).get_id() == 0) {
-//			return (*ie).str();
-		}
-	}
-
-	return std::string("(SSID not found)");
-}
-
-
 Cfg80211::Cfg80211() :
 	nl_sock(std::make_unique<NLSock>()),
 	nl_cb(std::make_unique<NLCallback>()),
@@ -176,8 +145,6 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 		// TODO throw something
 	}
 
-	BSS_Policy bss_policy;
-
 	for (size_t i=0 ; i<attrlist.counter ; i++) {
 		logger->debug("get_scan attr i={} len={}", i, attrlist.attr_len_list[i]);
 
@@ -200,7 +167,10 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 
 		// TODO capture other fields in the tb_msg[]
 
+		// iw scan.c print_bss_handler()
 		if (tb_msg[NL80211_ATTR_BSS]) {
+			BSS_Policy bss_policy;
+
 			// enum nl80211_bss
 			struct nlattr *bss[NL80211_BSS_MAX + 1] { };
 
@@ -238,8 +208,35 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 			auto bssid = new_bss.get_bssid();
 			logger->debug("found bssid={}", new_bss.get_bssid());
 
+			// nl80211.h enum nl80211_bss
 			if (bss[NL80211_BSS_FREQUENCY]) {
 				new_bss.freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
+				logger->debug("frequency={}", new_bss.freq);
+			}
+			if (bss[NL80211_BSS_BEACON_INTERVAL]) {
+//				printf("\tbeacon interval: %d TUs\n",
+				unsigned int beacon_interval = nla_get_u16(bss[NL80211_BSS_BEACON_INTERVAL]);
+				logger->debug("beacon interval: {} TUs", beacon_interval);
+				// TODO
+			}
+			if (bss[NL80211_BSS_CAPABILITY]) {
+				uint16_t capa = nla_get_u16(bss[NL80211_BSS_CAPABILITY]);
+				logger->debug("capability: {0:04x}", capa);
+				// TODO 
+			}
+			if (bss[NL80211_BSS_SIGNAL_MBM]) {
+				// "@NL80211_BSS_SIGNAL_MBM: signal strength of probe response/beacon
+				//	in mBm (100 * dBm) (s32)"  (via nl80211.h)
+				uint32_t signal = nla_get_u32(bss[NL80211_BSS_SIGNAL_MBM]);
+				logger->debug("signal: {0}.{1:02d} dBm", signal/100, signal%100);
+				new_bss.set_bss_signal_mbm(signal);
+			}
+			if (bss[NL80211_BSS_SIGNAL_UNSPEC]) {
+				// "@NL80211_BSS_SIGNAL_UNSPEC: signal strength of the probe response/beacon
+				//	in unspecified units, scaled to 0..100 (u8)"  (via nl80211.h)
+				uint8_t signal_unspec = nla_get_u8(bss[NL80211_BSS_SIGNAL_UNSPEC]);
+				logger->debug("signal: {0:d}/100", signal_unspec);
+				// TODO
 			}
 			if (bss[NL80211_BSS_SEEN_MS_AGO]) {
 				new_bss.age = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);

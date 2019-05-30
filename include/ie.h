@@ -235,6 +235,8 @@ class IE_Country : public IE
 		std::string country;
 
 		Environment environment;
+		// also preserve the original value
+		uint8_t environment_byte;
 
 		std::vector<struct Triplet> triplets;
 };
@@ -258,7 +260,12 @@ class IE_RSN : public IE
 
 		struct CipherSuite
 		{
+			// delegate constructor (nifty!)
+			CipherSuite() : CipherSuite( {0x00, 0x0f, 0xac, 0x04} ) {}
+//			CipherSuite() : CipherSuite(reinterpret_cast<const uint8_t*>("\x00\x0f\0xac\x04")) {}
+			CipherSuite(std::array<uint8_t,4> data);
 			CipherSuite(const uint8_t* data);
+//			Json::Value make_json(void);
 
 			std::array<uint8_t,3> oui;
 			uint8_t cipher;
@@ -272,8 +279,9 @@ class IE_RSN : public IE
 		void decode_rsn_ie(const char *defcipher, const char *defauth, int is_osen);
 
 		unsigned int version;
-		std::string group_cipher;
-		std::string pairwise_cipher;
+
+		struct CipherSuite group_cipher;
+		std::vector<struct CipherSuite> pairwise_ciphers;
 };
 
 std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf);

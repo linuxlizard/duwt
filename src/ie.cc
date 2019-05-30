@@ -847,6 +847,7 @@ IE_Country::IE_Country(uint8_t id_, uint8_t len_, uint8_t* buf)
 	// http://www.ieee802.org/11/802.11mib.txt
 	country.assign(data, 2);
 
+	environment_byte = data[2];
 	switch (data[2]) {
 		case 'I':
 			environment = Environment::INDOOR_ONLY;
@@ -934,11 +935,27 @@ Json::Value IE_RSN::make_json(void)
 {
 	Json::Value v { IE::make_json() };
 	v["version"] = version;
-	v["group_cipher"] = group_cipher;
+	v["group_cipher"] = Json::Value { Json::stringValue };
 	v["pairwise_ciphers"] = Json::Value { Json::arrayValue };
-	v["pairwise_ciphers"].append(pairwise_cipher);
+//	v["pairwise_ciphers"].append(pairwise_cipher);
 	return v;
 }
+
+//IE_RSN::CipherSuite::CipherSuite()
+//{
+//	// default cipher
+//	// iw scan.c print_rsn()
+////	const char *defcipher = "CCMP";
+//
+//	uint8_t data[4] = "\x00\x0f\0xac\x04";
+//	CipherSuite::CipherSuite(data);
+//}
+
+IE_RSN::CipherSuite::CipherSuite(std::array<uint8_t,4> data)
+{
+	CipherSuite(data.data());
+}
+
 
 // iw scan.c print_cipher()
 IE_RSN::CipherSuite::CipherSuite(const uint8_t *data)
@@ -1029,12 +1046,13 @@ void IE_RSN::decode_rsn_ie(const char *defcipher, const char *defauth, int is_os
 	if (len < 4) {
 //		decode.push_back(fmt::format("Group cipher: {:s}", defcipher));
 //		decode.push_back(fmt::format("Pairwise ciphers: {:s}", defcipher));
-		group_cipher.assign(defcipher);
-		pairwise_cipher.assign(defcipher);
+//		group_cipher.assign(defcipher);
+//		pairwise_cipher.assign(defcipher);
 		return;
 	}
 
 	auto cipher = IE_RSN::CipherSuite(data);
+	cipher = IE_RSN::CipherSuite();
 //	s = "Group cipher: " + decode_cipher(data);
 //	decode.push_back(s);
 
@@ -1188,8 +1206,8 @@ std::shared_ptr<IE> cfg80211::make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 		case 7:
 			return std::make_shared<IE_Country>(id,len,buf);
 
-//		case 48:
-//			return std::make_shared<IE_RSN>(id,len,buf);
+		case 48:
+			return std::make_shared<IE_RSN>(id,len,buf);
 
 		default:
 			return std::make_shared<IE>(id,len,buf);
