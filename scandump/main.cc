@@ -45,7 +45,9 @@ int main(int argc, char* argv[])
 		std::terminate();
 	}
 
-	Json::Value scan_dump;
+	Json::Value scan_dump_js { Json::objectValue };
+	scan_dump_js["bss"] = Json::arrayValue;
+
 	for ( auto& bss : bss_list ) {
 //		fmt::print("found BSS {} num_ies={}\n", bss, bss.ie_count());
 //		spdlog::info(fmt::format("found BSS {} num_ies={}", bss, bss.ie_count()));
@@ -53,9 +55,10 @@ int main(int argc, char* argv[])
 //		std::cout << "found BSS " << bss << " num_ies=" << bss.ie_list_js.size() << "\n";
 		logger->info("SSID={}", bss.get_ssid());
 
-		Json::Value bss_js;
-		bss_js["bssid"] = bss.get_bssid();
+		Json::Value bss_js { bss.make_json() };
+//		bss_js["bssid"] = bss.get_bssid();
 
+#if 0
 		Json::Value ie_list_js;
 		for (auto&& ie = bss.cbegin() ; ie != bss.cend() ; ++ie) {
 			// iterator across a shared ptr so one * for iterator and another * for deference
@@ -80,7 +83,8 @@ int main(int argc, char* argv[])
 //			}
 		}
 		bss_js["ie_list"] = ie_list_js;
-		scan_dump["bss"].append(bss_js);
+#endif
+		scan_dump_js["bss"].append(bss_js);
 	}
 
 //	std::cout << scan_dump << "\n";
@@ -88,7 +92,7 @@ int main(int argc, char* argv[])
 	Json::StreamWriterBuilder writer_builder;
 	writer_builder["indentation"] = " ";
 	std::unique_ptr<Json::StreamWriter> writer(writer_builder.newStreamWriter());
-	writer->write(scan_dump, &std::cout);
+	writer->write(scan_dump_js, &std::cout);
 	std::cout << "\n";
 
 //	auto sink = std::make_shared<spdlog::sinks::stdout_sink_mt>();
