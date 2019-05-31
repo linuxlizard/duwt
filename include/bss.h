@@ -51,11 +51,14 @@ public:
 
 	// TODO take some of this stuff private
 	std::array<uint8_t,ETH_ALEN> bssid;
-	enum nl80211_chan_width channel_width;
+	// NL880211_BSS_FREQUENCY
 	uint32_t freq;
+	enum nl80211_chan_width channel_width;
 	uint32_t center_freq1;
 	uint32_t center_freq2;
-	int age;
+
+	// NL80211_BSS_SEEN_MS_AGO
+	uint32_t last_seen_ms;
 
 	// called for NL80211_BSS_SIGNAL_MBM
 	void set_bss_signal_mbm(uint32_t value);

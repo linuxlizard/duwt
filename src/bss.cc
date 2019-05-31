@@ -49,9 +49,14 @@ Json::Value BSS::make_json(void)
 		if ((*ie)->get_id() == 0) {
 			bss_json["SSID"] = v["SSID"];
 		}
+		if ((*ie)->get_id() == 3) {
+			bss_json["channel"] = v["value"];
+		}
 	}
 
 	bss_json["signal_strength"] = signal_strength_dbm;
+	bss_json["last_seen_ms"] = last_seen_ms;
+	bss_json["frequency"] = freq;
 	bss_json["ie_list"] = ie_list_js;
 
 	return bss_json;

@@ -239,7 +239,7 @@ int Cfg80211::get_scan(const char *iface, std::vector<BSS>& bss_list)
 				// TODO
 			}
 			if (bss[NL80211_BSS_SEEN_MS_AGO]) {
-				new_bss.age = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);
+				new_bss.last_seen_ms = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);
 			}
 
 			// following 'if' copied mostly from iw scan.c

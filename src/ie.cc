@@ -1200,7 +1200,7 @@ std::shared_ptr<IE> cfg80211::make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 		case 1:
 			return std::make_shared<IE_SupportedRates>(id,len,buf);
 
-		case 3:
+		case 3: // DSS Paramter Set
 			return std::make_shared<IE_Integer>(id,len,buf);
 
 		case 7:
