@@ -24,9 +24,9 @@ enable_testing()
 
 find_package(PkgConfig)
 pkg_check_modules(libnl REQUIRED libnl-3.0)
-message("hello libnl found=${libnl_FOUND} ${libnl_INCLUDE_DIRS} ${libnl_LDFLAGS}" )
+message("libnl found=${libnl_FOUND} ${libnl_INCLUDE_DIRS} ${libnl_LDFLAGS}" )
 pkg_check_modules(libnl_genl REQUIRED libnl-genl-3.0)
-message("hello libnl_genl_genl found=${libnl_genl_FOUND} ${libnl_genl_INCLUDE_DIRS} ${libnl_genl_LDFLAGS}" )
+message("libnl_genl_genl found=${libnl_genl_FOUND} ${libnl_genl_INCLUDE_DIRS} ${libnl_genl_LDFLAGS}" )
 
 add_subdirectory(fmt)
 
@@ -59,3 +59,15 @@ target_link_libraries(scanevent ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 #target_link_options(scanevent PUBLIC ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 
 
+# add microhttpd for the server side but let it be optional for now
+find_package(microhttpd QUIET)
+message("find_package microhttpd found=${microhttpd_FOUND}")
+find_library(MHTTPD microhttpd)
+message("find_library microhttpd found=${MHTTPD}")
+#pkg_check_modules(libmicrohttpd QUIET libmicrohttpd)
+message("pkg-config libmicrohttpd found=${libmicrohttpd_FOUND} ${libmicrohttpd_INCLUDE_DIRS} ${libmicrohttpd_LDFLAGS}" )
+add_executable(galileo EXCLUDE_FROM_ALL galileo/main.cc)
+target_link_libraries(galileo duwt)
+target_link_libraries(galileo fmt)
+target_link_libraries(galileo ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
+target_link_libraries(galileo microhttpd)
