@@ -17,6 +17,17 @@ std::ostream& operator<<(std::ostream& os, const cfg80211::IE& ie);
 
 namespace cfg80211 {
 
+enum class IE_ID 
+{
+	// TODO fill the rest of this out (yikes)
+	INVALID = -1,
+	SSID = 0,
+	SUPPORTED_RATES = 1,
+	DSSS_PARAMETER_SET = 3,
+	VENDOR = 221,
+	EXTENSION = 255
+};
+
 // base class of 802.11 Information Element
 class IE
 {
@@ -69,7 +80,8 @@ class IE
 
 		friend std::ostream& ::operator<< (std::ostream &, const IE&);
 
-		uint8_t get_id(void) { return id; };
+		IE_ID get_id(void) { return static_cast<IE_ID>(id); };
+		std::string get_id_str(void) { return std::to_string(static_cast<int>(id)); };
 
 		// learning from Kismet's trackedelement.h
 		using string_vec_t = std::vector<std::string>;
@@ -282,6 +294,20 @@ class IE_RSN : public IE
 
 		struct CipherSuite group_cipher;
 		std::vector<struct CipherSuite> pairwise_ciphers;
+};
+
+class IE_Vendor : public IE
+{
+	// IE element that contains a Vendor Specific IE (id=221)
+	public:
+		IE_Vendor(uint8_t id_, uint8_t len_, uint8_t* buf);
+
+		virtual Json::Value make_json(void);
+
+	protected:
+		// http://standards-oui.ieee.org/oui/oui.txt
+		// http://standards-oui.ieee.org/oui/oui.csv
+		std::string oui;
 };
 
 std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf);

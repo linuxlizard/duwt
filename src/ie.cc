@@ -632,11 +632,20 @@ IE_Names::IE_Names()
 	names[221] = "Vendor specific";
 
 	// from iw scan.c ieprinters[]
-	names[191] = "VHT capabilities";
-	names[192] = "VHT operation";
 	names[107] = "802.11u Interworking";
 	names[108] = "802.11u Advertisement",
 	names[111] = "802.11u Roaming Consortium";
+
+	names[191] = "VHT capabilities";
+	names[192] = "VHT operation";
+	names[193] = "Extended BSS Load";
+	names[194] = "Wide bandwidth channel switch";
+	names[195] = "Transmit power envelope";
+	names[196] = "Channel switch wrapper";
+	names[197] = "AID";
+	names[198] = "Quiet channel";
+	names[199] = "Operating mode notification";
+	names[200] = "UPSIM";
 
 	names[255] = "Reserved";
 
@@ -1181,6 +1190,22 @@ void IE_RSN::decode_rsn_ie(const char *defcipher, const char *defauth, int is_os
 //		}
 	}
 }
+
+IE_Vendor::IE_Vendor(uint8_t id_, uint8_t len_, uint8_t* buf)
+	: IE(id_, len_, buf)
+{
+}
+
+Json::Value IE_Vendor::make_json(void)
+{
+	Json::Value v { IE::make_json() };
+	// http://standards-oui.ieee.org/oui/oui.txt
+	// http://standards-oui.ieee.org/oui/oui.csv
+	v["oui"] = "000000";
+	// TODO add vendor name lookup
+	return v;
+}
+
 std::shared_ptr<IE> cfg80211::make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 {
 	// TODO is there a way to make this whole function a LUT ?
@@ -1208,6 +1233,9 @@ std::shared_ptr<IE> cfg80211::make_ie(uint8_t id, uint8_t len, uint8_t* buf)
 
 		case 48:
 			return std::make_shared<IE_RSN>(id,len,buf);
+
+		case 221:
+			return std::make_shared<IE_Vendor>(id,len,buf);
 
 		default:
 			return std::make_shared<IE>(id,len,buf);

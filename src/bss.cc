@@ -35,29 +35,54 @@ Json::Value BSS::make_json(void)
 
 	bss_json["bssid"] = get_bssid();
 
-	Json::Value ie_list_js { Json::arrayValue};
+	Json::Value ie_dict_js {Json::objectValue};
+	// 221 and 255 can have multiple values
+	Json::Value vendor_specific_js {Json::arrayValue}; 
+	Json::Value extension_js {Json::arrayValue};
 
 	for (auto&& ie = this->cbegin() ; ie != this->cend() ; ++ie) {
 		// iterator across a shared ptr so one * for iterator and another * for deference
 		logger->info("ie={}", **ie);
 		Json::Value v { (*ie)->make_json() };
 
-		ie_list_js.append(v);
+		IE_ID id = (*ie)->get_id();
 
-		// brute force find the SSID and make a top level copy because it's
-		// most often required
-		if ((*ie)->get_id() == 0) {
+		// vendor specific and extension IEs can appear multiple times
+		if (id == IE_ID::VENDOR) {
+			vendor_specific_js.append(v);
+		}
+		else if (id == IE_ID::EXTENSION ) {
+			extension_js.append(v);
+		}
+		else {
+			ie_dict_js[(*ie)->get_id_str()] = v;
+		}
+
+		// brute force find a few useful fields and make a top level copy
+		// because it's most often required
+		if (id == IE_ID::SSID) {
 			bss_json["SSID"] = v["SSID"];
 		}
-		if ((*ie)->get_id() == 3) {
+		else if (id == IE_ID::DSSS_PARAMETER_SET) {
 			bss_json["channel"] = v["value"];
 		}
 	}
 
-	bss_json["signal_strength"] = signal_strength_dbm;
+	if (!vendor_specific_js.empty()) {
+		ie_dict_js["221"] = vendor_specific_js;
+	}
+	if (!extension_js.empty()) {
+		ie_dict_js["255"] = extension_js;
+	}
+
+	// TODO add suport for BSS_SIGNAL_UNSPEC (unspecific)
+	bss_json["signal_strength"] = Json::Value(Json::objectValue);
+	bss_json["signal_strength"]["value"] = signal_strength_dbm;
+	bss_json["signal_strength"]["units"] = "dBm";
+
 	bss_json["last_seen_ms"] = last_seen_ms;
 	bss_json["frequency"] = freq;
-	bss_json["ie_list"] = ie_list_js;
+	bss_json["ie"] = ie_dict_js;
 
 	return bss_json;
 }
@@ -70,7 +95,7 @@ std::string BSS::get_ssid(void)
 	//
 	// https://en.cppreference.com/w/cpp/language/range-for
 	for (const auto& ie : ie_list) {
-		if ((*ie).get_id() == 0) {
+		if ((*ie).get_id() == IE_ID::SSID) {
 //			return (*ie).str();
 		}
 	}
