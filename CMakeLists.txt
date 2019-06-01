@@ -36,7 +36,7 @@ set(MY_DEBUG_OPTIONS -Wall -Wextra -Wnon-virtual-dtor -pedantic )
 # TODO fmtlib has warnings with -Wshadow
 #set(MY_DEBUG_OPTIONS -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -Wold-style-cast)
 
-add_library(duwt STATIC src/ie.cc src/bss.cc src/cfg80211.cc src/iw.cc src/logging.cc src/jsoncpp.cc)
+add_library(duwt STATIC src/ie.cc src/bss.cc src/cfg80211.cc src/iw.cc src/logging.cc src/jsoncpp.cc src/oui.cc)
 #target_compile_features(duwt PUBLIC cxx_std_17)
 target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS})
 target_include_directories(duwt PUBLIC fmt/include)
@@ -58,6 +58,9 @@ target_link_libraries(scanevent fmt)
 target_link_libraries(scanevent ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 #target_link_options(scanevent PUBLIC ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 
+add_executable(test_oui src/test_oui.cc src/oui.cc)
+target_include_directories(test_oui PUBLIC include)
+add_test(NAME test_oui COMMAND test_oui)
 
 # add microhttpd for the server side but let it be optional for now
 find_package(microhttpd QUIET)
