@@ -48,13 +48,14 @@ class IE
 			  len{src.len}, 
 			  bytes{std::move(src.bytes)}, 
 			  name{src.name},
-			  decode{std::move(src.decode)},
+			  hexdump{std::move(src.hexdump)},
 			  logger{std::move(src.logger)}
 		{
 			// https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c64-a-move-operation-should-move-and-leave-its-source-in-a-valid-state
 			src.id = -1;
 			src.len = -1;
 			src.name = nullptr;
+			src.hexdump.clear();
 		};
 
 		// https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rc-move-assignment
@@ -64,7 +65,7 @@ class IE
 			len = src.len;
 			bytes = std::move(src.bytes);
 			name = src.name;
-			decode = std::move(src.decode);
+			hexdump = std::move(src.hexdump);
 			logger = std::move(src.logger);
 
 			// https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#c64-a-move-operation-should-move-and-leave-its-source-in-a-valid-state
@@ -72,6 +73,7 @@ class IE
 			src.len = -1;
 			src.bytes.clear();
 			src.name = nullptr;
+			src.hexdump.clear();
 
 			return *this;
 		};
@@ -83,21 +85,13 @@ class IE
 		IE_ID get_id(void) { return static_cast<IE_ID>(id); };
 		std::string get_id_str(void) { return std::to_string(static_cast<int>(id)); };
 
-		// learning from Kismet's trackedelement.h
-		using string_vec_t = std::vector<std::string>;
-		using const_iterator = typename string_vec_t::const_iterator;
-
-		const_iterator cbegin() const { return std::cbegin(decode); }
-		const_iterator cend() const { return std::cend(decode); }
-
 	protected:
 		uint8_t id;
 		uint8_t len;
 		std::vector<uint8_t> bytes;
 
 		const char* name;
-
-		std::vector<std::string> decode;
+		std::string hexdump;
 
 		std::shared_ptr<spdlog::logger> logger;
 
@@ -308,6 +302,7 @@ class IE_Vendor : public IE
 		// http://standards-oui.ieee.org/oui/oui.txt
 		// http://standards-oui.ieee.org/oui/oui.csv
 		std::string oui;
+		std::string orgname;
 };
 
 std::shared_ptr<IE> make_ie(uint8_t id, uint8_t len, uint8_t* buf);

@@ -19,6 +19,7 @@
 #include "json/json.h"
 #include "logging.h"
 #include "ie.h"
+#include "oui.h"
 
 // From IEEE802.11-2016:
 //
@@ -682,7 +683,6 @@ IE::IE(uint8_t id, uint8_t len, uint8_t *buf)
 	  len{len},
 	  bytes{},
 	  name {nullptr},
-	  decode {},
 	  logger {nullptr}
 {
 	logger = spdlog::get("ie");
@@ -701,30 +701,28 @@ IE::IE(uint8_t id, uint8_t len, uint8_t *buf)
 		logger->flush();
 		assert(name);
 	}
+	hexdump = hex_dump_bytes(bytes);
 
 	int int_id = static_cast<int>(id);
 	size_t int_len = static_cast<size_t>(len);
 
-//	decode_ie(int_id, int_len, bytes, decode);
 	logger->debug("construct ie name=\"{}\" id={} len={}", 
 			name, int_id, int_len);
 }
 
 Json::Value IE::make_json(void)
 {
-//	std::cout << "IE make_json id=" << static_cast<int>(id) << "\n";
 	Json::Value v;
 
 	v["id"] = id;
 	v["len"] = len;
 	v["name"] = std::string{name};
-	v["hex"] = hex_dump_bytes(bytes);
+	v["hex"] = hexdump;
 	return v;
 }
 
 IE_SSID::IE_SSID(uint8_t id_, uint8_t len_, uint8_t* buf)
 	: IE(id_, len_, buf)
-//	  , ssid(static_cast<const char*>(buf), static_cast<size_t>(len_))
 {
 	// TODO need to very very carefully validate the bytes in the SSID.
 	// Could be maliciously encoded UTF8 or invalid UTF8 or nulls or 
@@ -741,7 +739,6 @@ IE_SSID::IE_SSID(uint8_t id_, uint8_t len_, uint8_t* buf)
 
 Json::Value IE_SSID::make_json(void)
 {
-//	std::cout << "SSID make_json id=" << static_cast<int>(id) << "\n";
 	Json::Value v { IE::make_json() };
 	v["SSID"] = ssid;
 
@@ -1194,6 +1191,10 @@ void IE_RSN::decode_rsn_ie(const char *defcipher, const char *defauth, int is_os
 IE_Vendor::IE_Vendor(uint8_t id_, uint8_t len_, uint8_t* buf)
 	: IE(id_, len_, buf)
 {
+	// TODO add vendor name lookup
+//	ieeeoui::OUI oui { "oui.csv" };
+//	orgname = oui.get_org_name(buf);
+	this->oui = hexdump.substr(0,6);
 }
 
 Json::Value IE_Vendor::make_json(void)
@@ -1201,8 +1202,8 @@ Json::Value IE_Vendor::make_json(void)
 	Json::Value v { IE::make_json() };
 	// http://standards-oui.ieee.org/oui/oui.txt
 	// http://standards-oui.ieee.org/oui/oui.csv
-	v["oui"] = "000000";
-	// TODO add vendor name lookup
+	v["oui"] = oui;
+	v["org"] = orgname;
 	return v;
 }
 
