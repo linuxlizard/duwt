@@ -130,6 +130,7 @@ int mac80211_connect(const char *interface, void **nl_sock,
     }
 
     *nl80211_id = genl_ctrl_resolve(*nl_sock, "nl80211");
+	/* davep 20190608 ; XXX bug should be: *nl80211_id */
     if (nl80211_id < 0) {
         snprintf(errstr, STATUS_MAX, 
                 "unable to connect to netlink: could not resolve nl80211");

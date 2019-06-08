@@ -4,6 +4,8 @@ import iw
 
 iface = "wlan1"
 
-print(iw.hello("wlan1"))
-print(iw.chanlist("wlan1"))
+print(iw.hello(iface))
+print(iw.get_chanlist(iface))
+
+print(iw.get_scan(iface))
 

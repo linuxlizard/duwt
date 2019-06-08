@@ -2,7 +2,9 @@
 #include <Python.h>
 
 #include <linux/nl80211.h>
+
 #include "linux_netlink_control.h"
+#include "scan.h"
 
 static PyObject *IW_Error;
 
@@ -98,7 +100,8 @@ iw_get_chanlist(PyObject *self, PyObject *args)
 
 static PyMethodDef IW_Methods[] = {
 	{"hello",  iw_hello, METH_VARARGS, "Hello, world"},
-	{"chanlist",  iw_get_chanlist, METH_VARARGS, "Hello, world"},
+	{"get_chanlist",  iw_get_chanlist, METH_VARARGS, "Hello, world"},
+	{"get_scan",  get_scan, METH_VARARGS, "Hello, world"},
 
 	{NULL, NULL, 0, NULL}		/* Sentinel */
 };
