@@ -62,7 +62,6 @@ iw_get_chanlist(PyObject *self, PyObject *args)
 
 	if (!PyArg_ParseTuple(args, "s", &interface))
 		return NULL;
-	
 
 	size_t num_chans;
 	char **chan_list;
@@ -80,11 +79,21 @@ iw_get_chanlist(PyObject *self, PyObject *args)
 	printf("ret=%d\n", ret);
 	printf("num_chans=%d\n", num_chans);
 
+	PyObject* chanlist = PyList_New(num_chans);
+	if (!chanlist) {
+		return PyErr_NoMemory();
+	}
+
+	int i;
+	for (i=0 ; i<num_chans ; i++ ) {
+		ret = PyList_SetItem(chanlist, i, PyLong_FromString(chan_list[i], NULL, 10));
+	}
+
 //int mac80211_get_chanlist(const char *interface, unsigned int extended_flags, char *errstr,
 //        unsigned int default_ht20, unsigned int expand_ht20,
 //        char ***ret_chanlist, size_t *ret_chanlist_len);
 
-	Py_RETURN_NONE;
+	return chanlist;
 }
 
 static PyMethodDef IW_Methods[] = {
