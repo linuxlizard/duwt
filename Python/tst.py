@@ -2,5 +2,8 @@
 
 import iw
 
-print(iw.hello("wlp1s0"))
+iface = "wlan1"
+
+print(iw.hello("wlan1"))
+print(iw.chanlist("wlan1"))
 

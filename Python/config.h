@@ -1,0 +1,5 @@
+#define HAVE_LIBNL30
+#define SYS_LINUX
+#define HAVE_LINUX_NETLINK
+
+#define STATUS_MAX 256
