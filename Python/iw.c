@@ -128,7 +128,7 @@ static struct PyModuleDef iw_module = {
 
 
 PyMODINIT_FUNC
-PyInit_iw(void)
+PyInit__iw(void)
 {
 	PyObject* m = PyModule_Create(&iw_module);
 	

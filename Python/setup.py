@@ -1,6 +1,6 @@
 from distutils.core import setup, Extension
 
-module1 = Extension('iw',
+module1 = Extension('_iw',
             sources = ['scan.c', 'iw.c', 'ie.c',
                        'linux_wireless_control.c', 
                        'linux_netlink_control.c',

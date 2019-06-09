@@ -14,6 +14,7 @@
 
 #include "linux_netlink_control.h"
 #include "scan.h"
+#include "iw.h"
 #include "ie.h"
 
 static const bool iw_debug = true;
@@ -189,6 +190,16 @@ static PyObject* parse_bss(struct nlattr* bss[])
 		}
 	}
 
+	if (bss[NL80211_BSS_BSSID]) {
+		char mac_addr[20];
+		uint8_t* ptr = (uint8_t*)nla_data(bss[NL80211_BSS_BSSID]);
+		retcode = PyOS_snprintf(mac_addr, 20, "%02x:%02x:%02x:%02x:%02x:%02x",
+			ptr[0], ptr[1], ptr[2], ptr[3], ptr[4], ptr[5]);
+
+		PyObject* bssid_str = Py_BuildValue("s", mac_addr);
+		retcode = PyDict_SetItemString(bss_dict, "BSSID", bssid_str);
+	}
+
 	// nl80211.h enum nl80211_bss
 	if (bss[NL80211_BSS_FREQUENCY]) {
 		uint32_t freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
@@ -237,7 +248,7 @@ static PyObject* parse_bss(struct nlattr* bss[])
 	}
 	if (bss[NL80211_BSS_SEEN_MS_AGO]) {
 		uint32_t last_seen_ms = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);
-		if (PyDict_SetItemString(bss_dict, "seen", PyLong_FromUnsignedLong(last_seen_ms)) < 0) {
+		if (PyDict_SetItemString(bss_dict, "last_seen_ms", PyLong_FromUnsignedLong(last_seen_ms)) < 0) {
 			// TODO
 		}
 	}
@@ -307,6 +318,10 @@ static int nl80211_get_scan_cb(struct nl_msg *msg, void *arg)
 					 bss_policy)) {
 			fprintf(stderr, "failed to parse nested attributes!\n");
 			return NL_SKIP;
+		}
+
+		if (!bss[NL80211_BSS_BSSID]) {
+			// TODO throw something (?)
 		}
 
 		PyObject* bss_dict = parse_bss(bss);
