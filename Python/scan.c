@@ -13,6 +13,8 @@
 #include <linux/nl80211.h>
 
 #include "linux_netlink_control.h"
+#include "scan.h"
+#include "ie.h"
 
 static const bool iw_debug = true;
 
@@ -54,25 +56,53 @@ static int nl80211_ack_cb(struct nl_msg *msg, void *arg) {
 
 static PyObject* parse_ies(struct nlattr* ies)
 {
-	PyObject* ie_dict;
+	PyObject* all_ie_dict;
 	uint8_t *ie = (uint8_t *)nla_data(ies);
 	ssize_t ielen = (ssize_t)nla_len(ies);
 	uint8_t *ie_end = ie + ielen;
 	size_t counter=0;
+	int retcode;
 
-	ie_dict = PyDict_New();
-	if (!ie_dict) {
+	all_ie_dict = PyDict_New();
+	if (!all_ie_dict) {
+		// TODO 
 		return NULL;
 	}
 
 	while (ie < ie_end) {
+		char ie_str[8];
+
 		printf("%s ie=%d\n", __func__, ie[0]);
+		
+		// convert ie id into string to use as a key
+		PyOS_snprintf(ie_str, 7, "%d", (int)ie[0]);
+
+		PyObject* ie_dict = Py_BuildValue("{s:s}", 
+									"name", ie_get_name(ie[0])
+								);
+//		PyObject* ie_dict = Py_BuildValue("{s:s},{s:y*}", 
+//									"name", ie_get_name(ie[0]),
+//									"value", PyBytes_FromStringAndSize(&ie[2], (int)ie[1])
+//								);
+		if (!ie_dict) {
+			// TODO 
+		}
+
+//		PyDict_SetItemString(ie_dict, "value", PyBytes_FromStringAndSize(&ie[2], (int)ie[1]));
+
+//		retcode = ie_decode(ie[0], ie[1], &ie[2], ie_dict);
+
+		retcode = PyDict_SetItemString(all_ie_dict, ie_str, ie_dict);
+		if (retcode) {
+			// TODO
+		}
+
 		ie += ie[1] + 2;
 		counter++;
 	}
 	printf("%s found count=%zu IEs\n", __func__, counter);
 
-	return ie_dict;
+	return all_ie_dict;
 }
 
 static PyObject* parse_bss(struct nlattr* bss[])
@@ -98,17 +128,27 @@ static PyObject* parse_bss(struct nlattr* bss[])
 	if (bss[NL80211_BSS_FREQUENCY]) {
 		uint32_t freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
 		retcode = PyDict_SetItemString(bss_dict, "frequency", PyLong_FromUnsignedLong(freq));
+		if (retcode) {
+			// TODO
+		}
 		retcode = PyDict_SetItemString(bss_dict, "channel", PyLong_FromUnsignedLong(mac80211_freq_to_chan(freq)));
+		if (retcode) {
+			// TODO
+		}
 		// TODO add above/below channel
 	}
 	if (bss[NL80211_BSS_BEACON_INTERVAL]) {
-		uint16_t beacon_interval = nla_get_u16(bss[NL80211_BSS_BEACON_INTERVAL]);
+//		uint16_t beacon_interval = nla_get_u16(bss[NL80211_BSS_BEACON_INTERVAL]);
 		// TODO
 	}
 	if (bss[NL80211_BSS_CAPABILITY]) {
 		uint16_t capa = nla_get_u16(bss[NL80211_BSS_CAPABILITY]);
 //		logger->debug("capability: {0:04x}", capa);
 		retcode = PyDict_SetItemString(bss_dict, "capability", PyLong_FromUnsignedLong(capa));
+		if (retcode) {
+			// TODO
+		}
+
 	}
 	if (bss[NL80211_BSS_SIGNAL_MBM]) {
 		// "@NL80211_BSS_SIGNAL_MBM: signal strength of probe response/beacon
@@ -121,31 +161,37 @@ static PyObject* parse_bss(struct nlattr* bss[])
 		}
 
 		retcode = PyDict_SetItemString(bss_dict, "signal_strength", ss);
-//		logger->debug("signal: {0}.{1:02d} dBm", signal/100, signal%100);
-//		new_bss.set_bss_signal_mbm(signal);
+		if (retcode) {
+			// TODO
+		}
 	}
 	if (bss[NL80211_BSS_SIGNAL_UNSPEC]) {
 		// "@NL80211_BSS_SIGNAL_UNSPEC: signal strength of the probe response/beacon
 		//	in unspecified units, scaled to 0..100 (u8)"  (via nl80211.h)
-		uint8_t signal_unspec = nla_get_u8(bss[NL80211_BSS_SIGNAL_UNSPEC]);
-
-
-//		logger->debug("signal: {0:d}/100", signal_unspec);
+//		uint8_t signal_unspec = nla_get_u8(bss[NL80211_BSS_SIGNAL_UNSPEC]);
 		// TODO
 	}
 	if (bss[NL80211_BSS_SEEN_MS_AGO]) {
 		uint32_t last_seen_ms = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);
+		retcode = PyDict_SetItemString(bss_dict, "seen", PyLong_FromUnsignedLong(last_seen_ms));
+		if (retcode) {
+			// TODO
+		}
 	}
 
+	// information can be duplicated between Beacon and Probe Response IEs
 	if (bss[NL80211_BSS_INFORMATION_ELEMENTS] ) {
 		struct nlattr *ies = bss[NL80211_BSS_INFORMATION_ELEMENTS];
-		struct nlattr *bcnies = bss[NL80211_BSS_BEACON_IES];
 
 		PyObject* ie_dict = parse_ies(ies);
 		if (!ie_dict) {
 			// TODO 
 		}
 		
+		retcode = PyDict_SetItemString(bss_dict, "ie", ie_dict);
+		if (retcode) {
+			// TODO
+		}
 	}
 
 	// information can be duplicated between Beacon and Probe Response IEs
@@ -166,7 +212,7 @@ static int nl80211_get_scan_cb(struct nl_msg *msg, void *arg)
 	printf("%s\n", __func__);
 
 	struct nlmsghdr *hdr = nlmsg_hdr(msg);
-	struct genlmsghdr* gnlh = (struct genlmsghdr*)(nlmsg_data(hdr));
+	struct genlmsghdr* gnlh = (struct genlmsghdr*)nlmsg_data(hdr);
 
 	if (iw_debug) {
 //		nl_msg_dump(msg,stdout);
@@ -175,10 +221,14 @@ static int nl80211_get_scan_cb(struct nl_msg *msg, void *arg)
 //		printf("%s genlen=%d genattrlen=%d\n", __func__, genlmsg_len(gnlh), genlmsg_attrlen(gnlh, 0));
 	}
 
-	struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
+	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
 	int retcode = nla_parse(tb_msg, NL80211_ATTR_MAX, 
 						genlmsg_attrdata(gnlh, 0),
 						genlmsg_attrlen(gnlh, 0), NULL);
+	if (retcode != 0) {
+		// TODO
+	}
+
 	size_t i;
 	for (i=0 ; i<NL80211_ATTR_MAX ; i++ ) {
 		if (tb_msg[i]) {

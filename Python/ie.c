@@ -1,3 +1,6 @@
+#define PY_SSIZE_T_CLEAN
+#include <Python.h>
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -244,5 +247,12 @@ const char* ie_get_name(uint8_t id)
 	}
 
 	return (const char*)names[id];
+}
+
+int ie_decode(uint8_t id, uint8_t len, uint8_t* buf, PyObject* dest_dict)
+{
+	printf("%s %d %d %p\n", __func__, id, len, buf);
+
+	return 0;
 }
 
