@@ -251,6 +251,7 @@ const char* ie_get_name(uint8_t id)
 
 int ie_decode(uint8_t id, uint8_t len, uint8_t* buf, PyObject* dest_dict)
 {
+	assert(PyDict_Check(dest_dict));
 	printf("%s %d %d %p\n", __func__, id, len, buf);
 
 	return 0;

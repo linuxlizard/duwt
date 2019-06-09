@@ -131,7 +131,8 @@ int mac80211_connect(const char *interface, void **nl_sock,
 
     *nl80211_id = genl_ctrl_resolve(*nl_sock, "nl80211");
 	/* davep 20190608 ; XXX bug should be: *nl80211_id */
-    if (nl80211_id < 0) {
+    if (*nl80211_id < 0) {
+//    if (nl80211_id < 0) {
         snprintf(errstr, STATUS_MAX, 
                 "unable to connect to netlink: could not resolve nl80211");
         nl_socket_free(*nl_sock);
@@ -311,7 +312,7 @@ int mac80211_set_channel(const char *interface, int channel,
 
 int mac80211_set_frequency_cache(int ifindex, void *nl_sock, int nl80211_id, 
         unsigned int control_freq, unsigned int chan_width, 
-        unsigned int center_freq1, unsigned int center_freq2,
+        unsigned int center_freq1, unsigned int center_freq2 UNUSED,
         char *errstr) {
 #ifndef HAVE_LINUX_NETLINK
 	snprintf(errstr, STATUS_MAX, "Kismet was not compiled with netlink/mac80211 "
@@ -600,19 +601,19 @@ static int nl80211_freqlist_cb(struct nl_msg *msg, void *arg) {
 #endif
 
 #ifdef HAVE_LINUX_NETLINK
-static int nl80211_error_cb(struct sockaddr_nl *nla, struct nlmsgerr *err, void *arg) {
+static int nl80211_error_cb(struct sockaddr_nl *nla UNUSED, struct nlmsgerr *err, void *arg) {
 	int *ret = (int *) arg;
 	*ret = err->error;
 	return NL_STOP;
 }
 
-static int nl80211_finish_cb(struct nl_msg *msg, void *arg) {
+static int nl80211_finish_cb(struct nl_msg *msg UNUSED, void *arg) {
 	int *ret = (int *) arg;
 	*ret = 0;
 	return NL_SKIP;
 }
 
-static int nl80211_ack_cb(struct nl_msg *msg, void *arg) {
+static int nl80211_ack_cb(struct nl_msg *msg UNUSED, void *arg) {
     int *ret = arg;
     *ret = 0;
     return NL_STOP;
@@ -629,7 +630,9 @@ int mac80211_get_chanlist(const char *interface, unsigned int extended_flags, ch
         .chan_list_last = NULL
     };
 
-    unsigned int num_freq;
+	/* davep 20190609 ; fix a warning */
+    int num_freq;
+//    unsigned int num_freq;
     struct nl80211_channel_list *chan_list_cur, *chan_list_old;
 
 #ifndef HAVE_LINUX_NETLINK

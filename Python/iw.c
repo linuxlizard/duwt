@@ -40,7 +40,7 @@ PyInit_spam(void)
 #endif
 
 static PyObject *
-iw_hello(PyObject *self, PyObject *args)
+iw_hello(PyObject* Py_UNUSED(self), PyObject *args)
 {
 	const char *command;
 	int sts=0;
@@ -56,7 +56,7 @@ iw_hello(PyObject *self, PyObject *args)
 }
 
 static PyObject *
-iw_get_chanlist(PyObject *self, PyObject *args)
+iw_get_chanlist(PyObject* Py_UNUSED(self), PyObject *args)
 {
 	const char* interface;
 	int ret;
@@ -86,7 +86,7 @@ iw_get_chanlist(PyObject *self, PyObject *args)
 		return PyErr_NoMemory();
 	}
 
-	int i;
+	size_t i;
 	for (i=0 ; i<num_chans ; i++ ) {
 		ret = PyList_SetItem(chanlist, i, PyLong_FromString(chan_list[i], NULL, 10));
 	}
@@ -118,7 +118,11 @@ static struct PyModuleDef iw_module = {
 	iw_doc, /* module documentation, may be NULL */
 	-1,	   /* size of per-interpreter state of the module,
 				 or -1 if the module keeps state in global variables. */
-	IW_Methods 
+	IW_Methods,
+	NULL,
+	NULL,
+	NULL,
+	NULL
 };
 
 

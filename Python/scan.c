@@ -33,25 +33,28 @@ static struct nla_policy bss_policy[NL80211_BSS_MAX + 1] = {
 	[NL80211_BSS_BEACON_IES] = { },
 };
 
-static int nl80211_error_cb(struct sockaddr_nl *nla, struct nlmsgerr *err, void *arg) {
+/* from kismet */
+static int nl80211_error_cb(struct sockaddr_nl* Py_UNUSED(nla), struct nlmsgerr *err, void *arg) {
 	int *ret = (int *) arg;
 	printf("%s\n", __func__);
 	*ret = err->error;
 	return NL_STOP;
 }
 
-static int nl80211_finish_cb(struct nl_msg *msg, void *arg) {
+/* from kismet */
+static int nl80211_finish_cb(struct nl_msg* Py_UNUSED(msg), void *arg) {
 	int *ret = (int *) arg;
 	printf("%s\n", __func__);
 	*ret = 0;
 	return NL_SKIP;
 }
 
-static int nl80211_ack_cb(struct nl_msg *msg, void *arg) {
-    int *ret = arg;
+/* from kismet */
+static int nl80211_ack_cb(struct nl_msg* Py_UNUSED(msg), void *arg) {
+	int *ret = arg;
 	printf("%s\n", __func__);
-    *ret = 0;
-    return NL_STOP;
+	*ret = 0;
+	return NL_STOP;
 }
 
 static PyObject* parse_ies(struct nlattr* ies)
@@ -86,16 +89,24 @@ static PyObject* parse_ies(struct nlattr* ies)
 //								);
 		if (!ie_dict) {
 			// TODO 
+			goto fail;
 		}
 
-//		PyDict_SetItemString(ie_dict, "value", PyBytes_FromStringAndSize(&ie[2], (int)ie[1]));
+		PyObject* value = PyBytes_FromStringAndSize((const char *)&ie[2], (Py_ssize_t)ie[1]);
+		if (PyDict_SetItemString(ie_dict, "value", value) == -1) {
+			// TODO
+			goto fail;
+		}
+		Py_CLEAR(value);
 
-//		retcode = ie_decode(ie[0], ie[1], &ie[2], ie_dict);
+		retcode = ie_decode(ie[0], ie[1], &ie[2], ie_dict);
 
 		retcode = PyDict_SetItemString(all_ie_dict, ie_str, ie_dict);
 		if (retcode) {
 			// TODO
+			goto fail;
 		}
+		Py_CLEAR(ie_dict);
 
 		ie += ie[1] + 2;
 		counter++;
@@ -103,6 +114,9 @@ static PyObject* parse_ies(struct nlattr* ies)
 	printf("%s found count=%zu IEs\n", __func__, counter);
 
 	return all_ie_dict;
+fail:
+	// now what?
+	return NULL;
 }
 
 static PyObject* parse_bss(struct nlattr* bss[])
@@ -143,7 +157,6 @@ static PyObject* parse_bss(struct nlattr* bss[])
 	}
 	if (bss[NL80211_BSS_CAPABILITY]) {
 		uint16_t capa = nla_get_u16(bss[NL80211_BSS_CAPABILITY]);
-//		logger->debug("capability: {0:04x}", capa);
 		retcode = PyDict_SetItemString(bss_dict, "capability", PyLong_FromUnsignedLong(capa));
 		if (retcode) {
 			// TODO
@@ -160,10 +173,10 @@ static PyObject* parse_bss(struct nlattr* bss[])
 			return NULL;
 		}
 
-		retcode = PyDict_SetItemString(bss_dict, "signal_strength", ss);
-		if (retcode) {
+		if (PyDict_SetItemString(bss_dict, "signal_strength", ss) == -1) {
 			// TODO
 		}
+		Py_CLEAR(ss);
 	}
 	if (bss[NL80211_BSS_SIGNAL_UNSPEC]) {
 		// "@NL80211_BSS_SIGNAL_UNSPEC: signal strength of the probe response/beacon
@@ -173,8 +186,7 @@ static PyObject* parse_bss(struct nlattr* bss[])
 	}
 	if (bss[NL80211_BSS_SEEN_MS_AGO]) {
 		uint32_t last_seen_ms = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);
-		retcode = PyDict_SetItemString(bss_dict, "seen", PyLong_FromUnsignedLong(last_seen_ms));
-		if (retcode) {
+		if (PyDict_SetItemString(bss_dict, "seen", PyLong_FromUnsignedLong(last_seen_ms)) == -1) {
 			// TODO
 		}
 	}
@@ -188,15 +200,15 @@ static PyObject* parse_bss(struct nlattr* bss[])
 			// TODO 
 		}
 		
-		retcode = PyDict_SetItemString(bss_dict, "ie", ie_dict);
-		if (retcode) {
+		if (PyDict_SetItemString(bss_dict, "ie", ie_dict) == -1) {
 			// TODO
 		}
+		Py_CLEAR(ie_dict);
 	}
 
 	// information can be duplicated between Beacon and Probe Response IEs
 	if (bss[NL80211_BSS_BEACON_IES] ) {
-
+		// TODO
 	}
 
 	return bss_dict;
@@ -248,24 +260,19 @@ static int nl80211_get_scan_cb(struct nl_msg *msg, void *arg)
 
 		PyObject* bss_dict = parse_bss(bss);
 		if (!bss_dict) {
-			// fail somehow
+			// TODO
 		}
 
-		retcode = PyList_Append(network_list, bss_dict);
-
-//		for (i=0 ; i<NL80211_BSS_MAX ; i++ ) {
-//			if (bss[i]) {
-//				printf("%s bss %zu=%p type=%d len=%d\n", 
-//						__func__, 
-//						i, (void *)bss[i], nla_type(bss[i]), nla_len(bss[i]));
-//			}
-//		}
+		if (PyList_Append(network_list, bss_dict) == -1) {
+			// TODO
+		}
+		Py_CLEAR(bss_dict);
 	}
 
     return NL_SKIP;
 }
 
-PyObject* get_scan(PyObject *self, PyObject *args)
+PyObject* get_scan(PyObject* Py_UNUSED(self), PyObject* args)
 {
 	const char* interface;
 	int retcode;
@@ -303,34 +310,34 @@ PyObject* get_scan(PyObject *self, PyObject *args)
 		goto finally;
 	}
 
-    int err = 1;
+	int err = 1;
 
 	network_list = PyList_New(0);
 	if (!network_list) {
 		goto finally;
 	}
 
-    nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, nl80211_get_scan_cb, network_list);
+	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, nl80211_get_scan_cb, network_list);
 	nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, nl80211_ack_cb, &err);
-    nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, nl80211_finish_cb, &err);
-    nl_cb_err(cb, NL_CB_CUSTOM, nl80211_error_cb, &err);
+	nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, nl80211_finish_cb, &err);
+	nl_cb_err(cb, NL_CB_CUSTOM, nl80211_error_cb, &err);
 
-    genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, id, 0, NLM_F_DUMP, NL80211_CMD_GET_SCAN, 0);
+	genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, id, 0, NLM_F_DUMP, NL80211_CMD_GET_SCAN, 0);
 	nla_put_u32(msg, NL80211_ATTR_IFINDEX, index);
 
-    if (nl_send_auto_complete((struct nl_sock *) sock, msg) < 0) {
-        snprintf(errstr, STATUS_MAX, 
-                "failed to fetch channels from interface '%s': failed to "
-                "write netlink command", interface);
-        nlmsg_free(msg);
-        nl_cb_put(cb);
+	if (nl_send_auto_complete((struct nl_sock *) sock, msg) < 0) {
+		snprintf(errstr, STATUS_MAX, 
+				"failed to fetch channels from interface '%s': failed to "
+				"write netlink command", interface);
+		nlmsg_free(msg);
+		nl_cb_put(cb);
 		mac80211_disconnect(sock);
 		PyErr_SetString(PyExc_RuntimeError, errstr);
 		return NULL;
-    }
+	}
 
-    while (err)
-        nl_recvmsgs((struct nl_sock *) sock, cb);
+	while (err)
+		nl_recvmsgs((struct nl_sock *) sock, cb);
 
 finally:
 	if (cb) {

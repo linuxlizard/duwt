@@ -5,6 +5,7 @@ import pprint
 import iw
 
 iface = "wlan1"
+iface = "wlp1s0"
 
 print(iw.hello(iface))
 print(iw.get_chanlist(iface))
