@@ -4,6 +4,7 @@
 #include <linux/nl80211.h>
 
 #include "linux_netlink_control.h"
+#include "iw.h"
 #include "scan.h"
 
 static PyObject *IW_Error;
@@ -129,5 +130,27 @@ static struct PyModuleDef iw_module = {
 PyMODINIT_FUNC
 PyInit_iw(void)
 {
-	return PyModule_Create(&iw_module);
+	PyObject* m = PyModule_Create(&iw_module);
+	
+	if (!m) {
+		return NULL;
+	}
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_ESS);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_IBSS);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_CF_POLLABLE);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_CF_POLL_REQUEST);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_PRIVACY);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_SHORT_PREAMBLE);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_PBCC);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_CHANNEL_AGILITY);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_SPECTRUM_MGMT);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_QOS);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_SHORT_SLOT_TIME);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_APSD);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_RADIO_MEASURE);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_DSSS_OFDM);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_DEL_BACK);
+	PyModule_AddIntMacro(m, WLAN_CAPABILITY_IMM_BACK);
+
+	return m;
 }
