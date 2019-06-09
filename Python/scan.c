@@ -59,63 +59,114 @@ static int nl80211_ack_cb(struct nl_msg* Py_UNUSED(msg), void *arg) {
 
 static PyObject* parse_ies(struct nlattr* ies)
 {
-	PyObject* all_ie_dict;
 	uint8_t *ie = (uint8_t *)nla_data(ies);
 	ssize_t ielen = (ssize_t)nla_len(ies);
 	uint8_t *ie_end = ie + ielen;
 	size_t counter=0;
-	int retcode;
 
-	all_ie_dict = PyDict_New();
-	if (!all_ie_dict) {
-		// TODO 
+	// each IE will be stored in a dict key'd by the ID
+	PyObject* ie_dict = PyDict_New();
+	if (!ie_dict) {
 		return NULL;
 	}
 
+	PyObject* vendor_id = PyLong_FromLong(221);
+	if (!vendor_id) {
+		return NULL;
+	}
+
+	PyObject* extention_id = PyLong_FromLong(255);
+	if (!extention_id) {
+		Py_DECREF(vendor_id);
+		return NULL;
+	}
+
+	PyObject* value = NULL;
 	while (ie < ie_end) {
-		char ie_str[8];
-
 		printf("%s ie=%d\n", __func__, ie[0]);
-		
-		// convert ie id into string to use as a key
-		PyOS_snprintf(ie_str, 7, "%d", (int)ie[0]);
 
-		PyObject* ie_dict = Py_BuildValue("{s:s}", 
-									"name", ie_get_name(ie[0])
+		value = Py_BuildValue("{s:s,s:i}", 
+									"name", ie_get_name(ie[0]),
+									"len", (int)ie[1]
 								);
 //		PyObject* ie_dict = Py_BuildValue("{s:s},{s:y*}", 
 //									"name", ie_get_name(ie[0]),
 //									"value", PyBytes_FromStringAndSize(&ie[2], (int)ie[1])
 //								);
-		if (!ie_dict) {
-			// TODO 
+		if (!value) {
 			goto fail;
 		}
 
-		PyObject* value = PyBytes_FromStringAndSize((const char *)&ie[2], (Py_ssize_t)ie[1]);
-		if (PyDict_SetItemString(ie_dict, "value", value) == -1) {
-			// TODO
-			goto fail;
+		if (ie[0] == 221 || ie[0] == 255) {
+			// can have multiple Vendor Specific (221) or Extension (255) IEs
+			// so store the values in an array
+#if 0
+			PyObject* list = PyDict_GetItem(ie_dict, ie[0]==221?vendor_id:extention_id);
+
+			if (!list) {
+				// create the list
+				list = PyList_New(0);
+				if (!list) {
+					goto fail;
+				}
+
+				if (PyDict_SetItem(ie_dict, ie[0]==221?vendor_id:extention_id, list) < 0) {
+					Py_DECREF(list);
+					goto fail;
+				}
+			}
+
+			PyObject* bytes = PyBytes_FromStringAndSize((const char *)&ie[2], (Py_ssize_t)ie[1]);
+			if (PyDict_SetItemString(value, "bytes", bytes) < 0) {
+				goto fail;
+			}
+			Py_CLEAR(bytes);
+
+			if (PyList_Append(list, nested_value) < 0) {
+			}
+
+			Py_DECREF(list);
+#endif
 		}
+		else {
+			if (ie_decode(ie[0], ie[1], &ie[2], value) < 0) {
+				goto fail;
+			}
+
+			PyObject* bytes = PyBytes_FromStringAndSize((const char *)&ie[2], (Py_ssize_t)ie[1]);
+			if (PyDict_SetItemString(value, "bytes", bytes) < 0) {
+				goto fail;
+			}
+			Py_CLEAR(bytes);
+
+			PyObject* key = PyLong_FromUnsignedLong(ie[0]);
+			if (PyDict_SetItem(ie_dict, key, value) < 0) {
+				goto fail;
+			}
+			Py_CLEAR(key);
+		}
+
 		Py_CLEAR(value);
-
-		retcode = ie_decode(ie[0], ie[1], &ie[2], ie_dict);
-
-		retcode = PyDict_SetItemString(all_ie_dict, ie_str, ie_dict);
-		if (retcode) {
-			// TODO
-			goto fail;
-		}
-		Py_CLEAR(ie_dict);
 
 		ie += ie[1] + 2;
 		counter++;
 	}
+
+	Py_DECREF(vendor_id);
+	Py_DECREF(extention_id);
+
 	printf("%s found count=%zu IEs\n", __func__, counter);
 
-	return all_ie_dict;
+	return ie_dict;
+
 fail:
-	// now what?
+	Py_DECREF(vendor_id);
+	Py_DECREF(extention_id);
+	Py_XDECREF(value);
+
+	// TODO
+	// what else?
+
 	return NULL;
 }
 
@@ -173,7 +224,7 @@ static PyObject* parse_bss(struct nlattr* bss[])
 			return NULL;
 		}
 
-		if (PyDict_SetItemString(bss_dict, "signal_strength", ss) == -1) {
+		if (PyDict_SetItemString(bss_dict, "signal_strength", ss) < 0) {
 			// TODO
 		}
 		Py_CLEAR(ss);
@@ -186,7 +237,7 @@ static PyObject* parse_bss(struct nlattr* bss[])
 	}
 	if (bss[NL80211_BSS_SEEN_MS_AGO]) {
 		uint32_t last_seen_ms = nla_get_u32(bss[NL80211_BSS_SEEN_MS_AGO]);
-		if (PyDict_SetItemString(bss_dict, "seen", PyLong_FromUnsignedLong(last_seen_ms)) == -1) {
+		if (PyDict_SetItemString(bss_dict, "seen", PyLong_FromUnsignedLong(last_seen_ms)) < 0) {
 			// TODO
 		}
 	}
@@ -200,7 +251,7 @@ static PyObject* parse_bss(struct nlattr* bss[])
 			// TODO 
 		}
 		
-		if (PyDict_SetItemString(bss_dict, "ie", ie_dict) == -1) {
+		if (PyDict_SetItemString(bss_dict, "ie", ie_dict) < 0) {
 			// TODO
 		}
 		Py_CLEAR(ie_dict);
@@ -263,7 +314,7 @@ static int nl80211_get_scan_cb(struct nl_msg *msg, void *arg)
 			// TODO
 		}
 
-		if (PyList_Append(network_list, bss_dict) == -1) {
+		if (PyList_Append(network_list, bss_dict) < 0) {
 			// TODO
 		}
 		Py_CLEAR(bss_dict);

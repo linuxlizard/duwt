@@ -249,11 +249,49 @@ const char* ie_get_name(uint8_t id)
 	return (const char*)names[id];
 }
 
+static int decode_ssid(uint8_t len, uint8_t* buf, PyObject* dest_dict)
+{
+	PyObject* obj;
+
+	obj = PyUnicode_FromStringAndSize((const char *)buf, (Py_ssize_t)len);
+	if (!obj) {
+		return -1;
+	}
+
+	if (PyDict_SetItemString(dest_dict, "SSID", obj) < 0) {
+		Py_CLEAR(obj);
+		return -1;
+	}
+	Py_CLEAR(obj);
+
+	return 0;
+}
+
+static int decode_supported_rates(uint8_t len, uint8_t* buf, PyObject* dest_dict)
+{
+	// TODO
+	return 0;
+}
+
+//static int (*decode)(uint8_t len, uint8_t* buf, PyObject* dest_dict) = decode_ssid;
+typedef int (*decode_fn)(uint8_t len, uint8_t* buf, PyObject* dest_dict);
+
+static const decode_fn decoders[256] = 
+{
+	decode_ssid,
+	decode_supported_rates,
+
+	// TODO many many more!
+};
+
 int ie_decode(uint8_t id, uint8_t len, uint8_t* buf, PyObject* dest_dict)
 {
 	assert(PyDict_Check(dest_dict));
 	printf("%s %d %d %p\n", __func__, id, len, buf);
 
+	if (decoders[id]) {
+		return decoders[id](len, buf, dest_dict);
+	}
+
 	return 0;
 }
-
