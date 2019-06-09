@@ -27,6 +27,9 @@
 
 #include <stddef.h>
 
+unsigned int mac80211_chan_to_freq(unsigned int in_chan);
+unsigned int mac80211_freq_to_chan(unsigned int in_freq);
+
 /* Create a monitor vif using mac80211, based on existing interface *interface
  * and named *newinterface.
  *

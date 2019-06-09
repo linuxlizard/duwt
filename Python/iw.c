@@ -79,7 +79,7 @@ iw_get_chanlist(PyObject *self, PyObject *args)
 				);
 	
 	printf("ret=%d\n", ret);
-	printf("num_chans=%d\n", num_chans);
+	printf("num_chans=%zu\n", num_chans);
 
 	PyObject* chanlist = PyList_New(num_chans);
 	if (!chanlist) {
