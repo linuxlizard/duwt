@@ -12,13 +12,10 @@ from pyroute2.netlink.nl80211 import nl80211cmd
 from pyroute2.netlink.nl80211 import NL80211_NAMES
 from pyroute2.common import hexdump
 
-logging.basicConfig(level=logging.DEBUG)
+import oui
+from nl80211_scan import NL80211_GetScan, NL80211_BSS_ELEMENTS_VALUES, NL80211_BSS_ELEMENTS_NAMES
 
 logger = logging.getLogger("scandump")
-logger.setLevel(level=logging.DEBUG)
-# logger.setLevel(level=logging.INFO)
-
-logging.getLogger("pyroute2").setLevel(level=logging.DEBUG)
 
 def print_ssid(ssid):
     # Be VERY careful with the SSID!  Can contain hostile input.
@@ -250,9 +247,9 @@ def main(ifname):
     # Can use 'nmcli device wifi' or 'nmcli d w' to trigger a scan which will
     # fill the scan results cache for ~30 seconds.
     # See also 'iw dev $yourdev scan dump'
-    msg = nl80211cmd()
-    msg['cmd'] = NL80211_NAMES['NL80211_CMD_GET_SCAN']
-    msg['attrs'] = [['NL80211_ATTR_IFINDEX', ifindex]]
+    msg = NL80211_GetScan(ifindex)
+#    msg['cmd'] = NL80211_NAMES['NL80211_CMD_GET_SCAN']
+#    msg['attrs'] = [['NL80211_ATTR_IFINDEX', ifindex]]
 
     scan_dump = iw.nlm_request(msg, msg_type=iw.prid,
                                msg_flags=NLM_F_REQUEST | NLM_F_DUMP)
@@ -272,5 +269,13 @@ def main(ifname):
 
 if __name__ == '__main__':
     # interface name to dump scan results
+    logging.basicConfig(level=logging.INFO)
+#    logging.basicConfig(level=logging.DEBUG)
+
+#    logger.setLevel(level=logging.DEBUG)
+    logger.setLevel(level=logging.INFO)
+
+#    logging.getLogger("pyroute2").setLevel(level=logging.DEBUG)
+
     ifname = sys.argv[1]
     main(ifname)

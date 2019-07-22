@@ -13,12 +13,12 @@ from pyroute2.netlink import NLM_F_DUMP
 import pyroute2.netlink.nl80211 as nl80211
 from pyroute2.netlink.nl80211 import nl80211cmd
 from pyroute2.netlink.nl80211 import NL80211_NAMES
-from pyroute2.netlink.nl80211 import NL80211_BSS_ELEMENTS_VALUES, NL80211_BSS_ELEMENTS_NAMES
+#from pyroute2.netlink.nl80211 import NL80211_BSS_ELEMENTS_VALUES, NL80211_BSS_ELEMENTS_NAMES
 from pyroute2.common import hexdump
 from pyroute2.common import load_dump
-from pyroute2.netlink.nl80211 import oui
 
-logging.basicConfig(level=logging.DEBUG)
+import oui
+from nl80211_scan import NL80211_GetScan, NL80211_BSS_ELEMENTS_VALUES, NL80211_BSS_ELEMENTS_NAMES
 
 logger = logging.getLogger("scanjson")
 logger.setLevel(level=logging.DEBUG)
@@ -289,35 +289,6 @@ def test_save(scan_dump, outfilename):
         print(foo[0] == foo[1])
         print(foo[0]['header'], foo[1]['header'])
 
-def main(ifname):
-    iw = IW()
-
-    ip = IPRoute()
-    ifindex = ip.link_lookup(ifname=ifname)[0]
-    ip.close()
-
-    # CMD_GET_SCAN doesn't require root privileges.
-    # Can use 'nmcli device wifi' or 'nmcli d w' to trigger a scan which will
-    # fill the scan results cache for ~30 seconds.
-    # See also 'iw dev $yourdev scan dump'
-    msg = nl80211cmd()
-    msg['cmd'] = NL80211_NAMES['NL80211_CMD_GET_SCAN']
-    msg['attrs'] = [['NL80211_ATTR_IFINDEX', ifindex]]
-
-    scan_dump = iw.nlm_request(msg, msg_type=iw.prid,
-                               msg_flags=NLM_F_REQUEST | NLM_F_DUMP)
-
-#    peek(scan_dump)
-    test_save(scan_dump, "iw_scan_dump_rsp")
-    return
-
-    jsonator = to_json(scan_dump)
-    with open("out.json", "w") as outfile:
-        print(json.dumps({n["bssid"]:n for n in jsonator}), file=outfile)
-
-    print("NAMES=",NL80211_BSS_ELEMENTS_NAMES)
-    print("VALUES=",NL80211_BSS_ELEMENTS_VALUES)
-
 def test_oui():
     import time
     for s in ("00-30-44", "00-40-68"):
@@ -349,11 +320,48 @@ def test_ssid():
 
         assert ssid == new_ssid, (hexdump(buf), ssid_ie.fields.value)
         
+def main(ifname):
+    iw = IW()
+
+    ip = IPRoute()
+    ifindex = ip.link_lookup(ifname=ifname)[0]
+    ip.close()
+
+    # CMD_GET_SCAN doesn't require root privileges.
+    # Can use 'nmcli device wifi' or 'nmcli d w' to trigger a scan which will
+    # fill the scan results cache for ~30 seconds.
+    # See also 'iw dev $yourdev scan dump'
+    msg = NL80211_GetScan(ifindex)
+#    msg['cmd'] = NL80211_NAMES['NL80211_CMD_GET_SCAN']
+#    msg['attrs'] = [['NL80211_ATTR_IFINDEX', ifindex]]
+
+    scan_dump = iw.nlm_request(msg, msg_type=iw.prid,
+                               msg_flags=NLM_F_REQUEST | NLM_F_DUMP)
+
+#    peek(scan_dump)
+#    test_save(scan_dump, "iw_scan_dump_rsp")
+#    return
+
+    jsonator = to_json(scan_dump)
+    with open("out.json", "w") as outfile:
+        print(json.dumps({n["bssid"]:n for n in jsonator}), file=outfile)
+
+    print("NAMES=",NL80211_BSS_ELEMENTS_NAMES)
+    print("VALUES=",NL80211_BSS_ELEMENTS_VALUES)
+
 if __name__ == '__main__':
-    test_oui()
+    logging.basicConfig(level=logging.INFO)
+#    logging.basicConfig(level=logging.DEBUG)
+
+#    logger.setLevel(level=logging.DEBUG)
+    logger.setLevel(level=logging.INFO)
+
+#    logging.getLogger("pyroute2").setLevel(level=logging.DEBUG)
+
+#    test_oui()
 #    test_ssid()
-    test_json_encode("iw_scan_dump_rsp")
+#    test_json_encode("iw_scan_dump_rsp")
 
     # interface name to dump scan results
-#    ifname = sys.argv[1]
-#    main(ifname)
+    ifname = sys.argv[1]
+    main(ifname)

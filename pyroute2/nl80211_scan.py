@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+
+# Hack my own nl80211 scan decode into pyroute2
+
 import struct
 import datetime
 import collections
@@ -5,6 +9,7 @@ import logging
 
 from pyroute2.netlink import nla_base
 from pyroute2.common import map_namespace
+from pyroute2.netlink.nl80211 import NL80211_NAMES
 from pyroute2.netlink.nl80211 import nl80211cmd
 from pyroute2.common import hexdump
 
@@ -916,13 +921,13 @@ class Vendor_Specific(IE):
                                    IE.Value("raw", self.data)
                                 ]
                           ))
-#        self.fields.append(IE.Value("Vendor Specific", hexdump(self.data)))
 
 
-class NL80211_Scan(nl80211cmd):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        print("Hello from NL80211_Scan!")
+class NL80211_GetScan(nl80211cmd):
+    def __init__(self, ifindex):
+        super().__init__()
+        self['cmd'] = NL80211_NAMES['NL80211_CMD_GET_SCAN']
+        self['attrs'] = [['NL80211_ATTR_IFINDEX', ifindex]]
 
     class bss(nl80211cmd.bss):
         nla_map = (('__NL80211_BSS_INVALID', 'hex'),
@@ -943,27 +948,10 @@ class NL80211_Scan(nl80211cmd):
                    ('NL80211_BSS_MAX', 'hex')
                    )
 
-        def __init__(self, *args, **kwargs):
-            print("Hello from bss!")
-            for m in self.nla_map:
-                print(m)
-#                if m[1] == 'elementsBinary':
-#                    m[1] = 'different_elementsBinary'
-#            breakpoint()
-            super().__init__(*args, **kwargs)
-
-#        def decode(self, *args, **kwargs):
-#            print(self)
-#            assert 0
 
         class my_elementsBinary(nl80211cmd.bss.elementsBinary):
-#            def __init__(self, *args, **kwargs):
-#                breakpoint()
-#                super().__init__(*args, **kwargs)
-#                print("Hello from elementsBinary!")
 
             def decode(self):
-#                breakpoint()
                 nla_base.decode(self)
 
                 self.value = {}
@@ -1059,9 +1047,6 @@ class NL80211_Scan(nl80211cmd):
             WLAN_CAPABILITY_DEL_BACK = (1 << 14)
             WLAN_CAPABILITY_IMM_BACK = (1 << 15)
 
-#            def decode_nlas(self):
-#                return
-
             def decode(self):
                 nla_base.decode(self)
 
@@ -1106,4 +1091,7 @@ class NL80211_Scan(nl80211cmd):
 
                 self.value['CAPABILITIES'] = " ".join(s)
 
+
+# monkey patch pyroute2, aiming it at my decode class
+nl80211cmd.bss = NL80211_GetScan.bss
 
