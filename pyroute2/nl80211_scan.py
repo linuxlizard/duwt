@@ -931,7 +931,7 @@ class Vendor_Specific(IE):
             vendor = "Unknown"
         self.value.update({"OUI": s,
                        "vendor name": vendor,
-                       "raw": self.data,
+                       "_raw": self.data,
                        "hex" : hexdump(self.data)})
 
 

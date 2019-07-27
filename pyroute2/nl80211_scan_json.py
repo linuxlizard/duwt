@@ -18,7 +18,8 @@ from pyroute2.common import hexdump
 from pyroute2.common import load_dump
 
 import oui
-from nl80211_scan import NL80211_GetScan, NL80211_BSS_ELEMENTS_VALUES, NL80211_BSS_ELEMENTS_NAMES
+import nl80211_scan
+#from nl80211_scan import NL80211_GetScan, NL80211_BSS_ELEMENTS_VALUES, NL80211_BSS_ELEMENTS_NAMES
 
 logger = logging.getLogger("scanjson")
 logger.setLevel(level=logging.DEBUG)
@@ -117,89 +118,28 @@ def load(dumpfilename):
         msg = nl80211cmd(data[offset:])
         msg.decode()
 
-#        bss = None
-#        for attr in msg['attrs']:
-#            key, value = attr
-#            if key == 'NL80211_ATTR_BSS':
-#                bss = value
-#                break
-#
-#        for attr in bss['attrs']:
-#            key, value = attr
-#            if key == "NL80211_BSS_BEACON_IES" or key == "NL80211_BSS_INFORMATION_ELEMENTS":
-#                # IEs can come from either a beacon or a probe response
-#                ies = value
-#                name = "beacon_ies" if key == "NL80211_BSS_BEACON_IES" else "ies"
-#                print("{} SSID={}".format(name, ies["NL80211_BSS_ELEMENTS_SSID"]))
-#            elif key == "NL80211_BSS_BSSID":
-#                print("BSSD={}".format(value))
-
         offset += msg['header']['length']
         counter += 1    
         scan_dump.append(msg)
 
     return scan_dump
 
-def json_from_ie(iename, value):
+def json_from_ie(iename, ie):
     iename.islower() # verify is string
-    logger.debug("IE %s is %s", iename, type(value))
+    logger.debug("IE %s is %s", iename, type(ie))
 
-    # expect an nl80211.IE
-    _ = value.ID
-
-    # rename to make code a little less confusing
-    ie = value
-
-    # The value is crazy free floating type. Have to carefully tease apart the
-    # type of value so we can encode it into a json-y dict-thing.
-
-    def make_value(value):
-        try:
-            # are we list-like?
-            _ = value.extend
-        except AttributeError:
-            # not a list so just return the data
-            return value
-
-        # we have a list of IE.Value so build a list of dict
-        # OR it could just be a list of POD
-        json_value = []
-        for v in value:
-            # skip empty bitfields
-            if v is None:
-                continue
-            try:
-                # note recursive call
-                json_value.append( {"name":v.name, "value":make_value(v.value)} )
-            except AttributeError:
-                # is a POD so just use the raw value
-                json_value.append(v)
-
-        return json_value
-
-    # a few special case encodings
-    if iename == "NL80211_BSS_ELEMENTS_VENDOR":
-        d_value = []
-        d = {}
-        for field in value.fields:
-            d = dict([(v.name,v.value) for v in field.value])
-            # convert the bytes to a hex string
-            d["value"] = hexdump(d['raw'])
-            # json encoder hates bytes, hates it
-            del d['raw']
-            d_value.append(d)
-
-    elif iename == "NL80211_BSS_ELEMENTS_SSID":
-        d_value = value.pretty_print()
-
+    # list ?
+    if isinstance(ie,list):
+        return [json_from_ie(iename, v) for v in ie]
     else:
-        d_value = make_value(ie.fields)
-    
-    d = { "name": NL80211_BSS_ELEMENTS_VALUES[ie.ID],
-          "id": ie.ID,
-          "len": len(ie.data),
-          "value": d_value,
-          "hex": hexdump(ie.data),
+        # expect a dict built from nl80211_scan.IE 
+        ie["_ID"]
+
+    d = { "name": nl80211_scan.NL80211_BSS_ELEMENTS_VALUES[ie["_ID"]],
+          "id": ie["_ID"],
+          "len": len(ie["_raw"]),
+          "value": {k:v for k,v in ie.items() if k[0] != '_'},
+          "hex": ie["_hex"],
         }
 #    pprint.pprint(d, width=128)
     return d
@@ -235,7 +175,7 @@ def to_json(scan_dump):
                 name = "beacon_ies" if key == "NL80211_BSS_BEACON_IES" else "ies"
 
                 # filter out my fake "TODO" element
-                bss_dict[name] = { NL80211_BSS_ELEMENTS_NAMES[k]:json_from_ie(k, ies[k]) for k in ies.keys() if k != "TODO" }
+                bss_dict[name] = { nl80211_scan.NL80211_BSS_ELEMENTS_NAMES[k]:json_from_ie(k, ies[k]) for k in ies.keys() if k != "TODO" }
 
             elif key == "NL80211_BSS_BSSID":
                 bss_dict["bssid"] = value
@@ -331,9 +271,7 @@ def main(ifname):
     # Can use 'nmcli device wifi' or 'nmcli d w' to trigger a scan which will
     # fill the scan results cache for ~30 seconds.
     # See also 'iw dev $yourdev scan dump'
-    msg = NL80211_GetScan(ifindex)
-#    msg['cmd'] = NL80211_NAMES['NL80211_CMD_GET_SCAN']
-#    msg['attrs'] = [['NL80211_ATTR_IFINDEX', ifindex]]
+    msg = nl80211_scan.NL80211_GetScan(ifindex)
 
     scan_dump = iw.nlm_request(msg, msg_type=iw.prid,
                                msg_flags=NLM_F_REQUEST | NLM_F_DUMP)
@@ -346,15 +284,12 @@ def main(ifname):
     with open("out.json", "w") as outfile:
         print(json.dumps({n["bssid"]:n for n in jsonator}), file=outfile)
 
-    print("NAMES=",NL80211_BSS_ELEMENTS_NAMES)
-    print("VALUES=",NL80211_BSS_ELEMENTS_VALUES)
-
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-#    logging.basicConfig(level=logging.DEBUG)
+#    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
 
-#    logger.setLevel(level=logging.DEBUG)
-    logger.setLevel(level=logging.INFO)
+    logger.setLevel(level=logging.DEBUG)
+#    logger.setLevel(level=logging.INFO)
 
 #    logging.getLogger("pyroute2").setLevel(level=logging.DEBUG)
 
