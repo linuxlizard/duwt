@@ -43,7 +43,7 @@ def print_bss(bss):
     interval = "???" # TSF
     caps = "??" # capabilities
 
-    ie_nums = [v["ID"] for k,v in ies.items() if k not in ("TODO", "NL80211_BSS_ELEMENTS_VENDOR")]
+    ie_nums = [v["_ID"] for k,v in ies.items() if k not in ("TODO", "NL80211_BSS_ELEMENTS_VENDOR")]
     try:
         ie_nums.extend(ies['TODO'])
     except KeyError:
