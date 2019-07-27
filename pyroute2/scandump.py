@@ -19,23 +19,31 @@ def print_bss(bss):
     # print BSS in a single line
     ies = bss['NL80211_BSS_INFORMATION_ELEMENTS']
 
-    ssid = ies['NL80211_BSS_ELEMENTS_SSID'].pretty_print()
+    ssid = ies['NL80211_BSS_ELEMENTS_SSID']["SSID"]
+    
+    # CAREFULLY sanity check the string
+    # first check for null SSIDs (some devices will tx NULL SSID instead of zero-length SSID)
+    # warning: SSIDs with terminal control characters will screw with us
+    if all([c == chr(0) for c in ssid]) or len(ssid)==0:
+        # obviously someone could create an SSID with this name
+        ssid = "<hidden>"
+
     # keep the ssid a little short
     if len(ssid) >= 16:
         ssid = ssid[:13] + "..."
 
     try:
-        channel = ies['NL80211_BSS_ELEMENTS_CHANNEL'].fields.value
+        channel = ies['NL80211_BSS_ELEMENTS_CHANNEL']["channel"]
     except KeyError:
         channel = -1
 
     # TODO
     rate = "??M"
-    sn = "??:?"
-    interval = "???"
-    caps = "??"
+    sn = "??:?"  # signal/noise
+    interval = "???" # TSF
+    caps = "??" # capabilities
 
-    ie_nums = [v.ID for k,v in ies.items() if k != "TODO"]
+    ie_nums = [v["ID"] for k,v in ies.items() if k not in ("TODO", "NL80211_BSS_ELEMENTS_VENDOR")]
     try:
         ie_nums.extend(ies['TODO'])
     except KeyError:
@@ -43,6 +51,7 @@ def print_bss(bss):
     ie_nums.sort()
 
     s =  " ".join(["%3d"%n for n in ie_nums])
+
     print("{0:16s} {1} {2:4d}  {3:4s} {4}  {5}  {6}    {7}".format(
         ssid,
         bss['NL80211_BSS_BSSID'],
@@ -76,7 +85,8 @@ def main(ifname):
                 print_bss(bss)
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.ERROR)
+#    logging.basicConfig(level=logging.INFO)
 #    logging.basicConfig(level=logging.DEBUG)
 
 #    logger.setLevel(level=logging.DEBUG)

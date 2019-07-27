@@ -48,8 +48,6 @@ class IE:
     Grammar = collections.namedtuple("Grammar",
                                      ("offset", "mask", "name"))
 
-    Value = collections.namedtuple("Value",
-                                   ("name", "value",))
 
     def __init__(self, data):
         # data is the buffer
@@ -60,11 +58,15 @@ class IE:
         # and sending us the data
         self.data = data
 
-        # array of IE.Value
-        self.fields = []
+        # Decode into a dict of key/value pairs. Using 80211_2016.pdf names as
+        # closely as possible. Keys with leading '_' are extra useful information.
+        # 
+        self.value = {"_ID":self.ID,
+                      "_hex" : hexdump(self.data),
+                      "_raw" : self.data}
 
-    def __getitem__(self, idx):
-        return self.fields[idx]
+#    def __getitem__(self, idx):
+#        return self.value[idx]
 
     def format_oui(self, data):
         return "%02x-%02x-%02x" % (data[0], data[1], data[2])
@@ -77,18 +79,27 @@ class IE:
         for field in grammar:
             num = (value >> field.offset) & field.mask
             log.debug("num=%r name=%r", num, field.name)
-            decode[field.offset] = IE.Value(field.name, num)
+            decode[field.offset] = (field.name, num)
         return decode
 
+    def decode_integer_to_dict(self, grammar, value):
+        return dict([ vtuple for vtuple in self.decode_integer(grammar, value) if vtuple is not None])
+        
     def decode(self):
-        """IE child will decode its contents into self.fields."""
+        """IE child will decode its contents into self.value."""
         pass
 
     def pretty_print(self):
-        """IE child will decode its self.fields into a human useful value"""
+        """IE child will decode its self.value into a human useful value"""
         return ""
 
-
+    @classmethod
+    def _getstr(cls, which, value):
+        try:
+            return getattr(cls, which)[value]
+        except IndexError:
+            return "invalid value %r" % value
+        
 class SSID(IE):
     ID = 0
 
@@ -96,20 +107,22 @@ class SSID(IE):
         # Be VERY careful with the SSID. Can contain hostile input.
         # SQL injection. Terminal characters. HTML injection. XSS. etc.
         fmt = '%is' % len(self.data)
-        self.fields = IE.Value("SSID", struct.unpack(fmt, self.data)[0])
+        ssid = struct.unpack( fmt, self.data)[0]
+        self.value.update({"_raw": ssid, "_hex": hexdump(self.data)})
 
-    def pretty_print(self):
         # TODO utf8 encoding of SSID is optional. Shouldn't be unconditionally 
         # treating as UTF8
         #
         try:
-            s = self.fields.value.decode("utf8")
+            s = self.value["_raw"].decode("utf8")
             # TODO check for unprintable chars (how badly will this hose unicode????)
-            return s
         except UnicodeDecodeError:
-            msg = "(error! SSID is invalid unicode) " + hexdump(self.fields.value)
+            msg = "(error! SSID is invalid unicode) " + self.value["_hex"]
             log.error(msg)
-            return msg
+            s = "<invalid utf8>"
+
+        self.value["SSID"] = s
+
 
 class Supported_Rates(IE):
     ID = 1
@@ -150,15 +163,17 @@ class Supported_Rates(IE):
         oper_rate_set = [rate[0] for rate in decoded if not rate[1] and not isinstance(rate[0], str)]
         memb_selector_set = [rate[0] for rate in decoded if isinstance(rate[0],str)]
 
-        self.fields = [ IE.Value("BSS Basic Rate Set", basic_rate_set),
-                        IE.Value("BSS Operational Rate Set", oper_rate_set),
-                        IE.Value("BSS Membership Selector Set", memb_selector_set),
-                      ]
+        self.value.update({ "BSS Basic Rate Set": basic_rate_set,
+                        "BSS Operational Rate Set": oper_rate_set,
+                        "BSS Membership Selector Set": memb_selector_set,
+                     })
 
-    def pretty_print(self):
+    @staticmethod
+    def pretty_print(data):
+        # re-decode the IE and build a string in 'iw' style
         string = ""
-        fmt = "%dB" % len(self.data) 
-        for byte in struct.unpack(fmt, self.data):
+        fmt = "%dB" % len(data) 
+        for byte in struct.unpack(fmt, data):
             # if byte & 0x80 then it's a required rate
             # following code from iw scan.c print_supprates()
             r = byte & 0x7f
@@ -177,12 +192,8 @@ class DSSS_Parameter_Set(IE):
     ID = 3
 
     def decode(self):
-#        self.fields = list(struct.unpack('B', self.data))
-        self.fields = IE.Value("channel", struct.unpack('B', self.data)[0])
-
-    def pretty_print(self):
-        # single valued field
-        return "channel {}".format(self.fields.value)
+        n = struct.unpack('B', self.data)[0]
+        self.value.update({"channel": (struct.unpack('B', self.data)[0]) })
 
 
 class TIM(IE):
@@ -193,20 +204,17 @@ class TIM(IE):
         (count, period, bitmapc,) = struct.unpack('BBB', self.data[0:3])
         bitmap_hex = hexdump(self.data[3:])
 
-        self.fields = [
-            IE.Value("DTIM Count", count),
-            IE.Value("DTIM Period", period),
-            IE.Value("Bitmap Control", bitmapc),
-            IE.Value("Bitmap", bitmap_hex)]
+        self.value.update({
+            "DTIM Count": count,
+            "DTIM Period": period,
+            "Bitmap Control": bitmapc,
+            "Bitmap": bitmap_hex
+            })
 
     def pretty_print(self):
-        count = self.fields[0].value
-        period = self.fields[1].value
-        bitmapc = self.fields[2].value
-        bitmap = self.fields[3].value
-
-        return ("DTIM Count {0} DTIM Period {1} Bitmap Control 0x{2} "
-                "Bitmap {3}".format(count, period, bitmapc, bitmap))
+        # match what 'iw' prints
+        return ("DTIM Count {0[DTIM Count]} DTIM Period {0[DTIM Period]} Bitmap Control 0x{0[Bitmap Control]:x} "
+                "Bitmap 0x{0[Bitmap]}".format(self.value))
 
 
 class Country(IE):
@@ -246,9 +254,7 @@ class Country(IE):
         else:
             environment = "(invalid!)"
 
-        self.fields = [ IE.Value("Country", country_string), 
-                        IE.Value("Environment", environment),
-                      ]
+        self.value.update({ "Country": country_string, "Environment": environment})
 
         if len(self.data) == 3:
             # no country codes so can leave now
@@ -258,22 +264,22 @@ class Country(IE):
         # now the decode gets weird
         # iw scan.c print_country()
         offset = 3
-        subband_triplets = IE.Value("Subbands", [])
+        subband_triplets = []
         while offset+2 < len(self.data):
             triplet = struct.unpack("BBB", self.data[offset:offset+3])
             if triplet[0] >= self.IEEE80211_COUNTRY_EXTENSION_ID:
-                val_triplet = [IE.Value("Extension ID", triplet[0]), 
-                               IE.Value("Regulatory Class", triplet[1]),
-                               IE.Value("Coverage Class", triplet[2])]
+                val_triplet = {"Extension ID": triplet[0], 
+                               "Regulatory Class": triplet[1],
+                               "Coverage Class": triplet[2]}
             else:
-                val_triplet = [IE.Value("First Channel", triplet[0]), 
-                               IE.Value("Number of Channels", triplet[1]),
-                               IE.Value("Max TX Power (dBm)", triplet[2])]
+                val_triplet = {"First Channel": triplet[0], 
+                               "Number of Channels": triplet[1],
+                               "Max TX Power (dBm)": triplet[2]}
             offset += 3
 
-            subband_triplets.value.append(val_triplet)
+            subband_triplets.append(val_triplet)
 
-        self.fields.append(subband_triplets)
+        self.value["Subbands"] = subband_triplets
 
 class HT_Capabilities(IE):
     # iw scan.c print_ht_capa()
@@ -397,22 +403,20 @@ class HT_Capabilities(IE):
         # 9.4.2.56.2 HT Capability Info Field
         # 2 octets
         num, = struct.unpack_from("<H", self.data, offset)
-        self.fields.append(IE.Value('HT Capability Info',
-                           self.decode_integer(self.capa_grammar, num)))
+        self.value['HT Capability Info'] = self.decode_integer_to_dict(self.capa_grammar, num)
         offset += 2
 
         # 9.4.2.56.3 A-MPDU Parameters
         # 1 octet
         num, = struct.unpack_from("B", self.data, offset)
-        self.fields.append(IE.Value('AMPDU Parameters',
-                           self.decode_integer(self.ampdu_grammar, num)))
+        self.value['AMPDU Parameters'] = self.decode_integer_to_dict(self.ampdu_grammar, num)
         offset += 1
 
         # 9.4.2.56.4 Supported MCS Set
         # 16 octets
         # iw util.c print_ht_mcs
         mcs = struct.unpack_from("16B", self.data, offset)
-        self.fields.append(IE.Value("Supported MCS Set", mcs))
+        self.value["Supported MCS Set"] = mcs
         # TODO MCS crazy complicated so finish later
         # max_rx_supp_data_rate = (mcs[10] | ((mcs[11] & 0x3) << 8));
         # tx_mcs_set_defined = not(not(mcs[12] & (1 << 0)));
@@ -423,37 +427,40 @@ class HT_Capabilities(IE):
 
         # HT Extended Capabilities
         # 2 octets
-        num, = struct.unpack_from("<H", self.data, offset)
-        self.fields.append(IE.Value("HT Extended Capabilities",
-                           self.decode_integer(self.extended_capa_grammar,
-                                               num)))
+        num, = struct.unpack_from(">H", self.data, offset)
+        self.value["HT Extended Capabilities"] = \
+                   self.decode_integer_to_dict(self.extended_capa_grammar, num)
         offset += 2
 
         # TX beamforming capabilities
         # 4 octets
         num, = struct.unpack_from("<L", self.data, offset)
-        val = self.decode_integer(self.tx_beam_form_capabilities_grammar, num)
-        self.fields.append(IE.Value("TX Beamforming Capabilities", val))
+        self.value["TX Beamforming Capabilities"] =\
+                   self.decode_integer_to_dict(self.tx_beam_form_capabilities_grammar, num)
         offset += 4
 
         # ASEL capabilities
         # 1 octet
         num, = struct.unpack_from("B", self.data, offset)
-        self.fields.append(IE.Value("ASEL Capability",
-                           self.decode_integer(self.asel_capabilities, num)))
+        self.value["ASEL Capability"] =\
+                   self.decode_integer_to_dict(self.asel_capabilities, num)
         offset += 1
 
-    def channel_width_str(self, value):
-        return self.channel_width[value]
+    @staticmethod
+    def channel_width_str(value):
+        return HT_Capabilities._getstr("channel_width", value)
 
-    def sm_power_save_str(self, value):
-        return self.power_save[value]
+    @staticmethod
+    def sm_power_save_str(value):
+        return HT_Capabilities._getstr("power_save", value)
 
-    def rx_stbc_str(self, value):
-        return self.rx_stbc_streams[value]
+    @staticmethod
+    def rx_stbc_str(value):
+        return HT_Capabilities._getstr("rx_stbc_streams", value)
 
-    def max_amsdu_len(self, value):
-        return self.amsdu_length[value]
+    @staticmethod
+    def max_amsdu_len(value):
+        return HT_Capabilities._getstr("amsdu_length", value)
 
 
 class RSN(IE):
@@ -519,7 +526,7 @@ class RSN(IE):
         offset = 0
         version = self.data[0] + (self.data[1] << 8)
 
-        self.fields = [IE.Value("Version", version), ]
+        self.value["Version"] = version
         offset += 2
 
         # pretty much optional fields from here on down
@@ -527,13 +534,13 @@ class RSN(IE):
 
         # Group Data Cipher Suite
         group = struct.unpack("4B", self.data[offset:offset+4])
-        self.fields.append( IE.Value("Group Cipher Suite", self._decode_cipher(group)))
+        self.value["Group Cipher Suite"] =  self._decode_cipher(group)
         offset += 4
         if offset >= len(self.data): return
 
         # Pairwise Cipher Suite Count
         pairwise_count, = struct.unpack("<H", self.data[offset:offset+2])
-        self.fields.append(IE.Value("Pairwise Count", pairwise_count))
+        self.value["Pairwise Count"] = pairwise_count
         offset += 2
         if offset >= len(self.data): return
 
@@ -541,14 +548,14 @@ class RSN(IE):
         length = 4 * pairwise_count
         fmt = "%dB" % length
         pairwise_bytes = struct.unpack(fmt, self.data[offset:offset+length])
-        pairwise_list = [self._decode_cipher(pairwise_bytes[n:n+4]) for n in range(0, length, 4)]
-        self.fields.append(IE.Value("Pairwise Bytes", pairwise_list))
+        self.value["Pairwise Cipher Suite"] = \
+                [self._decode_cipher(pairwise_bytes[n:n+4]) for n in range(0, length, 4)]
         offset += length
         if offset >= len(self.data): return
 
         # AKM Suite Count
         akm_suite_count, = struct.unpack("<H", self.data[offset:offset+2])
-        self.fields.append(IE.Value("AKM Suite Count", akm_suite_count))
+        self.value["AKM Suite Count"] = akm_suite_count
         offset += 2
         if offset >= len(self.data): return
 
@@ -557,26 +564,28 @@ class RSN(IE):
         fmt = "%dB" % length
         akm_suite_bytes = struct.unpack(fmt, self.data[offset:offset+length])
         akm_suite_list = [self._decode_auth(akm_suite_bytes[n:n+4]) for n in range(0,length,4)]
-        self.fields.append(IE.Value("AKM Suite", akm_suite_list))
+        self.value["AKM Suite"] = akm_suite_list
         offset += length
         if offset >= len(self.data): return
 
         # RSN Capabilities
         rsn_capa, = struct.unpack("<H", self.data[offset:offset+2])
-        self.fields.append(IE.Value("RSN Capabilities", 
-                           self.decode_integer(self.rsn_capabilities, rsn_capa)))
+        self.value["RSN Capabilities"] =\
+                   self.decode_integer_to_dict(self.rsn_capabilities, rsn_capa)
         offset += 2
         if offset >= len(self.data): return
 
         # PMKID Count
         pmkid_count, = struct.unpack("<H", self.data[offset:offset+2])
-        self.fields.append(IE.Value("PMKID Count", pmkid_count))
+        self.value["PMKID Count"] = pmkid_count
         offset += 2
         if offset >= len(self.data): return
 
         # PMKID List
+        # TODO
 
         # Group Management Cipher Suite
+        # TODO
 
 
     def _decode_cipher(self, bytelist):
@@ -594,10 +603,10 @@ class RSN(IE):
             # TODO
             pass
 
-        return [IE.Value("OUI", oui),
-                IE.Value("Suite Type", suite_type), 
-                IE.Value("Suite Name", meaning),
-               ]
+        return {"OUI": oui,
+                "Suite Type": suite_type, 
+                "Suite Name": meaning,
+               }
 
     def _decode_auth(self, bytelist):
         # iw scan.c print_auth()
@@ -614,10 +623,10 @@ class RSN(IE):
             # TODO
             pass
 
-        return [IE.Value("OUI", oui),
-                IE.Value("Suite Type", suite_type), 
-                IE.Value("Suite Name", meaning),
-               ]
+        return {"OUI": oui,
+                "Suite Type": suite_type, 
+                "Suite Name": meaning,
+               }
 
 class Extended_Rates(Supported_Rates):
     ID = 50
@@ -669,8 +678,8 @@ class HT_Operation(IE):
 
         # primary channel
         # 1 octet
-        num, = struct.unpack_from("B", self.data, offset)
-        self.fields.append(IE.Value("Primary Channel", num))
+        self.value["Primary Channel"] =\
+                   struct.unpack_from("B", self.data, offset)[0]
         offset += 1
 
         # HT Operation Information
@@ -680,22 +689,24 @@ class HT_Operation(IE):
         #  - natural break occurs at B31 "Dual CTS Protection"
         # therefore decode into a uint32_t and uint16_t
         info = struct.unpack_from("<LH", self.data, offset)
-        info_fields = self.decode_integer(self.info_1_grammar, info[0])
-        info_fields.extend(self.decode_integer(self.info_2_grammar, info[1]))
-        self.fields.append(IE.Value("Information", info_fields))
+        info_fields = self.decode_integer_to_dict(self.info_1_grammar, info[0])
+        info_fields.update(self.decode_integer_to_dict(self.info_2_grammar, info[1]))
+        self.value["Information"] = info_fields
         offset += 5
 
         # Basic MT-MCS Set
         # 16 octets
         mcs = struct.unpack_from("16B", self.data, offset)
-        self.fields.append(IE.Value("Basic HT-MCS Set", mcs))
+        self.value["Basic HT-MCS Set"] = mcs
         offset += 16
 
-    def secondary_channel_offset(self, value):
-        return self.ht_secondary_offset[value]
+    @staticmethod
+    def secondary_channel_offset(value):
+        return HT_Operation._getstr('ht_secondary_offset', value)
 
-    def sta_channel_width(self, value):
-        return self.sta_chan_width[value]
+    @staticmethod
+    def sta_channel_width(value):
+        return HT_Operation._getstr("sta_chan_width", value)
 
 
 class Extended_Capabilities(IE):
@@ -806,9 +817,10 @@ class Extended_Capabilities(IE):
         nums = struct.unpack("%dB" % len(self.data), self.data)
 
         # TODO use is_vht to decode Max AMSDU (somehow...)
-        self.fields = [IE.Value(self.bits[byte][bit], nums[byte] & (1 << bit))
-                       for byte in range(min(8, len(nums)))
-                       for bit in range(0, 8)]
+        self.value.update({ self.bits[byte][bit]: nums[byte] & (1 << bit) \
+                       for byte in range(min(8, len(nums)))\
+                       for bit in range(0, 8)
+                       })
 
 
 class VHT_Capabilities(IE):
@@ -853,20 +865,22 @@ class VHT_Capabilities(IE):
         offset = 0
         # 4 octets
         num, = struct.unpack_from("<L", self.data, offset)
-        self.fields.append(IE.Value("VHT Capability Info",
-                           self.decode_integer(self.capa_grammar, num)))
+        self.value["VHT Capability Info"] =\
+                   self.decode_integer_to_dict(self.capa_grammar, num)
         offset += 4
 
         # 8 octets
         num = struct.unpack_from("<4H", self.data, offset)
         # TODO decode MCS
-        self.fields.append(IE.Value("MCS", num))
+        self.value["MCS"]  = num
 
-    def max_mpdu_len(self, value):
-        return self.max_mpdu[value]
+    @staticmethod
+    def max_mpdu_len(value):
+        return VHT_Capabilities._getstr("max_mpdu", value)
 
-    def supported_chan_width_str(self, value):
-        return self.channel_width[value]
+    @staticmethod
+    def supported_chan_width_str(value):
+        return VHT_Capabilities._getstr("channel_width", value)
 
 
 class VHT_Operation(IE):
@@ -885,21 +899,22 @@ class VHT_Operation(IE):
         offset = 0
         oper_info = struct.unpack("3B", self.data[0:3])
         offset += 3
-        self.fields.append(IE.Value("Operation Info",
-                            [IE.Value("Channel Width", oper_info[0]),
-                             IE.Value("Channel Center Frequency Segment 0", oper_info[1]),
-                             IE.Value("Channel Center Frequency Segment 1", oper_info[2]),
-                            ]))
+        self.value.update({ "Operation Info":
+                            {"Channel Width": oper_info[0],
+                             "Channel Center Frequency Segment 0": oper_info[1],
+                             "Channel Center Frequency Segment 1": oper_info[2],
+                            }})
 
         # bitmap of 16-bits
         vht_mcs_nss_set, = struct.unpack("<H", self.data[offset:offset+2])
-        self.fields.append(IE.Value("VHT-MSS and NSS Set", vht_mcs_nss_set))
+        self.value["VHT-MSS and NSS Set"] = vht_mcs_nss_set
 
         offset += 2
 
-    def channel_width_str(self, value):
+    @staticmethod
+    def channel_width_str(value):
         try:
-            return self.channel_width[value]
+            return VHT_Operation.channel_width[value]
         except IndexError:
             return "Reserved"
         
@@ -914,13 +929,10 @@ class Vendor_Specific(IE):
             vendor = oui.vendor_lookup(s.upper())
         except KeyError:
             vendor = "Unknown"
-        self.fields.append(IE.Value("Vendor Specific", 
-                                [
-                                   IE.Value("OUI", s),
-                                   IE.Value("vendor name", vendor),
-                                   IE.Value("raw", self.data)
-                                ]
-                          ))
+        self.value.update({"OUI": s,
+                       "vendor name": vendor,
+                       "raw": self.data,
+                       "hex" : hexdump(self.data)})
 
 
 class NL80211_GetScan(nl80211cmd):
@@ -995,13 +1007,16 @@ class NL80211_GetScan(nl80211cmd):
 
                     cls = ie_class_map[msg_type]
                     offset += 2
-                    val = cls(self.data[offset:offset + length])
-                    val.decode()
-                    if msg_type == NL80211_BSS_ELEMENTS_VENDOR and msg_name in self.value:
-                        # append to existing vendorid
-                        self.value[msg_name].fields.extend(val.fields)
+                    elem = cls(self.data[offset:offset + length])
+                    elem.decode()
+                    if msg_type == NL80211_BSS_ELEMENTS_VENDOR:
+                        if msg_name in self.value:
+                            # append to existing vendorid
+                            self.value[msg_name].append(elem.value)
+                        else:
+                            self.value[msg_name] = [elem.value]
                     else:
-                        self.value[msg_name] = val
+                        self.value[msg_name] = elem.value
                     offset += length
 
         class TSF(nla_base):
