@@ -263,6 +263,25 @@ def test_ssid():
 
         assert ssid == new_ssid, (hexdump(buf), ssid_ie.fields.value)
         
+def run(ifname):
+    iw = IW()
+
+    ip = IPRoute()
+    ifindex = ip.link_lookup(ifname=ifname)[0]
+    ip.close()
+
+    # CMD_GET_SCAN doesn't require root privileges.
+    # Can use 'nmcli device wifi' or 'nmcli d w' to trigger a scan which will
+    # fill the scan results cache for ~30 seconds.
+    # See also 'iw dev $yourdev scan dump'
+    msg = nl80211_scan.NL80211_GetScan(ifindex)
+
+    scan_dump = iw.nlm_request(msg, msg_type=iw.prid,
+                               msg_flags=NLM_F_REQUEST | NLM_F_DUMP)
+
+    jsonator = to_json(scan_dump)
+    return json.dumps({n["bssid"]:n for n in jsonator})
+
 def main(ifname):
     iw = IW()
 
