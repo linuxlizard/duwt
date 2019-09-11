@@ -191,6 +191,9 @@ def to_json(scan_dump):
             elif key == "NL80211_BSS_SEEN_MS_AGO":
                 bss_dict["seen"] = {"value": value, "units": "ms"}
 
+            elif key == "NL80211_BSS_SIGNAL_MBM":
+                bss_dict["signal"] = {"value": value['SIGNAL_STRENGTH']['VALUE'], "units": "dBm"}
+
         yield bss_dict
 
 
