@@ -19,8 +19,11 @@ def print_bss(bss):
     # print BSS in a single line
     ies = bss['NL80211_BSS_INFORMATION_ELEMENTS']
 
-    ssid = ies['NL80211_BSS_ELEMENTS_SSID']["SSID"]
-    
+    try:
+        ssid = ies['NL80211_BSS_ELEMENTS_SSID']["SSID"]
+    except KeyError:
+        ssid = "<hidden>"
+
     # CAREFULLY sanity check the string
     # first check for null SSIDs (some devices will tx NULL SSID instead of zero-length SSID)
     # warning: SSIDs with terminal control characters will screw with us
