@@ -1,0 +1,10 @@
+
+A full-featured and high-performance event loop
+http://software.schmorp.de/pkg/libev.html
+http://dist.schmorp.de/libev/libev-4.27.tar.gz
+
+ICU - International Components for UnicodeICU - International Components for Unicode
+http://site.icu-project.org/
+https://github.com/unicode-org/icu/releases/tag/release-65-1
+(Fedora) dnf install libicu-devel
+
