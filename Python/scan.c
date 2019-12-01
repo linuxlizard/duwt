@@ -201,6 +201,14 @@ static PyObject* parse_bss(struct nlattr* bss[])
 	}
 
 	// nl80211.h enum nl80211_bss
+	if (bss[NL80211_BSS_TSF]) {
+		uint64_t tsf = nla_get_u64(bss[NL80211_BSS_TSF]);
+		retcode = PyDict_SetItemString(bss_dict, "TSF", PyLong_FromUnsignedLongLong(tsf));
+		if (retcode) {
+			// TODO
+		}
+	}
+
 	if (bss[NL80211_BSS_FREQUENCY]) {
 		uint32_t freq = nla_get_u32(bss[NL80211_BSS_FREQUENCY]);
 		retcode = PyDict_SetItemString(bss_dict, "frequency", PyLong_FromUnsignedLong(freq));
@@ -260,10 +268,12 @@ static PyObject* parse_bss(struct nlattr* bss[])
 		PyObject* ie_dict = parse_ies(ies);
 		if (!ie_dict) {
 			// TODO 
+			goto fail;
 		}
 		
 		if (PyDict_SetItemString(bss_dict, "ie", ie_dict) < 0) {
-			// TODO
+			Py_CLEAR(ie_dict);
+			goto fail;
 		}
 		Py_CLEAR(ie_dict);
 	}
@@ -274,6 +284,10 @@ static PyObject* parse_bss(struct nlattr* bss[])
 	}
 
 	return bss_dict;
+
+fail:
+	Py_DECREF(bss_dict);
+	return NULL;
 }
 
 // iw scan.c print_bss_handler()
@@ -325,17 +339,15 @@ static int nl80211_get_scan_cb(struct nl_msg *msg, void *arg)
 		}
 
 		PyObject* bss_dict = parse_bss(bss);
-		if (!bss_dict) {
-			// TODO
+		if (bss_dict) {
+			if (PyList_Append(network_list, bss_dict) < 0) {
+				// TODO
+			}
+			Py_CLEAR(bss_dict);
 		}
-
-		if (PyList_Append(network_list, bss_dict) < 0) {
-			// TODO
-		}
-		Py_CLEAR(bss_dict);
 	}
 
-    return NL_SKIP;
+	return NL_SKIP;
 }
 
 PyObject* get_scan(PyObject* Py_UNUSED(self), PyObject* args)
@@ -371,7 +383,8 @@ PyObject* get_scan(PyObject* Py_UNUSED(self), PyObject* args)
 	if (!msg) {
 		goto finally;
 	}
-    cb = nl_cb_alloc(NL_CB_DEFAULT);
+//	cb = nl_cb_alloc(NL_CB_DEFAULT);
+	cb = nl_cb_alloc(NL_CB_DEBUG);
 	if (!cb) {
 		goto finally;
 	}

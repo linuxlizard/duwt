@@ -1,6 +1,8 @@
 import _iw
 from _iw import *
 
+import datetime
+
 # iw scan.c print_capa_non_dmg()
 def decode_capabilities(capa):
     s = []
@@ -37,3 +39,11 @@ def decode_capabilities(capa):
     if capa & _iw.WLAN_CAPABILITY_IMM_BACK:
         s.append("ImmediateBACK")
     return s
+
+def decode_tsf(tsf):
+# iw scan.c print_bss_handler()
+#    printf("\tTSF: %llu usec (%llud, %.2lld:%.2llu:%.2llu)\n",
+#            tsf, tsf/1000/1000/60/60/24, (tsf/1000/1000/60/60) % 24,
+#            (tsf/1000/1000/60) % 60, (tsf/1000/1000) % 60);
+    # TSF is in microseconds
+    return datetime.timedelta(microseconds=tsf)

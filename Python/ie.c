@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <arpa/inet.h>
 
 #include "ie.h"
 
@@ -273,6 +274,31 @@ static int decode_supported_rates(uint8_t len, uint8_t* buf, PyObject* dest_dict
 	return 0;
 }
 
+static int decode_uint32(uint8_t len, uint8_t* buf, PyObject* dest_dict)
+{
+	return -1;
+	// contains just a 4-byte uint32 (big endian)
+	if (len != 4) {
+		return -1;
+	}
+
+	uint32_t value = ntohl(*(uint32_t*)buf);
+	printf("%s %" PRIu32 "\n", __func__, value);
+
+	PyObject* obj = PyLong_FromUnsignedLong(value);
+	if (!obj) {
+		return -1;
+	}
+
+	if (PyDict_SetItemString(dest_dict, "value", obj) < 0) {
+		Py_CLEAR(obj);
+		return -1;
+	}
+	Py_CLEAR(obj);
+
+	return 0;
+}
+
 //static int (*decode)(uint8_t len, uint8_t* buf, PyObject* dest_dict) = decode_ssid;
 typedef int (*decode_fn)(uint8_t len, uint8_t* buf, PyObject* dest_dict);
 
@@ -280,6 +306,8 @@ static const decode_fn decoders[256] =
 {
 	decode_ssid,
 	decode_supported_rates,
+	NULL,
+	decode_uint32, // DSSS Parameter Set
 
 	// TODO many many more!
 };
