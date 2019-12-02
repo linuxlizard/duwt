@@ -6,55 +6,8 @@
 #include "linux_netlink_control.h"
 #include "iw.h"
 #include "scan.h"
+#include "event.h"
 
-static PyObject *IW_Error;
-
-#if 0
-static PyObject *
-spam_system(PyObject *self, PyObject *args)
-{
-	const char *command;
-	int sts;
-
-	if (!PyArg_ParseTuple(args, "s", &command))
-		return NULL;
-	sts = system(command);
-	return PyLong_FromLong(sts);
-}
-
-
-
-PyMODINIT_FUNC
-PyInit_spam(void)
-{
-	PyObject *m;
-
-	m = PyModule_Create(&spammodule);
-	if (m == NULL)
-		return NULL;
-
-	SpamError = PyErr_NewException("spam.error", NULL, NULL);
-	Py_INCREF(SpamError);
-	PyModule_AddObject(m, "error", SpamError);
-	return m;
-}
-#endif
-
-static PyObject *
-iw_hello(PyObject* Py_UNUSED(self), PyObject *args)
-{
-	const char *command;
-	int sts=0;
-
-	if (!PyArg_ParseTuple(args, "s", &command))
-		return NULL;
-	return Py_BuildValue("y", "hello");
-	if (sts < 0) {
-		PyErr_SetString(IW_Error, "System command failed");
-		return NULL;
-	}
-	return PyLong_FromLong(sts);
-}
 
 static PyObject *
 iw_get_chanlist(PyObject* Py_UNUSED(self), PyObject *args)
@@ -67,7 +20,7 @@ iw_get_chanlist(PyObject* Py_UNUSED(self), PyObject *args)
 		return NULL;
 
 	size_t num_chans;
-	char **chan_list;
+	char **chanlist;
 
 	ret = mac80211_get_chanlist(
 				interface,
@@ -75,34 +28,33 @@ iw_get_chanlist(PyObject* Py_UNUSED(self), PyObject *args)
 				errstr,
 				0,
 				0,
-				&chan_list,
+				&chanlist,
 				&num_chans
 				);
-	
-	printf("ret=%d\n", ret);
-	printf("num_chans=%zu\n", num_chans);
+	if (ret < 0) {
+		PyErr_SetString(PyExc_Exception, "get chanlist failed");
+		return NULL;
+	}
 
-	PyObject* chanlist = PyList_New(num_chans);
-	if (!chanlist) {
+
+	PyObject* py_chanlist = PyList_New(num_chans);
+	if (!py_chanlist) {
 		return PyErr_NoMemory();
 	}
 
 	size_t i;
 	for (i=0 ; i<num_chans ; i++ ) {
-		ret = PyList_SetItem(chanlist, i, PyLong_FromString(chan_list[i], NULL, 10));
+		ret = PyList_SetItem(py_chanlist, i, PyLong_FromString(chanlist[i], NULL, 10));
 	}
 
-//int mac80211_get_chanlist(const char *interface, unsigned int extended_flags, char *errstr,
-//        unsigned int default_ht20, unsigned int expand_ht20,
-//        char ***ret_chanlist, size_t *ret_chanlist_len);
-
-	return chanlist;
+	return py_chanlist;
 }
 
 static PyMethodDef IW_Methods[] = {
-	{"hello",  iw_hello, METH_VARARGS, "Hello, world"},
-	{"get_chanlist",  iw_get_chanlist, METH_VARARGS, "Hello, world"},
-	{"get_scan",  get_scan, METH_VARARGS, "Hello, world"},
+	{"get_chanlist", iw_get_chanlist, METH_VARARGS, "Get channel list"},
+	{"request_scan", request_scan, METH_VARARGS, "Start a scan"},
+	{"get_scan", get_scan, METH_VARARGS, "Get scan results"},
+	{"event_recv", start_event_listen, METH_VARARGS, "Monitor & report events"},
 
 	{NULL, NULL, 0, NULL}		/* Sentinel */
 };

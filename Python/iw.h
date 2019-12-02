@@ -1,3 +1,7 @@
+#include <linux/nl80211.h>
+
+#define ETH_ALEN 6
+
 /* iw scan.c */
 #define WLAN_CAPABILITY_ESS		(1<<0)
 #define WLAN_CAPABILITY_IBSS		(1<<1)
@@ -31,4 +35,15 @@
 #define WLAN_CAPABILITY_DMG_SPECTRUM_MGMT	(1<<8)
 #define WLAN_CAPABILITY_DMG_RADIO_MEASURE	(1<<12)
 
+#define ARRAY_SIZE(ar) (sizeof(ar)/sizeof(ar[0]))
+#define DIV_ROUND_UP(x, y) (((x) + (y - 1)) / (y))
 
+const char *command_name(enum nl80211_commands cmd);
+const char *attribute_name(enum nl80211_attrs attr);
+
+#ifndef HAVE_IF_NAMETOINDEX
+extern unsigned int if_nametoindex (const char *);
+#endif
+#ifndef HAVE_IF_INDEXTONAME
+extern char *if_indextoname (unsigned int, char *);
+#endif

@@ -67,6 +67,13 @@ static inline void nl_socket_free(struct nl_sock *h) {
 
 #endif
 
+/* Describes a netlink multicast (event) group */
+struct mc_group_descr {
+	const char *group;
+	int id;
+};
+
+
 unsigned int mac80211_chan_to_freq(unsigned int in_chan) {
     /* 802.11 channels to frequency; if it looks like a frequency, return as
      * pure frequency; derived from iwconfig */
@@ -116,7 +123,9 @@ int mac80211_connect(const char *interface, void **nl_sock,
     }
 
     *nl_sock = nl_socket_alloc();
-    if (!nl_sock) {
+	// dwoodham 20190813 ; XXX bug comparison should be to state of (*nl_sock) vs. nl_sock itself
+    // if (!nl_sock) {
+    if (!(*nl_sock)) {
         snprintf(errstr, STATUS_MAX, 
                 "unable to connect to netlink: could not allocate netlink socket");
         return -1;
@@ -125,8 +134,10 @@ int mac80211_connect(const char *interface, void **nl_sock,
     if (genl_connect(*nl_sock)) {
         snprintf(errstr, STATUS_MAX, 
                 "unable to connect to netlink: could not connect to generic netlink");
-        return -1;
+        // dwoodham 20190813 ; XXX bug returns before freeing socket
+        // return -1;
         nl_socket_free(*nl_sock);
+        return -1;
     }
 
     *nl80211_id = genl_ctrl_resolve(*nl_sock, "nl80211");
@@ -136,6 +147,8 @@ int mac80211_connect(const char *interface, void **nl_sock,
         snprintf(errstr, STATUS_MAX, 
                 "unable to connect to netlink: could not resolve nl80211");
         nl_socket_free(*nl_sock);
+        // dwoodham 20190813 ; XXX bug need to return an error value
+        return -1;
     }
 
     return 0;
@@ -602,18 +615,21 @@ static int nl80211_freqlist_cb(struct nl_msg *msg, void *arg) {
 
 #ifdef HAVE_LINUX_NETLINK
 static int nl80211_error_cb(struct sockaddr_nl *nla UNUSED, struct nlmsgerr *err, void *arg) {
+	// printf("%s\n", __func__);
 	int *ret = (int *) arg;
 	*ret = err->error;
 	return NL_STOP;
 }
 
 static int nl80211_finish_cb(struct nl_msg *msg UNUSED, void *arg) {
+	// printf("%s\n", __func__);
 	int *ret = (int *) arg;
 	*ret = 0;
 	return NL_SKIP;
 }
 
 static int nl80211_ack_cb(struct nl_msg *msg UNUSED, void *arg) {
+	// printf("%s\n", __func__);
     int *ret = arg;
     *ret = 0;
     return NL_STOP;

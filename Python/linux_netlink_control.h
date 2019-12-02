@@ -59,6 +59,7 @@ int mac80211_create_monitor_vif(const char *interface, const char *newinterface,
 int mac80211_connect(const char *interface, void **nl_sock, int *nl80211_id, 
         int *if_index, char *errstr);
 
+
 /* Disconnect from nl80211; frees resources used */
 void mac80211_disconnect(void *nl_sock);
 

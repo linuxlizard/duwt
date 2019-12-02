@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
 import sys
+import time
+import faulthandler
+
 import pprint 
 
 import iw
@@ -9,7 +12,7 @@ iface = "wlan1"
 iface = "wlp1s0"
 iface = sys.argv[1]
 
-print(iw.hello(iface))
+#print(iw.hello(iface))
 print(iw.get_chanlist(iface))
 
 scan_dump = iw.get_scan(iface)
@@ -31,3 +34,16 @@ for bss in scan_dump:
     print("\tSSID: {}".format(bss["ie"][0]["SSID"]))
     print("\tDS Parameter set: (TODO)")
     print(bss.keys())
+
+#faultfile = open("/tmp/dave.txt","w")
+#faulthandler.register(15, faultfile)
+#faulthandler.register(2, faultfile)
+#
+print("waiting on event_recv...")
+fd = iw.event_recv()
+print(fd)
+
+#while 1:
+#	print("foo")
+#	time.sleep(5)
+
