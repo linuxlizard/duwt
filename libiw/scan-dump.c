@@ -98,11 +98,11 @@ static void print_dsss_param(struct BSS* bss)
 	}
 }
 
-static void print_bss(struct BSS* bss)
+static const UChar* get_ssid(struct BSS* bss)
 {
-	XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
 	const UChar* ssid = NULL;
+
 	if (ie) {
 		const struct IE_SSID *ie_ssid = IE_CAST(ie, const struct IE_SSID);
 		if (ie_ssid->ssid_len) {
@@ -110,6 +110,17 @@ static void print_bss(struct BSS* bss)
 //				hex_dump("ssid", ie->buf, ie->len);
 		}
 	}
+	else {
+		ERR("BSS %s has no SSID\n", bss->bssid_str);
+	}
+
+	// TODO check for weird-o SSIDs full of NULLs
+	return ssid ? ssid : hidden;
+}
+
+static void print_bss(struct BSS* bss)
+{
+	XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
 
 	printf("BSS %s\n", bss->bssid_str);
 	char tsf_str[64];
@@ -119,9 +130,20 @@ static void print_bss(struct BSS* bss)
 	printf("\tfreq: %"PRIu32"\n", bss->frequency);
 	printf("\tbeacon interval: %d TUs\n", bss->beacon_interval);
 	printf("\tsignal: %0.2f dBm\n", bss->signal_strength_mbm/100.0);
-	u_printf("\tSSID: %S\n", ssid ? ssid : hidden);
+	u_printf("\tSSID: %S\n", get_ssid(bss));
 	print_supported_rates(bss);
 	print_dsss_param(bss);
+}
+
+static void print_bss_to_csv(struct BSS* bss, bool header)
+{
+	if (header) {
+		printf("BSSID,frequency,signal_strength,SSID\n");
+	}
+
+	printf("%s, %d, %0.2f, ", bss->bssid_str, bss->frequency, bss->signal_strength_mbm/100.0);
+	u_printf("\"%S\"", get_ssid(bss));
+	printf("\n");
 }
 
 int main(int argc, char* argv[])
@@ -170,6 +192,12 @@ int main(int argc, char* argv[])
 	struct BSS* bss;
 	list_for_each_entry(bss, &bss_list, node) {
 		print_bss(bss);
+	}
+
+	bool first=true;
+	list_for_each_entry(bss, &bss_list, node) {
+		print_bss_to_csv(bss, first);
+		first = false;
 	}
 
 leave:
