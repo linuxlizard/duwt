@@ -1,3 +1,4 @@
+#include <string.h>
 #include "core.h"
 #include "bss.h"
 
@@ -8,7 +9,8 @@ int main(void)
 	macaddr me = { 0x00, 0x40, 0x68, 0x12, 0x34, 0x56 };
 	LIST_HEAD(bss_list);
 
-	bss = bss_new(me);
+	bss = bss_new();
+	memcpy(bss->bssid, me, sizeof(me));
 	list_add(&bss->node, &bss_list);
 	size_t off = offsetof(struct BSS, node);
 	DBG("off=%zu\n", off);
@@ -18,16 +20,23 @@ int main(void)
 	XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
 
 	me[5]++;
-	bss = bss_new(me);
+	bss = bss_new();
+	memcpy(bss->bssid, me, sizeof(me));
 	list_add(&bss->node, &bss_list);
+
 	me[5]++;
-	bss = bss_new(me);
+	bss = bss_new();
+	memcpy(bss->bssid, me, sizeof(me));
 	list_add(&bss->node, &bss_list);
+
 	me[5]++;
-	bss = bss_new(me);
+	bss = bss_new();
+	memcpy(bss->bssid, me, sizeof(me));
 	list_add(&bss->node, &bss_list);
+
 	me[5]++;
-	bss = bss_new(me);
+	bss = bss_new();
+	memcpy(bss->bssid, me, sizeof(me));
 	list_add(&bss->node, &bss_list);
 
 	struct list_head* tmp;

@@ -24,8 +24,6 @@ static void ie_validate(struct IE* ie, uint8_t id, size_t len)
 	if (len) {
 		XASSERT( ie->buf, id);
 	}
-	// if we have a IE specific blob, we better have a way to free it
-	XASSERT( (ie->specific==NULL) == (ie->free==NULL), id);
 }
 
 static void test_ie_ssid(void)
