@@ -69,13 +69,13 @@ int bss_from_nlattr(struct nlattr* attr_list[], struct BSS** pbss)
 		return -ENOMEM;
 	}
 
-	if ((attr=attr_list[NL80211_ATTR_CHANNEL_WIDTH])) {
-		bss->channel_width = nla_get_u32(attr);
-	}
-
 	int err = parse_nla_bss(attr_list[NL80211_ATTR_BSS], bss);
 	if (err != 0) {
 		goto fail;
+	}
+
+	if ((attr=attr_list[NL80211_ATTR_IFINDEX])) {
+		bss->ifindex = nla_get_u32(attr);
 	}
 
 	PTR_ASSIGN(*pbss, bss);

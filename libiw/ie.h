@@ -36,6 +36,9 @@
 // retired.
 // </quote>
 
+#include <stdint.h>
+#include <stdbool.h>
+
 // https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/
 #include <unicode/utypes.h>
 #include <unicode/utext.h>
@@ -43,6 +46,8 @@
 
 typedef enum {
 	IE_SSID = 0,
+	IE_SUPPORTED_RATES = 1,
+	IE_DSSS_PARAMETER_SET = 3,
 	IE_MESH_ID = 114,
 	IE_EXTENDED_CAPABILITIES = 127,
 	IE_VENDOR = 221,
@@ -65,12 +70,6 @@ struct IE
 	size_t len;
 	// raw bytes of the IE; does not include id+len
 	uint8_t* buf;
-
-	// constructor
-//	void (*create)(uint8_t id, uint8_t len, uint8_t* buf);
-
-	// destructor
-	void (*free)(struct IE* self);
 
 	// blob of specific IE info
 	void* specific;
@@ -98,9 +97,25 @@ struct IE_SSID
 	int32_t ssid_len;
 };
 
+struct IE_Supported_Rates
+{
+	IE_SPECIFIC_FIELDS
+
+	size_t count;
+	float rate[8];
+	bool basic[8];
+};
+
+struct IE_DSSS_Parameter_Set
+{
+	IE_SPECIFIC_FIELDS
+	uint32_t current_channel;
+};
+
 struct IE_Extended_Capabilities
 {
 	IE_SPECIFIC_FIELDS
+	// TODO
 };
 
 #define IE_VENDOR_OUI_LEN 5

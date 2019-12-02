@@ -16,105 +16,158 @@ const uint8_t wfa_oui[3] = { 0x50, 0x6f, 0x9a };
 
 #define IE_LIST_DEFAULT_MAX 32
 
+#define CONSTRUCT(type)\
+	type* sie;\
+	sie = calloc(1,sizeof(type));\
+	if (!sie) {\
+		return -ENOMEM;\
+	}\
+	sie->cookie = IE_SPECIFIC_COOKIE;\
+	ie->specific = sie;\
+	sie->base = ie;\
 
-#define INIT_SPEC(ie, spec_ie, free_fn)\
-	spec_ie->cookie = IE_SPECIFIC_COOKIE;\
-	ie->specific = spec_ie;\
-	spec_ie->base = ie;\
-	ie->free = free_fn
-
-static int module_loglevel=LOG_LEVEL_INFO;
-
-static void ie_ssid_free(struct IE* ie)
-{
-	struct IE_SSID* ie_ssid = (struct IE_SSID*)ie->specific;
-
-	XASSERT(ie_ssid->cookie == IE_SPECIFIC_COOKIE, ie_ssid->cookie);
-
+#define DESTRUCT(type)\
+	type* sie = (type*)ie->specific;\
+	XASSERT(sie->cookie == IE_SPECIFIC_COOKIE, sie->cookie);\
+	memset(sie, 0, sizeof(*sie));\
 	PTR_FREE(ie->specific);
-}
+
+#ifdef HAVE_MODULE_LOGLEVEL
+static int module_loglevel=LOG_LEVEL_INFO;
+#endif
 
 static int ie_ssid_new(struct IE* ie)
 {
-	struct IE_SSID* ie_ssid;
-
-	ie_ssid = calloc(1,sizeof(struct IE_SSID));
-	if (!ie_ssid) {
-		return -ENOMEM;
-	}
-
-	INIT_SPEC(ie, ie_ssid, ie_ssid_free);
+	CONSTRUCT(struct IE_SSID)
 
 	UErrorCode status = U_ZERO_ERROR;
-	u_strFromUTF8( ie_ssid->ssid, sizeof(ie_ssid->ssid), &ie_ssid->ssid_len, ie->buf, ie->len, &status);
+	u_strFromUTF8( sie->ssid, sizeof(sie->ssid), &sie->ssid_len, ie->buf, ie->len, &status);
 	if ( !U_SUCCESS(status)) {
-		PTR_FREE(ie_ssid);
+		PTR_FREE(sie);
 		ERR("%s unicode parse fail status=%d\n", __func__, status);
 		return -EINVAL;
 	}
 
-	if (ie_ssid->ssid_len > SSID_MAX_LEN) {
-		WARN("ssid too long len=%d\n", ie_ssid->ssid_len);
+	if (sie->ssid_len > SSID_MAX_LEN) {
+		WARN("ssid too long len=%d\n", sie->ssid_len);
 	}
 
+	return 0;
+}
+
+static void ie_ssid_free(struct IE* ie)
+{
+	struct IE_SSID* sie = (struct IE_SSID*)ie->specific;
+
+	XASSERT(sie->cookie == IE_SPECIFIC_COOKIE, sie->cookie);
+
+	memset(sie, POISON, sizeof(*sie));
+	PTR_FREE(ie->specific);
+}
+
+static int ie_supported_rates_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_Supported_Rates)
+
+// iw scan.c print_supprates()
+#define BSS_MEMBERSHIP_SELECTOR_VHT_PHY 126
+#define BSS_MEMBERSHIP_SELECTOR_HT_PHY 127
+
+	// iw scan.c print_supprates()
+	// "bits 6 to 0 are set to the data rate ... in units of 500kb/s"
+	for (size_t i = 0; i < ie->len ; i++) {
+		uint8_t byte = ie->buf[i];
+		int r = byte & 0x7f;
+
+		/* davep 20191201 ; TODO what the heck do I do with VHT_ HT_PHY!? */
+		if (r == BSS_MEMBERSHIP_SELECTOR_VHT_PHY && byte & 0x80)
+			(void)r;
+//			s += "VHT";
+		else if (r == BSS_MEMBERSHIP_SELECTOR_HT_PHY && byte & 0x80)
+			(void)r;
+//			s += "HT";
+		else {
+			sie->rate[sie->count] = r/2.0 + 5.0*(r&1);
+			sie->basic[sie->count] =  true && (byte & 0x80) ;
+			sie->count++;
+//			s += fmt::format("{}.{}", r/2, 5*(r&1));
+//			rates_list.emplace_back( r/2, true && (byte & 0x80) );
+//			printf("%d.%d", r/2, 5*(r&1));
+		}
+
+//		s += (byte & 0x80) ? "* " : " ";
+	}
+
+	return 0;
+}
+
+static void ie_supported_rates_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_Supported_Rates)
+}
+
+static int ie_dsss_parameter_set_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_DSSS_Parameter_Set)
+
+	sie->current_channel = (int)ie->buf[0];
+	return 0;
+}
+
+static void ie_dsss_parameter_set_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_DSSS_Parameter_Set)
+}
+
+static int ie_extended_capa_new(struct IE* ie)
+{
+	(void)ie;
+	// TODO
 	return 0;
 }
 
 static void ie_extended_capa_free(struct IE* ie)
 {
 	(void)ie;
-}
-
-static int ie_extended_capa_new(struct IE* ie)
-{
-	(void)ie;
-	return 0;
-}
-
-
-static void ie_vendor_free(struct IE* ie)
-{
-	struct IE_Vendor* vie = (struct IE_Vendor*)ie->specific;
-
-	DBG("%s %p id=%d\n", __func__, (void *)ie, ie->id);
-
-	XASSERT(ie->id==IE_VENDOR, ie->id);
-
-	memset(vie, POISON, sizeof(struct IE_Vendor));
-	PTR_FREE(ie->specific);
+	// TODO
 }
 
 static int ie_vendor_new(struct IE* ie)
 {
-	struct IE_Vendor* newie;
+	CONSTRUCT(struct IE_Vendor)
 
 	DBG("%s id=%d len=%zu oui=0x%02x%02x%02x\n", __func__, 
 		ie->id, ie->len, ie->buf[0], ie->buf[1], ie->buf[2]);
 
-	newie = calloc(1, sizeof(struct IE_Vendor));
-	if (!newie) { 
-		WARN("%s calloc failed\n", __func__);
-		return -ENOMEM;
-	}
-
-	newie->cookie = IE_SPECIFIC_COOKIE;
-	// point to self
-	ie->specific = (void *)newie;
-	newie->base = ie;
-	ie->free = ie_vendor_free;
-
-	memcpy(newie->oui, ie->buf, 3);
+	memcpy(sie->oui, ie->buf, 3);
 
 	return 0;
 }
 
+static void ie_vendor_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_Vendor)
+	DBG("%s %p id=%d\n", __func__, (void *)ie, ie->id);
+}
+
 
 typedef int (*specific_ie_new)(struct IE *);
+typedef void (*specific_ie_delete)(struct IE*);
 
 static const specific_ie_new constructors[256] = {
 	[IE_SSID] = ie_ssid_new,
+	[IE_DSSS_PARAMETER_SET] = ie_dsss_parameter_set_new,
+	[IE_SUPPORTED_RATES] = ie_supported_rates_new,
 	[IE_EXTENDED_CAPABILITIES] = ie_extended_capa_new,
 	[IE_VENDOR] = ie_vendor_new,
+};
+
+static const specific_ie_delete destructors[256] = {
+	[IE_SSID] = ie_ssid_free,
+	[IE_DSSS_PARAMETER_SET] = ie_dsss_parameter_set_free,
+	[IE_SUPPORTED_RATES] = ie_supported_rates_free,
+	[IE_EXTENDED_CAPABILITIES] = ie_extended_capa_free,
+	[IE_VENDOR] = ie_vendor_free,
 };
 
 struct IE* ie_new(uint8_t id, uint8_t len, const uint8_t* buf)
@@ -169,8 +222,11 @@ void ie_delete(struct IE** pie)
 	}
 
 	// now let the descendent free its memory
-	if (ie->free) {
-		ie->free(ie);
+	if (destructors[ie->id]) {
+		destructors[ie->id](ie);
+	}
+	else {
+		XASSERT(ie->specific == NULL, ie->id);
 	}
 
 	memset(ie, POISON, sizeof(struct IE));

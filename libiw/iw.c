@@ -53,13 +53,14 @@ int parse_nla_ies(struct nlattr* ies, struct IE_List* ie_list)
 	return 0;
 }
 
-int parse_nla_bss(struct nlattr* attr, struct BSS* bss)
+int parse_nla_bss(struct nlattr* attr_list, struct BSS* bss)
 {
 	struct nlattr* bss_attr[NL80211_BSS_MAX + 1];
+	struct nlattr* attr;
 	int err;
 
 	if (nla_parse_nested(bss_attr, NL80211_BSS_MAX,
-			     attr,
+			     attr_list,
 			     bss_policy)) {
 		ERR("%s failed to parse nested attributes!\n", __func__);
 		return -EINVAL;
@@ -83,16 +84,38 @@ int parse_nla_bss(struct nlattr* attr, struct BSS* bss)
 	 * before return
 	 */
 
-	struct nlattr *ies = bss_attr[NL80211_BSS_INFORMATION_ELEMENTS];
-	if (ies) {
-		err = parse_nla_ies(ies, &bss->ie_list);
+	if ((attr = bss_attr[NL80211_BSS_INFORMATION_ELEMENTS])) {
+		// attr is actually an array here (nested nla)
+		err = parse_nla_ies(attr, &bss->ie_list);
 		if (err) {
 			goto fail;
 		}
 	}
 
-	if ( (ies=bss_attr[NL80211_BSS_FREQUENCY]) ) {
-		bss->frequency = nla_get_u32(ies);
+	if ((attr = bss_attr[NL80211_BSS_TSF])) {
+		bss->tsf = nla_get_u64(attr);
+	}
+
+	if ((attr = bss_attr[NL80211_BSS_BEACON_INTERVAL])) {
+		bss->beacon_interval = (uint16_t)nla_get_u16(attr);
+	}
+
+	if ((attr = bss_attr[NL80211_BSS_SIGNAL_MBM])) {
+		bss->signal_strength_mbm = (int32_t)nla_get_u32(attr);
+	}
+
+	if ((attr = bss_attr[NL80211_BSS_SIGNAL_UNSPEC])) {
+		bss->signal_unspec = (uint8_t)nla_get_u32(attr);
+	}
+
+	if ((attr = bss_attr[NL80211_BSS_SEEN_MS_AGO])) {
+	}
+
+	if ((attr = bss_attr[NL80211_BSS_LAST_SEEN_BOOTTIME])) {
+	}
+
+	if ((attr = bss_attr[NL80211_BSS_FREQUENCY])) {
+		bss->frequency = nla_get_u32(attr);
 	}
 
 	ie_list_peek(__func__, &bss->ie_list);

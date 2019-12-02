@@ -26,5 +26,7 @@ int parse_nla_bss(struct nlattr* attr, struct BSS* bss);
 
 const char* bw_to_str(enum nl80211_chan_width w);
 
+int tsf_to_timestamp_str(uint64_t tsf, char* s, size_t len);
+
 #endif
 

@@ -75,6 +75,55 @@ fail:
 	return NL_SKIP;
 }
 
+static void print_supported_rates(struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SUPPORTED_RATES);
+	if (ie) {
+		const struct IE_Supported_Rates *sie = IE_CAST(ie, struct IE_Supported_Rates);
+		printf("\tSupported rates:");
+		for (size_t i=0 ; i<sie->count ; i++) {
+			printf("%0.1f%s ", sie->rate[i], sie->basic[i]?"*":"");
+		}
+		printf("\n");
+	}
+
+}
+
+static void print_dsss_param(struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_DSSS_PARAMETER_SET);
+	if (ie) {
+		const struct IE_DSSS_Parameter_Set *sie = IE_CAST(ie, struct IE_DSSS_Parameter_Set);
+		printf("\tDS Parameter set: channel %d\n", sie->current_channel);
+	}
+}
+
+static void print_bss(struct BSS* bss)
+{
+	XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
+	const UChar* ssid = NULL;
+	if (ie) {
+		const struct IE_SSID *ie_ssid = IE_CAST(ie, const struct IE_SSID);
+		if (ie_ssid->ssid_len) {
+			ssid = ie_ssid->ssid;
+//				hex_dump("ssid", ie->buf, ie->len);
+		}
+	}
+
+	printf("BSS %s\n", bss->bssid_str);
+	char tsf_str[64];
+	int err = tsf_to_timestamp_str(bss->tsf, tsf_str, 64);
+	XASSERT(err<64, err);
+	printf("\tTSF: %" PRIu64 " usec (%s)\n", bss->tsf, tsf_str);
+	printf("\tfreq: %"PRIu32"\n", bss->frequency);
+	printf("\tbeacon interval: %d TUs\n", bss->beacon_interval);
+	printf("\tsignal: %0.2f dBm\n", bss->signal_strength_mbm/100.0);
+	u_printf("\tSSID: %S\n", ssid ? ssid : hidden);
+	print_supported_rates(bss);
+	print_dsss_param(bss);
+}
+
 int main(int argc, char* argv[])
 {
 	if (argc != 2) {
@@ -120,24 +169,7 @@ int main(int argc, char* argv[])
 	U_STRING_INIT(hidden, "<hidden>", 8);
 	struct BSS* bss;
 	list_for_each_entry(bss, &bss_list, node) {
-		XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
-		const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
-		const UChar* ssid = NULL;
-		if (ie) {
-			const struct IE_SSID *ie_ssid = IE_CAST(ie, const struct IE_SSID);
-			if (ie_ssid->ssid_len) {
-				ssid = ie_ssid->ssid;
-//				hex_dump("ssid", ie->buf, ie->len);
-			}
-		}
-
-		u_printf("%s ssid=%S freq=%"PRIu32"\n", 
-				bss->bssid_str, 
-				ssid ? ssid : hidden,
-				bss->frequency
-
-			);
-
+		print_bss(bss);
 	}
 
 leave:

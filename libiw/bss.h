@@ -16,13 +16,30 @@ struct BSS
 {
 	uint32_t cookie;
 	struct list_head node;
+	int ifindex;
 	macaddr bssid;
+
+	// * @NL80211_BSS_TSF: TSF of the received probe response/beacon (u64)
+	// *	(if @NL80211_BSS_PRESP_DATA is present then this is known to be
+	// *	from a probe response, otherwise it may be from the same beacon
+	// *	that the NL80211_BSS_BEACON_TSF will be from)
+	uint64_t tsf;  // Timing Synchronization Function
+
+ 	// @NL80211_ATTR_BEACON_INTERVAL: beacon interval in TU
+	uint16_t beacon_interval;
+
+	// "@NL80211_BSS_SIGNAL_MBM: signal strength of probe response/beacon
+	//	in mBm (100 * dBm) (s32)"  (via nl80211.h)
+	int32_t signal_strength_mbm;
+
+	// "@NL80211_BSS_SIGNAL_UNSPEC: signal strength of the probe response/beacon
+	//	in unspecified units, scaled to 0..100 (u8)"  (via nl80211.h)
+	uint8_t signal_unspec;
 
 	// bssid in printable string format
 	char bssid_str[24];
 
 	uint32_t frequency;
-	enum nl80211_chan_width channel_width;
 
 	struct IE_List ie_list;
 };

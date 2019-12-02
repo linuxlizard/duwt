@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <inttypes.h>
 #include <linux/if_ether.h>
 #include <linux/nl80211.h>
 
@@ -51,4 +52,13 @@ void mac_addr_n2a(char *mac_addr, const unsigned char *arg)
 	}
 }
 
-
+int tsf_to_timestamp_str(uint64_t tsf, char* s, size_t len)
+{
+	// iw print_bss_handler() scan.c
+//	return snprintf(s, len, "%llud, %.2lld:%.2llu:%.2llu",
+	return snprintf(s, len, "%"PRIu64"d, %.2"PRId64":%.2"PRIu64":%.2"PRIu64"",
+		tsf/1000/1000/60/60/24,  // days
+		(tsf/1000/1000/60/60) % 24,  // hours
+		(tsf/1000/1000/60) % 60, // minutes
+		(tsf/1000/1000) % 60);  // seconds
+}
