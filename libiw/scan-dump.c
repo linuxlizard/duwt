@@ -118,6 +118,43 @@ static const UChar* get_ssid(struct BSS* bss)
 	return ssid ? ssid : hidden;
 }
 
+static void print_country(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_COUNTRY);
+	if (!ie) {
+		return;
+	}
+
+	XASSERT(ie->specific != NULL, ie->id);
+	const struct IE_Country* cie = IE_CAST(ie, const struct IE_Country);
+
+	printf("\tCountry: %s\tEnvironment: %s\n", cie->country, country_env_str(cie->environment));
+
+	// loop inspired by / leveraged from iw scan.c
+	for (size_t i=0 ; i<cie->count ; i++) {
+		int end_channel;
+		const union ieee80211_country_ie_triplet *triplet = &cie->triplets[i];
+
+		if (triplet->ext.reg_extension_id >= IEEE80211_COUNTRY_EXTENSION_ID) {
+			printf("\t\tExtension ID: %d Regulatory Class: %d Coverage class: %d (up to %dm)\n",
+			       triplet->ext.reg_extension_id,
+			       triplet->ext.reg_class,
+			       triplet->ext.coverage_class,
+			       triplet->ext.coverage_class * 450);
+			continue;
+		}
+
+		/* 2 GHz */
+		if (triplet->chans.first_channel <= 14)
+			end_channel = triplet->chans.first_channel + (triplet->chans.num_channels - 1);
+		else
+			end_channel =  triplet->chans.first_channel + (4 * (triplet->chans.num_channels - 1));
+
+		printf("\t\tChannels [%d - %d] @ %d dBm\n", triplet->chans.first_channel, end_channel, triplet->chans.max_power);
+	}
+
+}
+
 static void print_bss(struct BSS* bss)
 {
 	XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
@@ -133,6 +170,7 @@ static void print_bss(struct BSS* bss)
 	u_printf("\tSSID: %S\n", get_ssid(bss));
 	print_supported_rates(bss);
 	print_dsss_param(bss);
+	print_country(bss);
 }
 
 static void print_bss_to_csv(struct BSS* bss, bool header)
@@ -196,7 +234,7 @@ int main(int argc, char* argv[])
 
 	bool first=true;
 	list_for_each_entry(bss, &bss_list, node) {
-		print_bss_to_csv(bss, first);
+//		print_bss_to_csv(bss, first);
 		first = false;
 	}
 

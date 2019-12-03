@@ -62,3 +62,20 @@ int tsf_to_timestamp_str(uint64_t tsf, char* s, size_t len)
 		(tsf/1000/1000/60) % 60, // minutes
 		(tsf/1000/1000) % 60);  // seconds
 }
+
+// iw scan.c
+const char *country_env_str(enum Environment environment)
+{
+	switch (environment) {
+	case ENV_INDOOR_ONLY:
+		return "Indoor only";
+	case ENV_OUTDOOR_ONLY:
+		return "Outdoor only";
+	case ENV_INDOOR_OUTDOOR:
+		return "Indoor/Outdoor";
+	case ENV_INVALID:
+	default:
+		return "bogus";
+	}
+}
+

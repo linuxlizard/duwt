@@ -6,6 +6,7 @@
 #include <errno.h>
 
 #include "xassert.h"
+#include "hdump.h"
 #include "log.h"
 
 #define PTR_FREE(p) do { free(p); (p)=NULL; } while(0)

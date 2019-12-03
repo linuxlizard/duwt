@@ -25,6 +25,7 @@ int parse_nla_ies(struct nlattr* ies, struct IE_List* ie_list);
 int parse_nla_bss(struct nlattr* attr, struct BSS* bss);
 
 const char* bw_to_str(enum nl80211_chan_width w);
+const char *country_env_str(enum Environment environment);
 
 int tsf_to_timestamp_str(uint64_t tsf, char* s, size_t len);
 

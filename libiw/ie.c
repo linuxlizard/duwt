@@ -34,6 +34,7 @@ const uint8_t wfa_oui[3] = { 0x50, 0x6f, 0x9a };
 
 #ifdef HAVE_MODULE_LOGLEVEL
 static int module_loglevel=LOG_LEVEL_INFO;
+//static int module_loglevel=LOG_LEVEL_DEBUG;
 #endif
 
 static int ie_ssid_new(struct IE* ie)
@@ -106,6 +107,76 @@ static void ie_supported_rates_free(struct IE* ie)
 	DESTRUCT(struct IE_Supported_Rates)
 }
 
+static int ie_country_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_Country)
+
+	int err = 0;
+	uint8_t* ptr = ie->buf;
+	uint8_t* endptr = ie->buf + ie->len;
+
+//	hex_dump("country", ie->buf, ie->len);
+	if (ie->len < 3) {
+		err = -EINVAL;
+		goto fail;
+	}
+
+	// iw scan.c print_country() 
+	// http://www.ieee802.org/11/802.11mib.txt
+	sie->country[0] = *ptr++;
+	sie->country[1] = *ptr++;
+	sie->country[2] = (char)0;
+
+	sie->environment_byte = *ptr++;
+	switch (sie->environment_byte) {
+		case 'I':
+			sie->environment = ENV_INDOOR_ONLY;
+			break;
+		case 'O':
+			sie->environment = ENV_OUTDOOR_ONLY;
+			break;
+		case ' ':
+			sie->environment = ENV_INDOOR_OUTDOOR;
+			break;
+		default:
+			sie->environment = ENV_INVALID;
+			break;
+	}
+
+	if (ptr >= endptr) {
+		// no country codes
+		return 0;
+	}
+
+	while (ptr < endptr-2) {
+		if (sie->count+1 > IE_COUNTRY_TRIPLET_MAX) {
+			err = -ENOMEM;
+			goto fail;
+		}
+
+		sie->triplets[sie->count++] = *(union ieee80211_country_ie_triplet*)ptr;
+//		DBG("%s %p %p %zu %d %d %d\n", __func__, (void*)ptr, (void*)endptr, sie->count,
+//				sie->triplets[sie->count-1].chans.first_channel,
+//				sie->triplets[sie->count-1].chans.num_channels,
+//				sie->triplets[sie->count-1].chans.max_power);
+
+		ptr += 3;
+	}
+
+	return 0;
+
+fail:
+	if (ie->specific) {
+		PTR_FREE(ie->specific);
+	}
+	return err;
+}
+
+static void ie_country_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_Country)
+}
+
 static int ie_dsss_parameter_set_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_DSSS_Parameter_Set)
@@ -158,6 +229,7 @@ static const specific_ie_new constructors[256] = {
 	[IE_SSID] = ie_ssid_new,
 	[IE_DSSS_PARAMETER_SET] = ie_dsss_parameter_set_new,
 	[IE_SUPPORTED_RATES] = ie_supported_rates_new,
+	[IE_COUNTRY] = ie_country_new,
 	[IE_EXTENDED_CAPABILITIES] = ie_extended_capa_new,
 	[IE_VENDOR] = ie_vendor_new,
 };
@@ -166,6 +238,7 @@ static const specific_ie_delete destructors[256] = {
 	[IE_SSID] = ie_ssid_free,
 	[IE_DSSS_PARAMETER_SET] = ie_dsss_parameter_set_free,
 	[IE_SUPPORTED_RATES] = ie_supported_rates_free,
+	[IE_COUNTRY] = ie_country_free,
 	[IE_EXTENDED_CAPABILITIES] = ie_extended_capa_free,
 	[IE_VENDOR] = ie_vendor_free,
 };
@@ -328,7 +401,7 @@ void ie_list_peek(const char *label, struct IE_List* list)
 
 }
 
-const struct IE* ie_list_find_id(struct IE_List* list, IE_ID id)
+const struct IE* ie_list_find_id(const struct IE_List* list, IE_ID id)
 {
 	// search for the first instance of an id; note this will not work when
 	// there are duplicates such as vendor id

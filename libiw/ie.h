@@ -48,6 +48,7 @@ typedef enum {
 	IE_SSID = 0,
 	IE_SUPPORTED_RATES = 1,
 	IE_DSSS_PARAMETER_SET = 3,
+	IE_COUNTRY = 7,
 	IE_MESH_ID = 114,
 	IE_EXTENDED_CAPABILITIES = 127,
 	IE_VENDOR = 221,
@@ -112,6 +113,42 @@ struct IE_DSSS_Parameter_Set
 	uint32_t current_channel;
 };
 
+// iw scan.c print_country()
+#define IEEE80211_COUNTRY_EXTENSION_ID 201
+union ieee80211_country_ie_triplet {
+	struct {
+		uint8_t first_channel;
+		uint8_t num_channels;
+		int8_t max_power; // note signed integer!
+	} __attribute__ ((packed)) chans;
+	struct {
+		uint8_t reg_extension_id;
+		uint8_t reg_class;
+		uint8_t coverage_class;
+	} __attribute__ ((packed)) ext;
+} __attribute__ ((packed));
+// end iw
+
+enum Environment {
+	ENV_INVALID, ENV_INDOOR_ONLY, ENV_OUTDOOR_ONLY, ENV_INDOOR_OUTDOOR
+};
+
+#define IE_COUNTRY_TRIPLET_MAX 32
+
+struct IE_Country
+{
+	IE_SPECIFIC_FIELDS
+
+	char country[3];
+
+	// save the original byte, too
+	uint8_t environment_byte;
+	enum Environment environment;
+
+	union ieee80211_country_ie_triplet triplets[IE_COUNTRY_TRIPLET_MAX];
+	size_t count;
+};
+
 struct IE_Extended_Capabilities
 {
 	IE_SPECIFIC_FIELDS
@@ -145,7 +182,7 @@ int ie_list_init(struct IE_List* list);
 void ie_list_release(struct IE_List* list);
 int ie_list_move_back(struct IE_List* list, struct IE** pie);
 void ie_list_peek(const char *label, struct IE_List* list);
-const struct IE* ie_list_find_id(struct IE_List* list, IE_ID id);
+const struct IE* ie_list_find_id(const struct IE_List* list, IE_ID id);
 
 int decode_ie_buf( const uint8_t* buf, size_t len, struct IE_List* ielist);
 
