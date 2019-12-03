@@ -79,4 +79,4 @@ test: test_bytebuf test_ie test_bss
 	valgrind $(VALGRIND_OPTS)  ./test_bss
 
 clean:
-	$(RM) *.o scan-event scan-event-ev test_* scan-dump
+	$(RM) *.o scan-event scan-event-ev test_bss test_bytebuf test_ie test_xassert scan-dump
