@@ -48,6 +48,7 @@ typedef enum {
 	IE_SSID = 0,
 	IE_SUPPORTED_RATES = 1,
 	IE_DSSS_PARAMETER_SET = 3,
+	IE_TIM = 5, // there are those who call me...
 	IE_COUNTRY = 7,
 	IE_MESH_ID = 114,
 	IE_EXTENDED_CAPABILITIES = 127,
@@ -69,8 +70,14 @@ struct IE
 	uint32_t cookie;
 	IE_ID id;
 	size_t len;
+
+	// malloc'd buffer
 	// raw bytes of the IE; does not include id+len
 	uint8_t* buf;
+
+	// some IEs are just a single element small enough to fit here so let's not
+	// bother allocating memory if we don't have to
+	uint32_t value;
 
 	// blob of specific IE info
 	void* specific;
@@ -107,10 +114,15 @@ struct IE_Supported_Rates
 	bool basic[8];
 };
 
-struct IE_DSSS_Parameter_Set
+// TIM == Traffic Indication Map
+struct IE_TIM
 {
 	IE_SPECIFIC_FIELDS
-	uint32_t current_channel;
+
+	uint8_t dtim_count;
+	uint8_t dtim_period;
+	uint8_t control;
+	uint8_t* bitmap; // POINTER into ie->buf
 };
 
 // iw scan.c print_country()
@@ -185,6 +197,9 @@ void ie_list_peek(const char *label, struct IE_List* list);
 const struct IE* ie_list_find_id(const struct IE_List* list, IE_ID id);
 
 int decode_ie_buf( const uint8_t* buf, size_t len, struct IE_List* ielist);
+
+#define ie_list_for_each_entry(pos, list)\
+	for (size_t i=0 ; (pos=list.ieptrlist[i]) && i<list.count ; pos=list.ieptrlist[++i]) 
 
 
 #endif

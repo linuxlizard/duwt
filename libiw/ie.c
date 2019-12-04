@@ -107,6 +107,24 @@ static void ie_supported_rates_free(struct IE* ie)
 	DESTRUCT(struct IE_Supported_Rates)
 }
 
+static int ie_tim_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_TIM)
+
+	sie->dtim_count = ie->buf[0];
+	sie->dtim_period = ie->buf[1];
+	sie->control = ie->buf[2];
+	// POINTER into already alloc'd buf
+	sie->bitmap = &ie->buf[3];
+
+	return 0;
+}
+
+static void ie_tim_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_TIM)
+}
+
 static int ie_country_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_Country)
@@ -179,15 +197,8 @@ static void ie_country_free(struct IE* ie)
 
 static int ie_dsss_parameter_set_new(struct IE* ie)
 {
-	CONSTRUCT(struct IE_DSSS_Parameter_Set)
-
-	sie->current_channel = (int)ie->buf[0];
+	ie->value = (int)ie->buf[0];
 	return 0;
-}
-
-static void ie_dsss_parameter_set_free(struct IE* ie)
-{
-	DESTRUCT(struct IE_DSSS_Parameter_Set)
 }
 
 static int ie_extended_capa_new(struct IE* ie)
@@ -229,6 +240,7 @@ static const specific_ie_new constructors[256] = {
 	[IE_SSID] = ie_ssid_new,
 	[IE_DSSS_PARAMETER_SET] = ie_dsss_parameter_set_new,
 	[IE_SUPPORTED_RATES] = ie_supported_rates_new,
+	[IE_TIM] = ie_tim_new,
 	[IE_COUNTRY] = ie_country_new,
 	[IE_EXTENDED_CAPABILITIES] = ie_extended_capa_new,
 	[IE_VENDOR] = ie_vendor_new,
@@ -236,8 +248,8 @@ static const specific_ie_new constructors[256] = {
 
 static const specific_ie_delete destructors[256] = {
 	[IE_SSID] = ie_ssid_free,
-	[IE_DSSS_PARAMETER_SET] = ie_dsss_parameter_set_free,
 	[IE_SUPPORTED_RATES] = ie_supported_rates_free,
+	[IE_TIM] = ie_tim_free,
 	[IE_COUNTRY] = ie_country_free,
 	[IE_EXTENDED_CAPABILITIES] = ie_extended_capa_free,
 	[IE_VENDOR] = ie_vendor_free,

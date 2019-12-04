@@ -93,12 +93,11 @@ static void print_dsss_param(struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_DSSS_PARAMETER_SET);
 	if (ie) {
-		const struct IE_DSSS_Parameter_Set *sie = IE_CAST(ie, struct IE_DSSS_Parameter_Set);
-		printf("\tDS Parameter set: channel %d\n", sie->current_channel);
+		printf("\tDS Parameter set: channel %d\n", ie->value);
 	}
 }
 
-static const UChar* get_ssid(struct BSS* bss)
+static const UChar* get_ssid(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
 	const UChar* ssid = NULL;
@@ -184,6 +183,27 @@ static void print_bss_to_csv(struct BSS* bss, bool header)
 	printf("\n");
 }
 
+static void print_short(const struct BSS* bss)
+{
+	//  SSID            BSSID              CHAN RATE  S:N   INT CAPS
+	u_printf("%32S ", get_ssid(bss));
+	printf("%18s  %d  %d  %0.2f ", bss->bssid_str, bss->frequency, -1, bss->signal_strength_mbm/100.0);
+//	for( size_t i=0 ; i<bss->ie_list.count ; i++) {
+//		printf("%3d ", bss->ie_list.ieptrlist[i]->id);
+//	}
+//	printf("\n");
+
+	const struct IE* ie= (void*)-1;
+	ie_list_for_each_entry(ie, bss->ie_list) {
+//		printf("%zu %p\n", i, (void*)ie);
+//		printf("%zu %p\n", i, bss->ie_list.ieptrlist[i]);
+		XASSERT(ie->cookie == IE_COOKIE, ie->cookie);
+		printf("%3d ", ie->id);
+	}
+	printf("\n");
+
+}
+
 int main(int argc, char* argv[])
 {
 	if (argc != 2) {
@@ -235,6 +255,11 @@ int main(int argc, char* argv[])
 	bool first=true;
 	list_for_each_entry(bss, &bss_list, node) {
 //		print_bss_to_csv(bss, first);
+		first = false;
+	}
+
+	list_for_each_entry(bss, &bss_list, node) {
+		print_short(bss);
 		first = false;
 	}
 

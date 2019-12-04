@@ -17,7 +17,11 @@ struct BSS
 	uint32_t cookie;
 	struct list_head node;
 	int ifindex;
+
 	macaddr bssid;
+	// bssid in printable string format
+	char bssid_str[24];
+
 
 	// * @NL80211_BSS_TSF: TSF of the received probe response/beacon (u64)
 	// *	(if @NL80211_BSS_PRESP_DATA is present then this is known to be
@@ -35,9 +39,6 @@ struct BSS
 	// "@NL80211_BSS_SIGNAL_UNSPEC: signal strength of the probe response/beacon
 	//	in unspecified units, scaled to 0..100 (u8)"  (via nl80211.h)
 	uint8_t signal_unspec;
-
-	// bssid in printable string format
-	char bssid_str[24];
 
 	uint32_t frequency;
 
