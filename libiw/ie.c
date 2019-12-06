@@ -203,15 +203,120 @@ static int ie_dsss_parameter_set_new(struct IE* ie)
 
 static int ie_extended_capa_new(struct IE* ie)
 {
-	(void)ie;
-	// TODO
+	CONSTRUCT(struct IE_Extended_Capabilities)
+
+	// TODO decode
+	hex_dump(__func__, ie->buf, ie->len);
+
+	if (ie->len < 1) return 0;
+	size_t idx = 0;
+	uint8_t b = ie->buf[0];
+#define NEXTBYTE\
+	if (ie->len <= idx) return 0;\
+	b = ie->buf[idx++];
+#define ECBIT(field,bit) sie->field = !!(b & (1<<bit))
+
+	NEXTBYTE
+	ECBIT(bss_2040_coexist, 0);
+	// bit 1 reserved
+	ECBIT(ESS, 2);
+	ECBIT(wave_indication, 3);
+	ECBIT(psmp_capa, 4);
+	ECBIT(service_interval_granularity_flag, 5);
+	ECBIT(spsmp_support, 6);
+	ECBIT(event, 7);
+
+	NEXTBYTE
+	ECBIT(diagnostics, 0);
+	ECBIT(multicast_diagnostics, 1);
+	ECBIT(location_tracking, 2);
+	ECBIT(FMS, 3);
+	ECBIT(proxy_arp, 4);
+	ECBIT(collocated_interference_reporting, 5);
+	ECBIT(civic_location, 6);
+	ECBIT(geospatial_location, 7);
+
+	NEXTBYTE
+	ECBIT(TFS, 0);
+	ECBIT(WNM_sleep_mode, 1);
+	ECBIT(TIM_broadcast, 2);
+	ECBIT(BSS_transition, 3);
+	ECBIT(QoS_traffic_capa, 4);
+	ECBIT(AC_station_count, 5);
+	ECBIT(multiple_BSSID, 6);
+	ECBIT(timing_measurement, 7);
+
+	NEXTBYTE
+	ECBIT(channel_usage, 0);
+	ECBIT(SSID_list, 1);
+	ECBIT(DMS, 2);
+	ECBIT(UTC_TSF_offset, 3);
+	ECBIT(TPU_buffer_STA_support, 4);
+	ECBIT(TDLS_peer_PSM_support, 5);
+	ECBIT(TDLS_channel_switching, 6);
+	ECBIT(internetworking, 7);
+
+	NEXTBYTE
+	ECBIT(QoS_map, 0);
+	ECBIT(EBR, 1);
+	ECBIT(SSPN_interface, 2);
+	// byte 4 bit 3 reserved
+	ECBIT(MSGCF_capa, 4);
+	ECBIT(TDLS_support, 5);
+	ECBIT(TDLS_prohibited, 6);
+	ECBIT(TDLS_channel_switch_prohibited, 7);
+
+	NEXTBYTE
+	ECBIT(reject_unadmitted_frame, 0);
+	sie->service_interval_granularity = (b & 7)>>1;
+	ECBIT(identifier_location, 4);
+	ECBIT(UAPSD_coexist, 5);
+	ECBIT(WNM_notification, 6);
+	ECBIT(QAB_capa, 7);
+
+	NEXTBYTE
+	ECBIT(UTF8_ssid, 0);
+	ECBIT(QMF_activated, 1);
+	ECBIT(QMF_reconfig_activated, 2);
+	ECBIT(robust_av_streaming, 3);
+	ECBIT(advanced_GCR, 4);
+	ECBIT(mesh_GCR, 5);
+	ECBIT(SCS, 6);
+	ECBIT(q_load_report, 7);
+
+	NEXTBYTE
+	ECBIT(alternate_EDCA, 0);
+	ECBIT(unprot_TXOP_negotiation, 1);
+	ECBIT(prot_TXOP_negotiation, 2);
+	// byte 7 bit 3 reserved
+	ECBIT(prot_q_load_report, 4);
+	ECBIT(TDLS_wider_bandwidth, 5);
+	ECBIT(operating_mode_notification, 6);
+
+	sie->max_MSDU_in_AMSDU = ((ie->buf[7] & (1<<7))>>7) + (ie->buf[8] & 1);
+
+	NEXTBYTE
+	ECBIT(channel_mgmt_sched, 0);
+	ECBIT(geo_db_inband, 0);
+	ECBIT(network_channel_control, 0);
+	ECBIT(whitespace_map, 0);
+	ECBIT(channel_avail_query, 0);
+	ECBIT(FTM_responder, 0);
+	ECBIT(FTM_initiator, 0);
+
+	NEXTBYTE
+	// byte 9 bit 0 reserved
+	ECBIT(extended_spectrum_mgmt, 1);
+	ECBIT(future_channel_guidance, 2);
+
+#undef ECBIT
+#undef NEXTBYTE
 	return 0;
 }
 
 static void ie_extended_capa_free(struct IE* ie)
 {
-	(void)ie;
-	// TODO
+	DESTRUCT(struct IE_Extended_Capabilities)
 }
 
 static int ie_vendor_new(struct IE* ie)

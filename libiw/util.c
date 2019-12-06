@@ -79,3 +79,25 @@ const char *country_env_str(enum Environment environment)
 	}
 }
 
+int capability_to_str(uint16_t capa, char* s, size_t len)
+{
+	return snprintf(s, len, "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s", 
+		(capa & WLAN_CAPABILITY_ESS ? "ESS " : ""),
+		(capa & WLAN_CAPABILITY_IBSS ? "IBSS " : ""),
+		(capa & WLAN_CAPABILITY_CF_POLLABLE ? "CfPollable " : ""),
+		(capa & WLAN_CAPABILITY_CF_POLL_REQUEST ? "CfPollReq " : ""),
+		(capa & WLAN_CAPABILITY_PRIVACY ? "Privacy " : ""),
+		(capa & WLAN_CAPABILITY_SHORT_PREAMBLE ? "ShortPreamble " : ""),
+		(capa & WLAN_CAPABILITY_PBCC ? "PBCC " : ""),
+		(capa & WLAN_CAPABILITY_CHANNEL_AGILITY ? "ChannelAgility " : ""),
+		(capa & WLAN_CAPABILITY_SPECTRUM_MGMT ? "SpectrumMgmt " : ""),
+		(capa & WLAN_CAPABILITY_QOS ? "QoS " : ""),
+		(capa & WLAN_CAPABILITY_SHORT_SLOT_TIME ? "ShortSlotTime " : ""),
+		(capa & WLAN_CAPABILITY_APSD ? "APSD " : ""),
+		(capa & WLAN_CAPABILITY_RADIO_MEASURE ? "RadioMeasure " : ""),
+		(capa & WLAN_CAPABILITY_DSSS_OFDM ? "DSSS-OFDM " : ""),
+		(capa & WLAN_CAPABILITY_DEL_BACK ? "DelayedBACK " : ""),
+		(capa & WLAN_CAPABILITY_IMM_BACK ? "ImmediateBACK " : "")
+	);
+}
+

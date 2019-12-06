@@ -89,3 +89,8 @@ fail:
 	return err;
 }
 
+bool bss_is_vht(const struct BSS* bss)
+{
+	return ie_list_find_id(&bss->ie_list, IE_VHT) != NULL;
+}
+

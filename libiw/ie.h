@@ -52,6 +52,7 @@ typedef enum {
 	IE_COUNTRY = 7,
 	IE_MESH_ID = 114,
 	IE_EXTENDED_CAPABILITIES = 127,
+	IE_VHT = 191,
 	IE_VENDOR = 221,
 		
 } IE_ID;
@@ -164,7 +165,108 @@ struct IE_Country
 struct IE_Extended_Capabilities
 {
 	IE_SPECIFIC_FIELDS
-	// TODO
+
+	// bitfields ahoy!
+
+	// octet [0]
+	bool bss_2040_coexist : 1;
+	// bit 1 reserved
+	bool ESS : 1;
+	// bit 3 reserved but iw scan.c says "Wave Indication" and who am I to
+	// disagree
+	bool wave_indication : 1;
+	bool psmp_capa : 1;
+	// bit 5 reserved but iw scan.c says "Service Interval Granularity"
+	bool service_interval_granularity_flag;
+	bool spsmp_support : 1;
+	bool event : 1;
+
+	// octest [1]
+	bool diagnostics : 1;
+	bool multicast_diagnostics : 1;
+	bool location_tracking : 1;  // you should be ashamed
+	bool FMS : 1;
+	bool proxy_arp : 1;
+	bool collocated_interference_reporting : 1;
+	bool civic_location : 1;
+	bool geospatial_location : 1;
+
+	// octet [2]
+	bool TFS : 1;
+	bool WNM_sleep_mode : 1;
+	bool TIM_broadcast : 1;
+	bool BSS_transition : 1;
+	bool QoS_traffic_capa : 1;
+	bool AC_station_count : 1;
+	bool multiple_BSSID : 1;
+	bool timing_measurement : 1;
+
+	// octet [3]
+	bool channel_usage : 1;
+	bool SSID_list : 1;
+	bool DMS : 1;
+	bool UTC_TSF_offset : 1;
+	bool TPU_buffer_STA_support : 1;
+	bool TDLS_peer_PSM_support : 1;
+	bool TDLS_channel_switching : 1;
+	bool internetworking : 1;
+
+	// octet[4]
+	bool QoS_map : 1;
+	bool EBR : 1;
+	bool SSPN_interface : 1;
+	// 35 reserved
+	bool MSGCF_capa : 1;
+	bool TDLS_support : 1;
+	bool TDLS_prohibited : 1;
+	bool TDLS_channel_switch_prohibited : 1;
+
+	// octet [5]
+	bool reject_unadmitted_frame : 1;
+	// 3 bits
+	unsigned int service_interval_granularity : 3;
+	bool identifier_location : 1;
+	bool UAPSD_coexist : 1;
+	bool WNM_notification : 1;
+	bool QAB_capa : 1;
+
+	// octet [6]
+	bool UTF8_ssid : 1; // ¯\_(ツ)_/¯
+	bool QMF_activated : 1;
+	bool QMF_reconfig_activated : 1;
+	bool robust_av_streaming : 1;
+	bool advanced_GCR : 1;
+	bool mesh_GCR : 1;
+	bool SCS : 1;
+	bool q_load_report : 1;
+
+	// octet[7];
+	bool alternate_EDCA : 1;
+	bool unprot_TXOP_negotiation : 1;
+	bool prot_TXOP_negotiation : 1;
+	// bit 59 reserved
+	bool prot_q_load_report : 1;
+	bool TDLS_wider_bandwidth : 1;
+	bool operating_mode_notification : 1;
+
+	// 2 bits broken across octet[7] and octet[8]
+	// (thanks, 802.11 technical committee(s)!)
+	unsigned int max_MSDU_in_AMSDU : 2;
+
+	// rest of octet[8] starting with bit 65
+	bool channel_mgmt_sched : 1;
+	bool geo_db_inband : 1;
+	bool network_channel_control : 1;
+	bool whitespace_map : 1;
+	bool channel_avail_query : 1;
+	bool FTM_responder : 1;
+	bool FTM_initiator : 1;
+
+	// octet [9]
+	// bit 72 reserved (skipped) in IEEE 80211-2016.pdf 
+	bool extended_spectrum_mgmt : 1;
+	bool future_channel_guidance : 1;
+
 };
 
 #define IE_VENDOR_OUI_LEN 5

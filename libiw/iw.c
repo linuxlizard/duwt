@@ -84,6 +84,10 @@ int parse_nla_bss(struct nlattr* attr_list, struct BSS* bss)
 	 * before return
 	 */
 
+	if ((attr = bss_attr[NL80211_BSS_CAPABILITY])) {
+		bss->capability = nla_get_u16(attr);
+	}
+
 	if ((attr = bss_attr[NL80211_BSS_INFORMATION_ELEMENTS])) {
 		// attr is actually an array here (nested nla)
 		err = parse_nla_ies(attr, &bss->ie_list);

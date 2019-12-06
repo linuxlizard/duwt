@@ -80,7 +80,7 @@ static void print_supported_rates(struct BSS* bss)
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SUPPORTED_RATES);
 	if (ie) {
 		const struct IE_Supported_Rates *sie = IE_CAST(ie, struct IE_Supported_Rates);
-		printf("\tSupported rates:");
+		printf("\tSupported rates: ");
 		for (size_t i=0 ; i<sie->count ; i++) {
 			printf("%0.1f%s ", sie->rate[i], sie->basic[i]?"*":"");
 		}
@@ -94,6 +94,99 @@ static void print_dsss_param(struct BSS* bss)
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_DSSS_PARAMETER_SET);
 	if (ie) {
 		printf("\tDS Parameter set: channel %d\n", ie->value);
+	}
+}
+
+static void print_extended_capabilities(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_EXTENDED_CAPABILITIES);
+	if (!ie) {
+		return;
+	}
+	const struct IE_Extended_Capabilities* sie = IE_CAST(ie, const struct IE_Extended_Capabilities);
+	printf("\tExtended capabilities:\n");
+	// using the macros+strings from iw scan.c print_capabilities() but
+	// slightly modified for my IE_Extended_Capabilities structure
+#define CAPA(field,str)\
+	if (sie->field) printf("\t\t* %s\n", str)
+
+	CAPA(bss_2040_coexist, "HT Information Exchange Supported");
+	CAPA(ESS, "Extended Channel Switching");
+	CAPA(wave_indication, "reserved (Wave Indication)");
+	CAPA(psmp_capa, "PSMP Capability");
+	CAPA(service_interval_granularity_flag, "reserved (Service Interval Granularity)");
+	CAPA(spsmp_support, "S-PSMP Capability");
+	CAPA(event, "Event");
+
+	CAPA(diagnostics, "Diagnostics");
+	CAPA(multicast_diagnostics, "Multicast Diagnostics");
+	CAPA(location_tracking, "Location Tracking");
+	CAPA(FMS, "FMS");
+	CAPA(proxy_arp, "Proxy ARP Service");
+	CAPA(collocated_interference_reporting, "Collocated Interference Reporting");
+	CAPA(civic_location, "Civic Location");
+	CAPA(geospatial_location, "Geospatial Location");
+
+	CAPA(TFS, "TFS");
+	CAPA(WNM_sleep_mode, "WNM-Sleep Mode");
+	CAPA(TIM_broadcast, "TIM Broadcast");
+	CAPA(BSS_transition, "BSS Transition");
+	CAPA(QoS_traffic_capa, "QoS Traffic Capability");
+	CAPA(AC_station_count, "AC Station Count");
+	CAPA(multiple_BSSID, "Multiple BSSID");
+	CAPA(timing_measurement, "Timing Measurement");
+
+	CAPA(channel_usage, "Channel Usage");
+	CAPA(SSID_list, "SSID List");
+	CAPA(DMS, "DMS");
+	CAPA(UTC_TSF_offset, "UTC TSF Offset");
+	CAPA(TPU_buffer_STA_support, "TDLS Peer U-APSD Buffer STA Support");
+	CAPA(TDLS_peer_PSM_support, "TDLS Peer PSM Support");
+	CAPA(TDLS_channel_switch_prohibited, "TDLS channel switching");
+	CAPA(internetworking, "Interworking");
+
+	CAPA(QoS_map, "QoS Map");
+	CAPA(EBR, "EBR");
+	CAPA(SSPN_interface, "SSPN Interface");
+	CAPA(MSGCF_capa, "MSGCF Capability");
+	CAPA(TDLS_support, "TDLS Support");
+	CAPA(TDLS_prohibited, "TDLS Prohibited");
+	CAPA(TDLS_channel_switch_prohibited, "TDLS Channel Switching Prohibited");
+
+	CAPA(reject_unadmitted_frame, "Reject Unadmitted Frame");
+	CAPA(identifier_location, "Identifier Location");
+	CAPA(UAPSD_coexist, "U-APSD Coexistence");
+	CAPA(WNM_notification, "WNM-Notification");
+	CAPA(QAB_capa, "QAB Capability");
+
+	CAPA(UTF8_ssid, "UTF-8 SSID");
+	CAPA(QMF_activated, "QMFActivated");
+	CAPA(QMF_reconfig_activated, "QMFReconfigurationActivated");
+	CAPA(robust_av_streaming, "Robust AV Streaming");
+	CAPA(advanced_GCR, "Advanced GCR");
+	CAPA(mesh_GCR, "Mesh GCR");
+	CAPA(SCS, "SCS");
+	CAPA(q_load_report, "QLoad Report");
+
+	CAPA(alternate_EDCA, "Alternate EDCA");
+	CAPA(unprot_TXOP_negotiation, "Unprotected TXOP Negotiation");
+	CAPA(prot_TXOP_negotiation, "Protected TXOP egotiation");
+	CAPA(prot_q_load_report, "Protected QLoad Report");
+	CAPA(TDLS_wider_bandwidth, "TDLS Wider Bandwidth");
+	CAPA(operating_mode_notification, "Operating Mode Notification");
+
+	CAPA(channel_mgmt_sched, "Channel Schedule Management");
+	CAPA(geo_db_inband, "Geodatabase Inband Enabling Signal");
+	CAPA(network_channel_control, "Network Channel Control");
+	CAPA(whitespace_map, "White Space Map");
+	CAPA(channel_avail_query, "Channel Availability Query");
+	CAPA(FTM_responder, "FTM Responder");
+	CAPA(FTM_initiator, "FTM Initiator");
+
+	CAPA(extended_spectrum_mgmt, "Extended Spectrum Management Capable");
+
+	if (bss_is_vht(bss) ) {
+		printf("\t\t* Max Number Of MSDUs In A-MSDU is %d\n", sie->max_MSDU_in_AMSDU);
 	}
 }
 
@@ -159,17 +252,25 @@ static void print_bss(struct BSS* bss)
 	XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
 
 	printf("BSS %s\n", bss->bssid_str);
-	char tsf_str[64];
-	int err = tsf_to_timestamp_str(bss->tsf, tsf_str, 64);
-	XASSERT(err<64, err);
-	printf("\tTSF: %" PRIu64 " usec (%s)\n", bss->tsf, tsf_str);
+
+	char str[128];
+	int err = tsf_to_timestamp_str(bss->tsf, str, sizeof(str));
+	XASSERT(err < 0 || (size_t)err < sizeof(str), err);
+
+	printf("\tTSF: %" PRIu64 " usec (%s)\n", bss->tsf, str);
 	printf("\tfreq: %"PRIu32"\n", bss->frequency);
 	printf("\tbeacon interval: %d TUs\n", bss->beacon_interval);
+
+	err = capability_to_str(bss->capability, str, sizeof(str));
+	XASSERT(err < 0 || (size_t)err < sizeof(str), err);
+	printf("\tcapability: %s (%#06x)\n", str, bss->capability);
+
 	printf("\tsignal: %0.2f dBm\n", bss->signal_strength_mbm/100.0);
 	u_printf("\tSSID: %S\n", get_ssid(bss));
 	print_supported_rates(bss);
 	print_dsss_param(bss);
 	print_country(bss);
+	print_extended_capabilities(bss);
 }
 
 static void print_bss_to_csv(struct BSS* bss, bool header)
@@ -258,6 +359,7 @@ int main(int argc, char* argv[])
 		first = false;
 	}
 
+	printf("\n\n");
 	list_for_each_entry(bss, &bss_list, node) {
 		print_short(bss);
 		first = false;
