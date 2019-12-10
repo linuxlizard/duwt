@@ -50,6 +50,8 @@ typedef enum {
 	IE_DSSS_PARAMETER_SET = 3,
 	IE_TIM = 5, // there are those who call me...
 	IE_COUNTRY = 7,
+	IE_ERP = 42,
+	IE_EXTENDED_SUPPORTED_RATES = 50,
 	IE_MESH_ID = 114,
 	IE_EXTENDED_CAPABILITIES = 127,
 	IE_VHT = 191,
@@ -106,6 +108,12 @@ struct IE_SSID
 	int32_t ssid_len;
 };
 
+struct Supported_Rate
+{
+	float rate;
+	bool basic : 1;
+};
+
 struct IE_Supported_Rates
 {
 	IE_SPECIFIC_FIELDS
@@ -160,6 +168,24 @@ struct IE_Country
 
 	union ieee80211_country_ie_triplet triplets[IE_COUNTRY_TRIPLET_MAX];
 	size_t count;
+};
+
+struct IE_ERP
+{
+	IE_SPECIFIC_FIELDS
+
+	// bitfields; using same name as the IEEE 80211-2016.pdf
+	bool NonERP_Present : 1;
+	bool Use_Protection : 1;
+	bool Barker_Preamble_Mode : 1;
+};
+
+struct IE_Extended_Supported_Rates
+{
+	IE_SPECIFIC_FIELDS
+
+	size_t count;
+	struct Supported_Rate rates[];
 };
 
 struct IE_Extended_Capabilities
@@ -302,7 +328,6 @@ int decode_ie_buf( const uint8_t* buf, size_t len, struct IE_List* ielist);
 
 #define ie_list_for_each_entry(pos, list)\
 	for (size_t i=0 ; (pos=list.ieptrlist[i]) && i<list.count ; pos=list.ieptrlist[++i]) 
-
 
 #endif
 

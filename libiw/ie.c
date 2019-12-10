@@ -66,13 +66,31 @@ static void ie_ssid_free(struct IE* ie)
 	PTR_FREE(ie->specific);
 }
 
-static int ie_supported_rates_new(struct IE* ie)
+static void decode_supported_rate(uint8_t byte, struct Supported_Rate *psr)
 {
-	CONSTRUCT(struct IE_Supported_Rates)
-
 // iw scan.c print_supprates()
 #define BSS_MEMBERSHIP_SELECTOR_VHT_PHY 126
 #define BSS_MEMBERSHIP_SELECTOR_HT_PHY 127
+	int r = byte & 0x7f;
+
+	memset(psr, 0, sizeof(struct Supported_Rate));
+
+	/* davep 20191201 ; TODO what the heck do I do with VHT_ HT_PHY!? */
+	if (r == BSS_MEMBERSHIP_SELECTOR_VHT_PHY && byte & 0x80)
+		(void)r;
+//			s += "VHT";
+	else if (r == BSS_MEMBERSHIP_SELECTOR_HT_PHY && byte & 0x80)
+		(void)r;
+//			s += "HT";
+	else {
+		psr->rate = r/2.0 + 5.0*(r&1);
+		psr->basic =  true && (byte & 0x80) ;
+	}
+}
+
+static int ie_supported_rates_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_Supported_Rates)
 
 	// iw scan.c print_supprates()
 	// "bits 6 to 0 are set to the data rate ... in units of 500kb/s"
@@ -91,12 +109,7 @@ static int ie_supported_rates_new(struct IE* ie)
 			sie->rate[sie->count] = r/2.0 + 5.0*(r&1);
 			sie->basic[sie->count] =  true && (byte & 0x80) ;
 			sie->count++;
-//			s += fmt::format("{}.{}", r/2, 5*(r&1));
-//			rates_list.emplace_back( r/2, true && (byte & 0x80) );
-//			printf("%d.%d", r/2, 5*(r&1));
 		}
-
-//		s += (byte & 0x80) ? "* " : " ";
 	}
 
 	return 0;
@@ -195,8 +208,51 @@ static void ie_country_free(struct IE* ie)
 	DESTRUCT(struct IE_Country)
 }
 
+static int ie_erp_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_ERP)
+
+	sie->NonERP_Present = !!(ie->buf[0] & 1);
+	sie->Use_Protection = !!(ie->buf[0] & 2);
+	sie->Barker_Preamble_Mode = !!(ie->buf[0] & 4);
+	return 0;
+}
+
+static void ie_erp_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_ERP)
+}
+
+static int ie_extended_supported_rates_new(struct IE* ie)
+{
+	struct IE_Extended_Supported_Rates* sie;
+
+	DBG("%s len=%zu\n", __func__, ie->len);
+	sie = calloc(1, sizeof(struct IE_Extended_Supported_Rates) + (sizeof(struct Supported_Rate)*ie->len));
+	if (!sie) {
+		return -ENOMEM;
+	}
+	sie->cookie = IE_SPECIFIC_COOKIE;
+	ie->specific = sie;
+	sie->base = ie;
+
+	for (size_t i=0 ; i<ie->len; i++ ) {
+		decode_supported_rate(ie->buf[i], &sie->rates[i]);
+	}
+	sie->count = ie->len;
+
+	return 0;
+}
+
+static void ie_extended_supported_rates_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_Extended_Supported_Rates)
+}
+
 static int ie_dsss_parameter_set_new(struct IE* ie)
 {
+	// store the DSSS Param value in the IE itself, no
+	// need to create a "child class"
 	ie->value = (int)ie->buf[0];
 	return 0;
 }
@@ -205,8 +261,7 @@ static int ie_extended_capa_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_Extended_Capabilities)
 
-	// TODO decode
-	hex_dump(__func__, ie->buf, ie->len);
+//	hex_dump(__func__, ie->buf, ie->len);
 
 	if (ie->len < 1) return 0;
 	size_t idx = 0;
@@ -338,27 +393,56 @@ static void ie_vendor_free(struct IE* ie)
 }
 
 
-typedef int (*specific_ie_new)(struct IE *);
-typedef void (*specific_ie_delete)(struct IE*);
+static const struct ie_class {
+	int (*constructor)(struct IE *);
+	void (*destructor)(struct IE*);
+} ie_classes[256] = {
+	[IE_SSID] = {
+		ie_ssid_new,
+		ie_ssid_free,
+	},
 
-static const specific_ie_new constructors[256] = {
-	[IE_SSID] = ie_ssid_new,
-	[IE_DSSS_PARAMETER_SET] = ie_dsss_parameter_set_new,
-	[IE_SUPPORTED_RATES] = ie_supported_rates_new,
-	[IE_TIM] = ie_tim_new,
-	[IE_COUNTRY] = ie_country_new,
-	[IE_EXTENDED_CAPABILITIES] = ie_extended_capa_new,
-	[IE_VENDOR] = ie_vendor_new,
+	[IE_DSSS_PARAMETER_SET] = {
+		ie_dsss_parameter_set_new,
+		NULL,
+	},
+
+	[IE_SUPPORTED_RATES] = {
+		ie_supported_rates_new,
+		ie_supported_rates_free,
+	},
+
+	[IE_TIM] = { 
+		ie_tim_new,
+		ie_tim_free,
+	},
+
+	[IE_COUNTRY] = {
+		ie_country_new,
+		ie_country_free,
+	},
+
+	[IE_ERP] = {
+		ie_erp_new,
+		ie_erp_free,
+	},
+
+	[IE_EXTENDED_SUPPORTED_RATES] = {
+		ie_extended_supported_rates_new,
+		ie_extended_supported_rates_free,
+	},
+
+	[IE_EXTENDED_CAPABILITIES] = {
+		ie_extended_capa_new,
+		ie_extended_capa_free,
+	},
+
+	[IE_VENDOR] = {
+		ie_vendor_new,
+		ie_vendor_free,
+	},
 };
 
-static const specific_ie_delete destructors[256] = {
-	[IE_SSID] = ie_ssid_free,
-	[IE_SUPPORTED_RATES] = ie_supported_rates_free,
-	[IE_TIM] = ie_tim_free,
-	[IE_COUNTRY] = ie_country_free,
-	[IE_EXTENDED_CAPABILITIES] = ie_extended_capa_free,
-	[IE_VENDOR] = ie_vendor_free,
-};
 
 struct IE* ie_new(uint8_t id, uint8_t len, const uint8_t* buf)
 {
@@ -380,8 +464,8 @@ struct IE* ie_new(uint8_t id, uint8_t len, const uint8_t* buf)
 	}
 	memcpy(ie->buf, buf, ie->len);
 
-	if (constructors[id]) {
-		int err = constructors[id](ie);
+	if (ie_classes[id].constructor) {
+		int err = ie_classes[id].constructor(ie);
 		if (err) {
 			ERR("%s id=%d failed err=%d\n", __func__, id, err);
 			ie_delete(&ie);
@@ -412,8 +496,9 @@ void ie_delete(struct IE** pie)
 	}
 
 	// now let the descendent free its memory
-	if (destructors[ie->id]) {
-		destructors[ie->id](ie);
+	// (ie->specific could be NULL if we have a partially initialized IE)
+	if (ie_classes[ie->id].destructor && ie->specific) {
+		ie_classes[ie->id].destructor(ie);
 	}
 	else {
 		XASSERT(ie->specific == NULL, ie->id);

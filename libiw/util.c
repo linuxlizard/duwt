@@ -101,3 +101,19 @@ int capability_to_str(uint16_t capa, char* s, size_t len)
 	);
 }
 
+int erp_to_str(const struct IE* ie, char* s, size_t len)
+{
+	const struct IE_ERP* sie = IE_CAST(ie, struct IE_ERP);
+
+	if (!ie->buf[0]) {
+		return snprintf(s, len, " <no flags>");
+	}
+
+	return snprintf(s, len, "%s%s%s",
+			sie->NonERP_Present ? " NonERP_Present" : "",
+			sie->Use_Protection ? " Use_Protection" : "",
+			sie->Barker_Preamble_Mode ? " Barker_Preamble_Mode" : ""
+		);
+
+}
+

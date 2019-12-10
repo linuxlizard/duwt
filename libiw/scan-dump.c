@@ -247,6 +247,32 @@ static void print_country(const struct BSS* bss)
 
 }
 
+static void print_erp(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_ERP);
+	if (!ie) {
+		return;
+	}
+	char s[128];
+	int err = erp_to_str(ie, s, 128);
+	XASSERT(err<128, err);
+	printf("\tERP:%s\n", s);
+}
+
+static void print_extended_supported_rates(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_EXTENDED_SUPPORTED_RATES);
+	if (!ie) {
+		return;
+	}
+	const struct IE_Extended_Supported_Rates *sie = IE_CAST(ie, struct IE_Extended_Supported_Rates);
+	printf("\tExtended supported rates: ");
+	for (size_t i=0 ; i<sie->count ; i++) {
+		printf("%0.1f%s ", sie->rates[i].rate, sie->rates[i].basic?"*":"");
+	}
+	printf("\n");
+}
+
 static void print_bss(struct BSS* bss)
 {
 	XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
@@ -270,6 +296,8 @@ static void print_bss(struct BSS* bss)
 	print_supported_rates(bss);
 	print_dsss_param(bss);
 	print_country(bss);
+	print_erp(bss);
+	print_extended_supported_rates(bss);
 	print_extended_capabilities(bss);
 }
 

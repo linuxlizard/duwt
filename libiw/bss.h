@@ -12,6 +12,8 @@
 
 typedef uint8_t macaddr[ETH_ALEN];
 
+struct capability;
+
 struct BSS 
 {
 	uint32_t cookie;
@@ -81,6 +83,28 @@ struct BSS
 #define WLAN_CAPABILITY_DMG_SPECTRUM_MGMT	(1<<8)
 #define WLAN_CAPABILITY_DMG_RADIO_MEASURE	(1<<12)
 // end iw scan.c capability bits
+
+// decoded 16-bit Capability field NL80211_BSS_CAPABILITY
+// (TODO DMG)
+struct Capability
+{
+	bool ESS : 1;
+	bool IBSS : 1;
+	bool CF_POLLABLE : 1;
+	bool CF_POLL_REQUEST : 1;
+	bool PRIVACY : 1;
+	bool SHORT_PREAMBLE : 1;
+	bool PBCC : 1;
+	bool CHANNEL_AGILITY : 1;
+	bool SPECTRUM_MGMT : 1;
+	bool QOS : 1;
+	bool SHORT_SLOT_TIME : 1;
+	bool APSD : 1;
+	bool RADIO_MEASURE : 1;
+	bool DSSS_OFDM : 1;
+	bool DEL_BACK : 1;
+	bool IMM_BACK : 1;
+};
 
 struct BSS* bss_new(void);
 void bss_free(struct BSS** pbss);

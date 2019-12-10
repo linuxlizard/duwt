@@ -29,6 +29,7 @@ const char *country_env_str(enum Environment environment);
 
 int tsf_to_timestamp_str(uint64_t tsf, char* s, size_t len);
 int capability_to_str(uint16_t capa, char* s, size_t len);
+int erp_to_str(const struct IE* ie, char* s, size_t len);
 
 #endif
 
