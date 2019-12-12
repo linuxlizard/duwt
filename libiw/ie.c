@@ -223,6 +223,115 @@ static void ie_erp_free(struct IE* ie)
 	DESTRUCT(struct IE_ERP)
 }
 
+// iw util.c print_ht_mcs()
+static void ht_mcs_decode(uint8_t* buf, struct HT_MCS_Set* mcs)
+{
+	memset(mcs, 0, sizeof(struct HT_MCS_Set));
+	memcpy(mcs->mcs_bits, buf, 10);
+
+	mcs->max_rx_supp_data_rate = (buf[10] | ((buf[11] & 0x3) << 8));
+	mcs->tx_mcs_set_defined = !!(buf[12] & (1 << 0));
+	mcs->tx_mcs_set_equal = !(buf[12] & (1 << 1));
+	mcs->tx_max_num_spatial_streams = ((buf[12] >> 2) & 3) + 1;
+	mcs->tx_unequal_modulation = !!(buf[12] & (1 << 4));
+}
+
+static int ie_ht_capabilities_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_HT_Capabilities)
+
+	uint8_t* ptr = ie->buf;
+
+	// decode big blob into smaller blobs
+	// Figure 9-331 HT Capabilities element format
+	sie->capa = htole16(*(uint16_t*)ptr); 
+	ptr += 2;
+	sie->ampdu_param = *ptr;
+	ptr += 1;
+	// just point into the ie->buf (no need for more memory) 
+	sie->supported_mcs_ptr = ptr;
+	ptr += 16;
+	sie->extended_capa = htole16(*(uint16_t*)ptr);
+	ptr += 2;
+	sie->tx_beamforming_capa = htole32(*(uint32_t*)ptr);
+	ptr += 4;
+	sie->asel_capa = *ptr;
+
+	// decode bitfields
+
+#define HTCAPA(field, bit)\
+		sie->field = !!(sie->capa & (1<<bit))
+	HTCAPA(LDPC_coding_capa, 0);
+	HTCAPA(supported_channel_width, 1);
+	sie->SM_power_save = (sie->capa >> 2) & 3;
+	HTCAPA(greenfield, 4);
+	HTCAPA(short_gi_20Mhz, 5);
+	HTCAPA(short_gi_40Mhz, 6);
+	HTCAPA(tx_stbc, 7);
+	sie->rx_stbc = (sie->capa >> 8) & 3;
+	HTCAPA(delayed_block_ack, 10);
+	HTCAPA(max_amsdu_len, 11);
+	HTCAPA(dsss_cck_in_40Mhz, 12);
+	// bit 13 is reserved
+	HTCAPA(_40Mhz_intolerant, 14);
+	HTCAPA(lsig_txop_prot, 15);
+#undef HTCAPA
+
+	sie->max_ampdu_len = sie->ampdu_param & 3;
+	sie->min_ampdu_spacing = (sie->ampdu_param >> 2) & 7;
+
+	ht_mcs_decode(sie->supported_mcs_ptr, &sie->mcs);
+	return 0;
+}
+
+static void ie_ht_capabilities_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_HT_Capabilities)
+}
+
+static int ie_ht_operation_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_HT_Operation)
+
+	uint8_t* ptr = ie->buf;
+	hex_dump(__func__, ie->buf, ie->len);
+
+	// iw scan.c print_ht_op()
+	sie->primary_channel = *ptr++;
+	sie->info_ptr = ptr; 
+	ptr += 5;
+	sie->mcs_set_ptr = ptr;
+
+	// reset the ptr back to start of IE data so I can copy/paste the decode from 
+	// iw scan.c print_ht_op()
+	uint8_t* data = ie->buf;
+	// primary_channel is data[0]
+	sie->secondary_channel_offset = data[1] & 0x3;
+	sie->sta_channel_width = (data[1] & 0x4)>>2;
+	sie->rifs = (data[1] & 0x8)>>3;
+	sie->ht_protection = data[2] & 0x3;
+	sie->non_gf_present = (data[2] & 0x4) >> 2;
+	sie->obss_non_gf_present = (data[2] & 0x10) >> 4;
+
+	// docs say 11 bits but is actually 8 bits from bit-13 to bit-20
+	// TODO
+//	sie->channel_center_frequency_2 = (data[2]<<4) | (data[3]>>4);
+
+	sie->dual_beacon = (data[4] & 0x40) >> 6;
+	sie->dual_cts_protection = (data[4] & 0x80) >> 7;
+	sie->stbc_beacon = data[5] & 0x1;
+	sie->lsig_txop_prot = (data[5] & 0x4) >> 2;
+	sie->pco_active = (data[5] & 0x4) >> 2;
+	sie->pco_phase = (data[5] & 0x8) >> 3;
+
+	return 0;
+}
+
+static void ie_ht_operation_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_HT_Operation);
+}
+
 static int ie_extended_supported_rates_new(struct IE* ie)
 {
 	struct IE_Extended_Supported_Rates* sie;
@@ -425,6 +534,16 @@ static const struct ie_class {
 	[IE_ERP] = {
 		ie_erp_new,
 		ie_erp_free,
+	},
+
+	[IE_HT_CAPABILITIES] = {
+		ie_ht_capabilities_new,
+		ie_ht_capabilities_free,
+	},
+
+	[IE_HT_OPERATION] = {
+		ie_ht_operation_new,
+		ie_ht_operation_free,
 	},
 
 	[IE_EXTENDED_SUPPORTED_RATES] = {

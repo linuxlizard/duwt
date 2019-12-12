@@ -86,7 +86,6 @@ static void print_supported_rates(struct BSS* bss)
 		}
 		printf("\n");
 	}
-
 }
 
 static void print_dsss_param(struct BSS* bss)
@@ -184,10 +183,140 @@ static void print_extended_capabilities(const struct BSS* bss)
 	CAPA(FTM_initiator, "FTM Initiator");
 
 	CAPA(extended_spectrum_mgmt, "Extended Spectrum Management Capable");
-
+#undef CAPA
 	if (bss_is_vht(bss) ) {
-		printf("\t\t* Max Number Of MSDUs In A-MSDU is %d\n", sie->max_MSDU_in_AMSDU);
+		printf("\t\t* Max Number Of MSDUs In A-MSDU is %s\n", 
+				ht_max_amsdu_str(sie->max_MSDU_in_AMSDU));
 	}
+}
+
+// iw util.c print_ht_mcs_index()
+static void print_ht_mcs_index(const struct HT_MCS_Set* mcs)
+{
+	// TODO
+	hex_dump("mcs", mcs->mcs_bits, 10);
+}
+
+// iw util.c print_ht_mcs()
+static void print_ht_mcs(const struct HT_MCS_Set* mcs)
+{
+	if (mcs->max_rx_supp_data_rate)
+		printf("\t\tHT Max RX data rate: %d Mbps\n", mcs->max_rx_supp_data_rate);
+	/* XXX: else see 9.6.0e.5.3 how to get this I think */
+
+	if (mcs->tx_mcs_set_defined) {
+		if (mcs->tx_mcs_set_equal) {
+			printf("\t\tHT TX/RX MCS rate indexes supported:");
+			print_ht_mcs_index(mcs);
+		} else {
+			printf("\t\tHT RX MCS rate indexes supported:");
+			print_ht_mcs_index(mcs);
+
+			if (mcs->tx_unequal_modulation)
+				printf("\t\tTX unequal modulation supported\n");
+			else
+				printf("\t\tTX unequal modulation not supported\n");
+
+			printf("\t\tHT TX Max spatial streams: %d\n",
+				mcs->tx_max_num_spatial_streams);
+
+			printf("\t\tHT TX MCS rate indexes supported may differ\n");
+		}
+	} else {
+		printf("\t\tHT RX MCS rate indexes supported:");
+		print_ht_mcs_index(mcs);
+		printf("\t\tHT TX MCS rate indexes are undefined\n");
+	}
+}
+
+static void print_ht_capabilities(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_HT_CAPABILITIES);
+	if (!ie) {
+		return;
+	}
+	const struct IE_HT_Capabilities* sie = IE_CAST(ie, const struct IE_HT_Capabilities);
+	printf("\tHT capabilities:\n");
+	// iw util.c print_ht_capability
+#define PRINT_HT_CAP(_cond, _str) \
+	do { \
+		if (_cond) \
+			printf("\t\t\t" _str "\n"); \
+	} while (0)
+
+	printf("\t\tCapabilities: 0x%02x\n", sie->capa);
+
+	PRINT_HT_CAP(sie->LDPC_coding_capa, "RX LDPC");
+	PRINT_HT_CAP(sie->supported_channel_width, "HT20/HT40");
+	PRINT_HT_CAP(!sie->supported_channel_width, "HT20");
+
+	PRINT_HT_CAP(sie->SM_power_save == 0, "Static SM Power Save");
+	PRINT_HT_CAP(sie->SM_power_save == 1, "Dynamic SM Power Save");
+	PRINT_HT_CAP(sie->SM_power_save == 3, "SM Power Save disabled");
+
+	PRINT_HT_CAP(sie->greenfield, "RX Greenfield");
+	PRINT_HT_CAP(sie->short_gi_20Mhz, "RX HT20 SGI");
+	PRINT_HT_CAP(sie->short_gi_40Mhz, "RX HT40 SGI");
+	PRINT_HT_CAP(sie->tx_stbc, "TX STBC");
+
+	PRINT_HT_CAP(sie->rx_stbc == 0, "No RX STBC");
+	PRINT_HT_CAP(sie->rx_stbc == 1, "RX STBC 1-stream");
+	PRINT_HT_CAP(sie->rx_stbc == 2, "RX STBC 2-streams");
+	PRINT_HT_CAP(sie->rx_stbc == 3, "RX STBC 3-streams");
+
+	PRINT_HT_CAP(sie->delayed_block_ack, "HT Delayed Block Ack");
+
+	PRINT_HT_CAP(!(sie->max_amsdu_len), "Max AMSDU length: 3839 bytes");
+	PRINT_HT_CAP(sie->max_amsdu_len, "Max AMSDU length: 7935 bytes");
+
+	/*
+	 * For beacons and probe response this would mean the BSS
+	 * does or does not allow the usage of DSSS/CCK HT40.
+	 * Otherwise it means the STA does or does not use
+	 * DSSS/CCK HT40.
+	 */
+	PRINT_HT_CAP(sie->dsss_cck_in_40Mhz, "DSSS/CCK HT40");
+	PRINT_HT_CAP(!sie->dsss_cck_in_40Mhz, "No DSSS/CCK HT40");
+	/* BIT(13) is reserved */
+	PRINT_HT_CAP(sie->_40Mhz_intolerant, "40 MHz Intolerant");
+	PRINT_HT_CAP(sie->lsig_txop_prot, "L-SIG TXOP protection");
+#undef PRINT_HT_CAP
+
+	char s[128];
+	int err = ht_ampdu_length_to_str(sie->max_ampdu_len, s, 128);
+	XASSERT(err<128, err);
+	printf("\t\t%s\n", s);
+
+	err = ht_ampdu_spacing_to_str(sie->min_ampdu_spacing, s, 128);
+	XASSERT(err<128, err);
+	printf("\t\t%s\n", s);
+
+	print_ht_mcs(&sie->mcs);
+}
+
+static void print_ht_operation(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_HT_OPERATION);
+	if (!ie) {
+		return;
+	}
+	const struct IE_HT_Operation* sie = IE_CAST(ie, const struct IE_HT_Operation);
+	printf("\tHT operation:\n");
+	printf("\t\t * primary channel: %d\n", sie->primary_channel);
+	printf("\t\t * secondary channel offset: %s\n", "TODO"); //ht_secondary_offset[data[1] & 0x3]);
+	printf("\t\t * STA channel width: %s\n", "TODO"); // sta_chan_width[(data[1] & 0x4)>>2]);
+	printf("\t\t * RIFS: %d\n", sie->rifs);
+	printf("\t\t * HT protection: %s\n", "TODO"); // protection[data[2] & 0x3]);
+	printf("\t\t * non-GF present: %d\n", sie->non_gf_present);
+//	printf("\t\t * Channel Center Freq 2: %d\n", sie->channel_center_frequency_2);
+	printf("\t\t * OBSS non-GF present: %d\n", sie->obss_non_gf_present);
+	printf("\t\t * dual beacon: %d\n", sie->dual_beacon);
+	printf("\t\t * dual CTS protection: %d\n", sie->dual_cts_protection);
+	printf("\t\t * STBC beacon: %d\n", sie->stbc_beacon);
+	printf("\t\t * L-SIG TXOP Prot: %d\n", sie->lsig_txop_prot);
+	printf("\t\t * PCO active: %d\n", sie->pco_active);
+	printf("\t\t * PCO phase: %d\n", sie->pco_phase);
+
 }
 
 static const UChar* get_ssid(const struct BSS* bss)
@@ -298,6 +427,8 @@ static void print_bss(struct BSS* bss)
 	print_country(bss);
 	print_erp(bss);
 	print_extended_supported_rates(bss);
+	print_ht_capabilities(bss);
+	print_ht_operation(bss);
 	print_extended_capabilities(bss);
 }
 
@@ -381,16 +512,15 @@ int main(int argc, char* argv[])
 		print_bss(bss);
 	}
 
-	bool first=true;
-	list_for_each_entry(bss, &bss_list, node) {
+//	bool first=true;
+//	list_for_each_entry(bss, &bss_list, node) {
 //		print_bss_to_csv(bss, first);
-		first = false;
-	}
+//		first = false;
+//	}
 
 	printf("\n\n");
 	list_for_each_entry(bss, &bss_list, node) {
 		print_short(bss);
-		first = false;
 	}
 
 leave:

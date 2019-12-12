@@ -51,6 +51,8 @@ typedef enum {
 	IE_TIM = 5, // there are those who call me...
 	IE_COUNTRY = 7,
 	IE_ERP = 42,
+	IE_HT_CAPABILITIES = 45,
+	IE_HT_OPERATION = 61,
 	IE_EXTENDED_SUPPORTED_RATES = 50,
 	IE_MESH_ID = 114,
 	IE_EXTENDED_CAPABILITIES = 127,
@@ -178,6 +180,93 @@ struct IE_ERP
 	bool NonERP_Present : 1;
 	bool Use_Protection : 1;
 	bool Barker_Preamble_Mode : 1;
+};
+
+// RX STBC bits of HT Capabilities IE
+enum IE_HT_RX_STBC {
+	NO_RX_STBC = 0,
+	RX_STBC_1_STREAM = 1,
+	RX_STBC_2_STREAM = 2,
+	RX_STBC_3_STREAM = 3
+};
+
+// MCS Set field
+// XXX does this also apply to VHT MCS?
+struct HT_MCS_Set
+{
+	// whole blob is 16 bytes
+	// using same names as iw util.c print_ht_mcs()
+	uint8_t mcs_bits[10];  // 77 bits + 3 reserved
+	uint16_t max_rx_supp_data_rate;  // 10 bits + 6 reserved
+	uint8_t tx_mcs_set_defined : 1;
+	uint8_t tx_mcs_set_equal : 1;
+	uint8_t tx_max_num_spatial_streams : 2;
+	uint8_t tx_unequal_modulation : 1;
+	// 27 reserved bits
+};
+
+struct IE_HT_Capabilities
+{
+	IE_SPECIFIC_FIELDS
+
+	// capa decoded into individual bitfields in 
+	// HT Capability Info Field below
+	uint16_t capa;
+	uint8_t ampdu_param;
+	uint8_t* supported_mcs_ptr; // 16 bytes; points into ie->buf
+	uint16_t extended_capa;
+	uint32_t tx_beamforming_capa;
+	uint8_t asel_capa;
+
+	// HT Capability Info Field
+	uint8_t LDPC_coding_capa : 1;
+	uint8_t supported_channel_width : 1;
+	uint8_t SM_power_save : 2;
+	uint8_t greenfield : 1;
+	uint8_t short_gi_20Mhz : 1;
+	uint8_t short_gi_40Mhz : 1;
+	uint8_t tx_stbc : 1;
+	enum IE_HT_RX_STBC rx_stbc : 2;
+	uint8_t delayed_block_ack : 1;
+	uint8_t max_amsdu_len : 1;
+	uint8_t dsss_cck_in_40Mhz : 1;
+	uint8_t _40Mhz_intolerant : 1;
+	uint8_t lsig_txop_prot : 1;
+
+	// A-MPDU Parameters Field
+	uint8_t max_ampdu_len : 2;
+	uint8_t min_ampdu_spacing : 3;
+
+	struct HT_MCS_Set mcs;
+};
+
+struct IE_HT_Operation
+{
+	IE_SPECIFIC_FIELDS
+
+	uint8_t primary_channel;
+	uint8_t* info_ptr; // point into ie->buf ; 5 bytes
+	uint8_t* mcs_set_ptr; // point into ie->buf ; 16 bytes
+
+	// HT Operation Information field bits
+	uint8_t secondary_channel_offset : 2;
+	uint8_t sta_channel_width : 1;
+	uint8_t rifs : 1;
+	// bit 4-7 reserved
+	uint8_t ht_protection : 2;
+	uint8_t non_gf_present : 1;
+	// bit 11 reserved
+	uint8_t obss_non_gf_present : 1;
+	// iw doesn't report this --v
+	uint16_t channel_center_frequency_2 : 11;
+	// bit 21-29 reserved
+	uint8_t dual_beacon : 1;
+	uint8_t dual_cts_protection : 1;
+	uint8_t stbc_beacon : 1;
+	uint8_t lsig_txop_prot : 1;
+	uint8_t pco_active : 1;
+	uint8_t pco_phase : 1;
+	// bits 36-39 reserved
 };
 
 struct IE_Extended_Supported_Rates

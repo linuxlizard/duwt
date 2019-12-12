@@ -115,6 +115,7 @@ void bss_free_list(struct list_head* list);
 int bss_from_nlattr(struct nlattr* attr[], struct BSS** pbss);
 
 bool bss_is_vht(const struct BSS* bss);
+bool bss_is_ht(const struct BSS* bss);
 
 #endif
 

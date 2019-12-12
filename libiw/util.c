@@ -114,6 +114,82 @@ int erp_to_str(const struct IE* ie, char* s, size_t len)
 			sie->Use_Protection ? " Use_Protection" : "",
 			sie->Barker_Preamble_Mode ? " Barker_Preamble_Mode" : ""
 		);
+}
 
+// iw util.c
+/*
+ * There are only 4 possible values, we just use a case instead of computing it,
+ * but technically this can also be computed through the formula:
+ *
+ * Max AMPDU length = (2 ^ (13 + exponent)) - 1 bytes
+ */
+static uint32_t compute_ampdu_length(uint8_t exponent)
+{
+	switch (exponent) {
+	case 0: return 8191;  /* (2 ^(13 + 0)) -1 */
+	case 1: return 16383; /* (2 ^(13 + 1)) -1 */
+	case 2: return 32767; /* (2 ^(13 + 2)) -1 */
+	case 3: return 65535; /* (2 ^(13 + 3)) -1 */
+	default: return 0;
+	}
+}
+
+int ht_ampdu_length_to_str(uint8_t exponent, char* s, size_t len)
+{
+	// iw util.c print_ampdu_length()
+	uint32_t max_ampdu_length;
+
+	max_ampdu_length = compute_ampdu_length(exponent);
+
+	if (max_ampdu_length) {
+		return snprintf(s, len, "Maximum RX AMPDU length %d bytes (exponent: 0x0%02x)",
+		       max_ampdu_length, exponent);
+	}
+	return snprintf(s, len, "Maximum RX AMPDU length: unrecognized bytes "
+		   "(exponent: %d)", exponent);
+}
+
+const char* ht_max_amsdu_str(uint8_t max_amsdu)
+{
+	// iw scan.c print_capabilities()
+	static const char* const amsdu_str[] = {
+		"unlimited", "32", "16", "8"
+	};
+
+	if (max_amsdu > 3) {
+		WARN("%s invalid value=%u for max_amdu\n", __func__, max_amsdu);
+		return "invalid value";
+	}
+
+	return amsdu_str[max_amsdu];
+}
+
+// iw util.c print_ampdu_spacing()
+int ht_ampdu_spacing_to_str(uint8_t spacing, char* s, size_t len)
+{
+	// strings from iw util.c print_ampdu_space(0
+	static const char* const space_str[] = {
+		"No restriction",
+		"1/4 usec",
+		"1/2 usec",
+		"1 usec",
+		"2 usec",
+		"4 usec",
+		"8 usec",
+		"16 usec",
+	};
+
+	if (spacing > 7) {
+		return -EINVAL;
+	}
+
+	return snprintf(s, len, "Minimum RX AMPDU time spacing: %s (0x%02x)",
+	       space_str[spacing], spacing);
+}
+
+int mcs_index_bitmask_to_str(const uint8_t* buf, char* s, size_t len)
+{
+	// assuming buf is array of 80 bytes
+	return 0;
 }
 
