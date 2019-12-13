@@ -27,6 +27,9 @@ int parse_nla_bss(struct nlattr* attr, struct BSS* bss);
 const char* bw_to_str(enum nl80211_chan_width w);
 const char* country_env_str(enum Environment environment);
 const char* ht_max_amsdu_str(uint8_t max_amsdu);
+const char* vht_max_mpdu_length_str(uint8_t len);
+const char* vht_supported_channel_width_str(uint8_t w);
+const char* vht_channel_width_str(uint8_t w);
 
 int tsf_to_timestamp_str(uint64_t tsf, char* s, size_t len);
 int capability_to_str(uint16_t capa, char* s, size_t len);

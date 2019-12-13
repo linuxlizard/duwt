@@ -56,7 +56,8 @@ typedef enum {
 	IE_EXTENDED_SUPPORTED_RATES = 50,
 	IE_MESH_ID = 114,
 	IE_EXTENDED_CAPABILITIES = 127,
-	IE_VHT = 191,
+	IE_VHT_CAPABILITIES = 191,
+	IE_VHT_OPERATION = 192,
 	IE_VENDOR = 221,
 		
 } IE_ID;
@@ -257,7 +258,7 @@ struct IE_HT_Operation
 	uint8_t non_gf_present : 1;
 	// bit 11 reserved
 	uint8_t obss_non_gf_present : 1;
-	// iw doesn't report this --v
+	// iw doesn't report this
 	uint16_t channel_center_frequency_2 : 11;
 	// bit 21-29 reserved
 	uint8_t dual_beacon : 1;
@@ -382,6 +383,47 @@ struct IE_Extended_Capabilities
 	bool extended_spectrum_mgmt : 1;
 	bool future_channel_guidance : 1;
 
+};
+
+struct IE_VHT_Capabilities
+{
+	IE_SPECIFIC_FIELDS
+
+	uint32_t info;
+	// ptr into ie->buf ; length is 8 octets
+	uint8_t* mcs_and_nss_ptr;
+
+	// VHT Capabilities Info bitfields
+	uint8_t max_mpdu_length : 2;
+	uint8_t supported_channel_width : 2;
+	uint8_t rx_ldpc : 1;
+	uint8_t short_gi_80 : 1;
+	uint8_t short_gi_160_8080 : 1;
+	uint8_t tx_stbc : 1;
+	uint8_t rx_stbc : 3;
+	uint8_t su_beamformer : 1;
+	uint8_t su_beamformee : 1;
+	uint8_t beamformee_sts_capa : 3;
+	uint8_t num_sounding_dimensions : 3;
+	uint8_t mu_beamformer : 1;
+	uint8_t mu_beamformee : 1;
+	uint8_t vht_txop_ps : 1;
+	uint8_t htc_vht : 1;
+	uint8_t max_ampdu_len_exponent : 3;
+	uint8_t vht_link_adapt_capa : 2;
+	uint8_t rx_antenna_pattern_consistency : 1;
+	uint8_t tx_antenna_pattern_consistency : 1;
+	uint8_t extended_nss_bw_support : 2;
+};
+
+struct IE_VHT_Operation
+{
+	IE_SPECIFIC_FIELDS
+
+	uint8_t channel_width;
+	uint8_t channel_center_freq_segment_0;
+	uint8_t channel_center_freq_segment_1;
+	uint16_t mcs_and_nss_set;
 };
 
 #define IE_VENDOR_OUI_LEN 5

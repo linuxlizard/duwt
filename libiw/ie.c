@@ -240,6 +240,10 @@ static int ie_ht_capabilities_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_HT_Capabilities)
 
+	if (ie->len < 14) {
+		return -EINVAL;
+	}
+
 	uint8_t* ptr = ie->buf;
 
 	// decode big blob into smaller blobs
@@ -483,6 +487,69 @@ static void ie_extended_capa_free(struct IE* ie)
 	DESTRUCT(struct IE_Extended_Capabilities)
 }
 
+static int ie_vht_capabilities_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_VHT_Capabilities)
+
+	uint8_t* ptr = ie->buf;
+
+	sie->info = htole32(*(uint32_t*)ptr); 
+	ptr += 2;
+	// point into the ie buffer ; length is 8 octets
+	// TODO decode mcs+nss into individual fields (somehow)
+	sie->mcs_and_nss_ptr = ptr;
+
+#define VHT_CAPA(field, bit) \
+		sie->field = !!( sie->info & (1<<bit))
+
+	sie->max_mpdu_length = sie->info & 3;
+	sie->supported_channel_width = (sie->info >>2) & 3;
+	VHT_CAPA(rx_ldpc, 4);
+	VHT_CAPA(short_gi_80, 5);
+	VHT_CAPA(short_gi_160_8080, 6);
+	VHT_CAPA(tx_stbc, 7);
+	sie->rx_stbc = (sie->info >> 8) & 3;
+	VHT_CAPA(su_beamformer, 11);
+	VHT_CAPA(su_beamformee, 12);
+	sie->beamformee_sts_capa = (sie->info >> 13) & 7;
+	sie->num_sounding_dimensions = (sie->info >> 16) & 7;
+	VHT_CAPA(mu_beamformer, 19);
+	VHT_CAPA(mu_beamformee, 20);
+	VHT_CAPA(vht_txop_ps, 21);
+	VHT_CAPA(htc_vht, 22);
+	sie->max_ampdu_len_exponent = (sie->info >> 23) & 7;
+	sie->vht_link_adapt_capa = (sie->info >> 26) & 3;
+	VHT_CAPA(rx_antenna_pattern_consistency, 28);
+	VHT_CAPA(tx_antenna_pattern_consistency, 29);
+	sie->extended_nss_bw_support = (sie->info >> 30) & 3;
+
+#undef VHT_CAPA
+
+	return 0;
+}
+
+static void ie_vht_capabilities_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_VHT_Capabilities)
+}
+
+static int ie_vht_operation_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_VHT_Operation)
+
+	sie->channel_width = ie->buf[0];
+	sie->channel_center_freq_segment_0 = ie->buf[1];
+	sie->channel_center_freq_segment_1 = ie->buf[2];
+	// TODO decode this into individual fields (somehow)
+	sie->mcs_and_nss_set = htole16(*((uint16_t*)(ie->buf+3)));
+	return 0;
+}
+
+static void ie_vht_operation_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_VHT_Operation)
+}
+
 static int ie_vendor_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_Vendor)
@@ -554,6 +621,16 @@ static const struct ie_class {
 	[IE_EXTENDED_CAPABILITIES] = {
 		ie_extended_capa_new,
 		ie_extended_capa_free,
+	},
+
+	[IE_VHT_CAPABILITIES] = {
+		ie_vht_capabilities_new,
+		ie_vht_capabilities_free,
+	},
+
+	[IE_VHT_OPERATION] = {
+		ie_vht_operation_new,
+		ie_vht_operation_free,
 	},
 
 	[IE_VENDOR] = {

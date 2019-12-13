@@ -189,7 +189,53 @@ int ht_ampdu_spacing_to_str(uint8_t spacing, char* s, size_t len)
 
 int mcs_index_bitmask_to_str(const uint8_t* buf, char* s, size_t len)
 {
+	// TODO
+	(void)buf;
+	(void)s;
+	(void)len;
 	// assuming buf is array of 80 bytes
 	return 0;
+}
+
+const char* vht_max_mpdu_length_str(uint8_t len)
+{
+	static const char* const len_str[] = {
+		"3895", "7991", "11454", "(reserved)"
+	};
+
+	if (len > 4) {
+		return "(invalid)";
+	}
+	return len_str[len];
+}
+
+const char* vht_supported_channel_width_str(uint8_t w)
+{
+	static const char* const width_str[] = {
+		"neither 160 nor 80+80",
+		"160 Mhz",
+		"160 Mhz, 80+80 Mhz",
+		"(reserved)"
+	};
+
+	if (w > 3) {
+		return "(invalid)";
+	}
+	return width_str[w];
+}
+
+const char* vht_channel_width_str(uint8_t w)
+{
+	const char* const width_str[] = {
+		"20 or 40 MHz",
+		"80 MHz",
+		"160 MHz",
+		"80+80 MHz",
+	};
+
+	if (w > 3) {
+		return "(invalid)";
+	}
+	return width_str[w];
 }
 

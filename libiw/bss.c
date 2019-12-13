@@ -91,7 +91,7 @@ fail:
 
 bool bss_is_vht(const struct BSS* bss)
 {
-	return ie_list_find_id(&bss->ie_list, IE_VHT) != NULL;
+	return ie_list_find_id(&bss->ie_list, IE_VHT_CAPABILITIES) != NULL;
 }
 
 bool bss_is_ht(const struct BSS* bss)

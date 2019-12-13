@@ -190,6 +190,60 @@ static void print_extended_capabilities(const struct BSS* bss)
 	}
 }
 
+static void print_vht_capabilities(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_VHT_CAPABILITIES);
+	if (!ie) {
+		return;
+	}
+	const struct IE_VHT_Capabilities* sie = IE_CAST(ie, const struct IE_VHT_Capabilities);
+	printf("\tVHT capabilities:\n");
+	printf("\t\tVHT Capabilities (0x%"PRIx32"):\n", sie->info);
+	printf("\t\t\tMax MPDU length: %s\n", vht_max_mpdu_length_str(sie->max_mpdu_length));
+	printf("\t\t\tSupported Channel Width: %s\n", vht_supported_channel_width_str(sie->supported_channel_width));
+#define PRINT_VHT_CAPA(field, str) \
+	do { \
+		if (sie->field) \
+			printf("\t\t\t" str "\n"); \
+	} while (0)
+	PRINT_VHT_CAPA(rx_ldpc, "RX LDPC");
+	PRINT_VHT_CAPA(short_gi_80, "short GI (80 MHz)");
+	PRINT_VHT_CAPA(short_gi_160_8080, "short GI (160/80+80 MHz)");
+	PRINT_VHT_CAPA(tx_stbc, "TX STBC");
+	PRINT_VHT_CAPA(su_beamformer, "SU Beamformer");
+	PRINT_VHT_CAPA(su_beamformee, "SU Beamformee");
+	PRINT_VHT_CAPA(mu_beamformer, "MU Beamformer");
+	PRINT_VHT_CAPA(mu_beamformee, "MU Beamformee");
+	PRINT_VHT_CAPA(vht_txop_ps, "VHT TXOP PS");
+	PRINT_VHT_CAPA(htc_vht, "+HTC-VHT");
+	PRINT_VHT_CAPA(rx_antenna_pattern_consistency, "RX antenna pattern consistency");
+	PRINT_VHT_CAPA(tx_antenna_pattern_consistency, "TX antenna pattern consistency");
+
+#undef PRINT_VHT_CAPA
+
+	// TODO
+	printf("\t\tVHT RX MCS set:\n");
+	printf("\t\tVHT RX highest supported: \n");
+	printf("\t\tVHT TX MCS set:\n");
+	printf("\t\tVHT TX highest supported:\n");
+}
+
+static void print_vht_operation(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_VHT_OPERATION);
+	if (!ie) {
+		return;
+	}
+	const struct IE_VHT_Operation* sie = IE_CAST(ie, const struct IE_VHT_Operation);
+	printf("\tVHT operation:\n");
+	printf("\t\t * channel width: %d (%s)\n", 
+			sie->channel_width, vht_channel_width_str(sie->channel_width));
+	printf("\t\t * center freq segment 1: %d\n", sie->channel_center_freq_segment_0);
+	printf("\t\t * center freq segment 2: %d\n", sie->channel_center_freq_segment_1);
+	printf("\t\t * VHT basic MCS set: 0x%"PRIx16"\n", sie->mcs_and_nss_set);
+
+}
+
 // iw util.c print_ht_mcs_index()
 static void print_ht_mcs_index(const struct HT_MCS_Set* mcs)
 {
@@ -430,6 +484,8 @@ static void print_bss(struct BSS* bss)
 	print_ht_capabilities(bss);
 	print_ht_operation(bss);
 	print_extended_capabilities(bss);
+	print_vht_capabilities(bss);
+	print_vht_operation(bss);
 }
 
 static void print_bss_to_csv(struct BSS* bss, bool header)
