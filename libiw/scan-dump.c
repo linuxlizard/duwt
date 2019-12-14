@@ -309,6 +309,36 @@ static void print_rm_enabled_capabilities(const struct BSS* bss)
 
 }
 
+static void print_vendor(const struct BSS* bss)
+{
+	const struct IE* ie_list[64];
+
+	ssize_t ret = ie_list_get_all(&bss->ie_list, IE_VENDOR, ie_list, 64);
+	XASSERT(ret > 0, ret);
+
+	for( ssize_t i=0 ; i<ret ; i++ ) {
+
+		const struct IE* ie = ie_list[i];
+
+		const struct IE_Vendor* vie = IE_CAST(ie, struct IE_Vendor);
+
+		uint8_t* ptr = ie->buf + 3;
+		uint8_t* endptr = ie->buf + ie->len;
+
+		printf("\tVendor specific: OUI %02x:%02x:%02x, data",
+				vie->oui[0],
+				vie->oui[1],
+				vie->oui[2]);
+
+		while (ptr < endptr) {
+			printf(" %02x", *ptr++);
+		}
+
+		printf("\n");
+	}
+
+}
+
 static void print_bss_load(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_BSS_LOAD);
@@ -580,6 +610,7 @@ static void print_bss(struct BSS* bss)
 	print_vht_operation(bss);
 	print_rsn(bss);
 	print_rm_enabled_capabilities(bss);
+	print_vendor(bss);
 }
 
 static void print_bss_to_csv(struct BSS* bss, bool header)

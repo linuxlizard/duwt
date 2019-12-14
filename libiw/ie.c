@@ -342,6 +342,7 @@ static int ie_rsn_new(struct IE* ie)
 	const uint8_t* ptr = ie->buf;
 	const uint8_t* endptr = ptr + ie->len;
 
+	DBG("%s\n", __func__);
 	// we are movinq through untrusted data encoded with data length so let's
 	// be super paranoid.
 	//  length data data data data length data data
@@ -1009,5 +1010,26 @@ const struct IE* ie_list_find_id(const struct IE_List* list, IE_ID id)
 	}
 
 	return (const struct IE*)NULL;
+}
+
+// put pointer to all IE of a specific ID into outgoing 'ielist' which is of size 'len'
+// return -ENOMEM if we exhaust the space in 'ielist'
+// otherwise return the number of IE pointers put into ielist
+ssize_t ie_list_get_all(const struct IE_List* list, IE_ID id, const struct IE* ielist[], size_t len)
+{
+	size_t count=0;
+
+	for (size_t i=0 ; i<list->count ; i++) {
+		if (list->ieptrlist[i]->id == id) {
+			if (count+1 >= len) {
+				return -ENOMEM;
+			}
+
+			ielist[count] = list->ieptrlist[i];
+			count++;
+		}
+	}
+
+	return count;
 }
 
