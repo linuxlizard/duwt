@@ -1,3 +1,5 @@
+iw is a new nl80211 based CLI configuration utility for wireless devices. 
+https://git.kernel.org/pub/scm/linux/kernel/git/jberg/iw.git
 
 A full-featured and high-performance event loop
 http://software.schmorp.de/pkg/libev.html
@@ -7,4 +9,13 @@ ICU - International Components for UnicodeICU - International Components for Uni
 http://site.icu-project.org/
 https://github.com/unicode-org/icu/releases/tag/release-65-1
 (Fedora) dnf install libicu-devel
+
+GNU libmicrohttpd is a small C library that is supposed to make it easy to run
+an HTTP server as part of another application.
+https://www.gnu.org/software/libmicrohttpd/
+(Fedora) dnf install libmicrohttpd-devel
+
+Jansson is a C library for encoding, decoding and manipulating JSON data. 
+https://jansson.readthedocs.io/en/2.8/index.html
+(Fedora) dnf install jansson-devel
 
