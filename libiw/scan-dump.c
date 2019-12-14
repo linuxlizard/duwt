@@ -282,6 +282,25 @@ static void print_rsn(const struct BSS* bss)
 	printf(" (%#06x)\n", sie->capabilities);
 }
 
+static void print_rm_enabled_capabilities(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_RM_ENABLED_CAPABILITIES);
+	if (!ie) {
+		return;
+	}
+	printf("\tRadio Management Capabilities:\n");
+	char s[128];
+	int err;
+	for (size_t i=0 ; ; i++) {
+		err = rm_enabled_capa_to_str(ie, i, s, 128);
+		if (err == -ENOENT) break; // end of list
+		if (err == -EINVAL) continue;  // no value for this bit
+		XASSERT(err < 128, err);
+		printf("\t\t * %s\n", s);
+	}
+
+}
+
 static void print_bss_load(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_BSS_LOAD);
@@ -289,9 +308,10 @@ static void print_bss_load(const struct BSS* bss)
 		return;
 	}
 	const struct IE_BSS_Load* sie = IE_CAST(ie, const struct IE_BSS_Load);
-	printf("\tLoad:\t * Station Count: %d\n", sie->station_count);
-	printf("\t\t * Channel Utilization: %d\n", sie->channel_utilization);
-	printf("\t\t * Available Capacity: %d\n", sie->available_capacity);
+	printf("\tBSS Load:\n");
+	printf("\t\t * station count: %d\n", sie->station_count);
+	printf("\t\t * Channel utilization: %d/255\n", sie->channel_utilization);
+	printf("\t\t * available admission capacity: %d [*32us]\n", sie->available_capacity);
 }
 
 // iw util.c print_ht_mcs_index()
@@ -480,6 +500,18 @@ static void print_country(const struct BSS* bss)
 
 }
 
+static void print_tpc_report(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_TPC_REPORT);
+	if (!ie) {
+		return;
+	}
+	const struct IE_TPC_Report* sie = IE_CAST(ie, struct IE_TPC_Report);
+
+	printf("\tTPC report: TX power: %d dBm\n", sie->tx_power);
+}
+
+
 static void print_erp(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_ERP);
@@ -529,6 +561,8 @@ static void print_bss(struct BSS* bss)
 	print_supported_rates(bss);
 	print_dsss_param(bss);
 	print_country(bss);
+	print_bss_load(bss);
+	print_tpc_report(bss);
 	print_erp(bss);
 	print_extended_supported_rates(bss);
 	print_ht_capabilities(bss);
@@ -537,7 +571,7 @@ static void print_bss(struct BSS* bss)
 	print_vht_capabilities(bss);
 	print_vht_operation(bss);
 	print_rsn(bss);
-	print_bss_load(bss);
+	print_rm_enabled_capabilities(bss);
 }
 
 static void print_bss_to_csv(struct BSS* bss, bool header)

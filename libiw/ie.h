@@ -51,11 +51,13 @@ typedef enum {
 	IE_TIM = 5, // there are those who call me...
 	IE_COUNTRY = 7,
 	IE_BSS_LOAD = 11,
+	IE_TPC_REPORT = 35,
 	IE_ERP = 42,
 	IE_HT_CAPABILITIES = 45,
 	IE_RSN = 48,
-	IE_HT_OPERATION = 61,
 	IE_EXTENDED_SUPPORTED_RATES = 50,
+	IE_HT_OPERATION = 61,
+	IE_RM_ENABLED_CAPABILITIES = 70,
 	IE_MESH_ID = 114,
 	IE_EXTENDED_CAPABILITIES = 127,
 	IE_VHT_CAPABILITIES = 191,
@@ -77,6 +79,8 @@ struct IE
 {
 	uint32_t cookie;
 	IE_ID id;
+
+	// "The Length field specifies the number of octets following the Length field."
 	size_t len;
 
 	// malloc'd buffer
@@ -182,6 +186,14 @@ struct IE_BSS_Load
 	uint16_t station_count;
 	uint8_t channel_utilization;
 	uint16_t available_capacity;
+};
+
+struct IE_TPC_Report
+{
+	IE_SPECIFIC_FIELDS
+
+	uint8_t tx_power;
+	uint8_t link_margin;
 };
 
 struct IE_ERP
@@ -313,6 +325,42 @@ struct IE_RSN
 	// Extended Key ID for Individually Addressed Frames
 	uint8_t extkey_id : 1;
 
+};
+
+struct IE_RM_Enabled_Capabilities
+{
+	IE_SPECIFIC_FIELDS
+
+	uint8_t link: 1;
+	uint8_t neighbor_report : 1;
+	uint8_t parallel: 1;
+	uint8_t repeated: 1;
+	uint8_t beacon_passive: 1;
+	uint8_t beacon_active : 1;
+	uint8_t beacon_table : 1;
+	uint8_t beacon_measurement_conditions: 1;
+	uint8_t frame : 1;
+	uint8_t channel_load : 1;
+	uint8_t noise_histogram : 1;
+	uint8_t statistics : 1;
+	uint8_t lci : 1;
+	uint8_t lci_azimuth : 1;
+	uint8_t tx_stream : 1;
+	uint8_t triggered_tx_stream : 1;
+	uint8_t ap_channel : 1;
+	uint8_t rm_mib : 1;
+	uint8_t operating_channel_max : 3;
+	uint8_t nonoperating_channel_max : 3;
+	uint8_t measurement_pilot_capa : 3;
+	uint8_t measurement_pilot_tx_info_capa : 1;
+	uint8_t neighbor_report_tsf_offset_capa : 1;
+	uint8_t rcpi : 1;
+	uint8_t rsni : 1;
+	uint8_t bss_avg_access_delay : 1;
+	uint8_t bss_avail_admission_capacity : 1;
+	uint8_t antenna : 1;
+	uint8_t ftm_range_report : 1;
+	uint8_t civic_location : 1;
 };
 
 struct IE_HT_Operation

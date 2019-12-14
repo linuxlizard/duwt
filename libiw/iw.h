@@ -40,6 +40,7 @@ int mcs_index_bitmask_to_str(const uint8_t* buf, char* s, size_t len);
 int cipher_suite_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len);
 int auth_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len);
 int rsn_capabilities_to_str(const struct IE* ie, char* s, size_t len);
+int rm_enabled_capa_to_str(const struct IE* ie, unsigned int idx, char* s, size_t len);
 
 #endif
 

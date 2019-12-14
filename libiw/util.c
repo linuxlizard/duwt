@@ -377,3 +377,91 @@ int rsn_capabilities_to_str(const struct IE* ie, char* s, size_t len)
 
 }
 
+int rm_enabled_capa_to_str(const struct IE* ie, unsigned int idx, char* s, size_t len)
+{
+	static const char* rm_str[] = {
+		// bit 0
+		"Link Measurement",
+		"Neighbor Report",
+		"Parallel Measurements",
+		"Repeated Measurements",
+		"Beacon Passive Measurement",
+		"Beacon Active Measurement",
+		"Beacon Table Measurement",
+		"Beacon Measurement Reporting Conditions",
+
+		// bit 8
+		"Frame Measurement",
+		"Channel Load Measurement",
+		"Noise Histogram Measurement",
+		"Statistics Measurement",
+		"LCI Measurement",
+		"LCI Azimuth",
+		"Transmit Stream/Category Measurement",
+		"Triggered Transmit Stream/Category Measurement",
+
+		// bit 16
+		"AP Channel Report",
+		"RM MIB",
+		"Operating Channel Max Measurement Duration", // 3 bits
+		NULL, 
+		NULL, // placeholders
+		"Nonoperating Channel Max Measurement Duration", // 3 bits
+		NULL, 
+		NULL, // placeholders
+
+		// bit 24
+		"Measurement Pilot", // 3 bits
+		NULL, 
+		NULL, // placeholders
+		"Measurement Pilot Transmission Information",
+		"Neighbor Report TSF Offset",
+		"RCPI Measurement",
+		"RSNI Measurement",
+		"BSS Average Access Delay",
+
+		// bit 32
+		"BSS Available Admission Capacity",
+		"Antenna",
+		"FTM Range Report",
+		"Civic Location Measurement",
+	};
+
+	// Trying something new. With this many strings, maybe can do an
+	// iterator-style look-up.
+	if (idx > ARRAY_SIZE(rm_str)) {
+		return -EINVAL;
+	}
+
+	if (!rm_str[idx]) {
+		return -ENOENT;
+	}
+
+	XASSERT(ie->id == IE_RM_ENABLED_CAPABILITIES, ie->id);
+	const struct IE_RM_Enabled_Capabilities* sie = IE_CAST(ie, struct IE_RM_Enabled_Capabilities);
+
+	int ret;
+	switch (idx) {
+		case 18:
+			ret = snprintf(s, len, "%s %d", rm_str[idx],
+					sie->operating_channel_max);
+			break;
+
+		case 21:
+			ret = snprintf(s, len, "%s %d", rm_str[idx],
+					sie->nonoperating_channel_max);
+			break;
+
+		case 24:
+			ret = snprintf(s, len, "%s %d", rm_str[idx],
+					sie->measurement_pilot_capa);
+			break;
+
+		default:
+			ret = snprintf(s, len, "%s", rm_str[idx]);
+			break;
+	}
+
+	return ret;
+}
+

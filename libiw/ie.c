@@ -160,6 +160,26 @@ static void ie_bss_load_free(struct IE* ie)
 	DESTRUCT(struct IE_BSS_Load)
 }
 
+static int ie_tpc_report_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_TPC_Report)
+
+	// you would not believe how hard it is to not type "TPS Report"
+	if (ie->len < 2) {
+		return -EINVAL;
+	}
+
+	sie->tx_power = ie->buf[0];
+	sie->link_margin = ie->buf[1];
+
+	return 0;
+}
+
+static void ie_tpc_report_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_TPC_Report)
+}
+
 static int ie_country_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_Country)
@@ -384,7 +404,7 @@ static int ie_rsn_new(struct IE* ie)
 
 	CHECK
 
-#undef cAPA
+#undef CAPA
 #undef CHECK
 
 	return 0;
@@ -393,6 +413,61 @@ static int ie_rsn_new(struct IE* ie)
 static void ie_rsn_free(struct IE* ie)
 {
 	DESTRUCT(struct IE_RSN)
+}
+
+static int ie_rm_enabled_capabilities_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_RM_Enabled_Capabilities)
+
+	if (ie->len != 5) {
+		return -EINVAL;
+	}
+
+#define CAPA(field,byte,bit)\
+	sie->field = !!(ie->buf[byte] & (1<<bit))
+
+	CAPA(link, 0, 0);
+	CAPA(neighbor_report, 0, 1);
+	CAPA(parallel, 0, 2);
+	CAPA(repeated, 0, 3);
+	CAPA(beacon_passive, 0, 4);
+	CAPA(beacon_active, 0, 5);
+	CAPA(beacon_table, 0, 6);
+	CAPA(beacon_measurement_conditions, 0, 7);
+
+	CAPA(frame, 1, 0);
+	CAPA(channel_load, 1, 1);
+	CAPA(noise_histogram, 1, 2);
+	CAPA(statistics, 1, 3);
+	CAPA(lci, 1, 4);
+	CAPA(lci_azimuth, 1, 5);
+	CAPA(tx_stream, 1, 6);
+	CAPA(triggered_tx_stream, 1, 7);
+
+	CAPA(ap_channel, 2, 0);
+	CAPA(rm_mib, 2, 1);
+//	CAPA(operating_channel_max : 3
+//	CAPA(nonoperating_channel_max : 3;
+
+//	CAPA(measurement_pilot_capa : 3;
+	CAPA(measurement_pilot_tx_info_capa, 3, 3);
+	CAPA(neighbor_report_tsf_offset_capa, 3, 4);
+	CAPA(rcpi, 3, 5);
+	CAPA(rsni, 3, 6);
+	CAPA(bss_avg_access_delay, 3, 7);
+
+	CAPA(bss_avail_admission_capacity, 4, 0);
+	CAPA(antenna, 4, 1);
+	CAPA(ftm_range_report, 4, 2);
+	CAPA(civic_location, 4, 3);
+
+#undef CAPA
+	return 0;
+}
+
+static void ie_rm_enabled_capabilities_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_RM_Enabled_Capabilities)
 }
 
 static int ie_ht_operation_new(struct IE* ie)
@@ -700,6 +775,11 @@ static const struct ie_class {
 		ie_bss_load_free,
 	},
 
+	[IE_TPC_REPORT] = {
+		ie_tpc_report_new,
+		ie_tpc_report_free,
+	},
+
 	[IE_COUNTRY] = {
 		ie_country_new,
 		ie_country_free,
@@ -718,6 +798,11 @@ static const struct ie_class {
 	[IE_RSN] = {
 		ie_rsn_new,
 		ie_rsn_free,
+	},
+
+	[IE_RM_ENABLED_CAPABILITIES] = {
+		ie_rm_enabled_capabilities_new,
+		ie_rm_enabled_capabilities_free,
 	},
 
 	[IE_HT_OPERATION] = {
