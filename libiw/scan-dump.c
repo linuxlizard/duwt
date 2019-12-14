@@ -282,6 +282,18 @@ static void print_rsn(const struct BSS* bss)
 	printf(" (%#06x)\n", sie->capabilities);
 }
 
+static void print_bss_load(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_BSS_LOAD);
+	if (!ie) {
+		return;
+	}
+	const struct IE_BSS_Load* sie = IE_CAST(ie, const struct IE_BSS_Load);
+	printf("\tLoad:\t * Station Count: %d\n", sie->station_count);
+	printf("\t\t * Channel Utilization: %d\n", sie->channel_utilization);
+	printf("\t\t * Available Capacity: %d\n", sie->available_capacity);
+}
+
 // iw util.c print_ht_mcs_index()
 static void print_ht_mcs_index(const struct HT_MCS_Set* mcs)
 {
@@ -525,6 +537,7 @@ static void print_bss(struct BSS* bss)
 	print_vht_capabilities(bss);
 	print_vht_operation(bss);
 	print_rsn(bss);
+	print_bss_load(bss);
 }
 
 static void print_bss_to_csv(struct BSS* bss, bool header)

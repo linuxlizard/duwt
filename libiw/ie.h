@@ -50,6 +50,7 @@ typedef enum {
 	IE_DSSS_PARAMETER_SET = 3,
 	IE_TIM = 5, // there are those who call me...
 	IE_COUNTRY = 7,
+	IE_BSS_LOAD = 11,
 	IE_ERP = 42,
 	IE_HT_CAPABILITIES = 45,
 	IE_RSN = 48,
@@ -172,6 +173,15 @@ struct IE_Country
 
 	union ieee80211_country_ie_triplet triplets[IE_COUNTRY_TRIPLET_MAX];
 	size_t count;
+};
+
+struct IE_BSS_Load
+{
+	IE_SPECIFIC_FIELDS
+
+	uint16_t station_count;
+	uint8_t channel_utilization;
+	uint16_t available_capacity;
 };
 
 struct IE_ERP

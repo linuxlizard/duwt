@@ -138,6 +138,28 @@ static void ie_tim_free(struct IE* ie)
 	DESTRUCT(struct IE_TIM)
 }
 
+static int ie_bss_load_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_BSS_Load)
+
+	if (ie->len < 5) {
+		return -EINVAL;
+	}
+
+	uint8_t* ptr = ie->buf;
+	sie->station_count = htole16(*(uint16_t*)ptr); 
+	ptr +=  2;
+	sie->channel_utilization = *ptr++;
+	sie->available_capacity = htole16(*(uint16_t*)ptr); 
+
+	return 0;
+}
+
+static void ie_bss_load_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_BSS_Load)
+}
+
 static int ie_country_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_Country)
@@ -671,6 +693,11 @@ static const struct ie_class {
 	[IE_TIM] = { 
 		ie_tim_new,
 		ie_tim_free,
+	},
+
+	[IE_BSS_LOAD] = {
+		ie_bss_load_new,
+		ie_bss_load_free,
 	},
 
 	[IE_COUNTRY] = {
