@@ -188,7 +188,7 @@ static void print_extended_capabilities(const struct BSS* bss)
 	CAPA(extended_spectrum_mgmt, "Extended Spectrum Management Capable");
 #undef CAPA
 	if (bss_is_vht(bss) ) {
-		printf("\t\t* Max Number Of MSDUs In A-MSDU is %s\n", 
+		printf("\t\t * Max Number Of MSDUs In A-MSDU is %s\n", 
 				ht_max_amsdu_str(sie->max_MSDU_in_AMSDU));
 	}
 }
@@ -291,7 +291,7 @@ static void print_rm_enabled_capabilities(const struct BSS* bss)
 	if (!ie) {
 		return;
 	}
-	printf("\tRadio Management Capabilities:\n");
+	printf("\tRadio Measurement Capabilities:\n");
 	char s[128];
 	int err;
 	for (size_t i=0 ; ; i++) {
