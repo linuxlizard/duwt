@@ -391,6 +391,15 @@ static void print_ht_mcs(const struct HT_MCS_Set* mcs)
 	}
 }
 
+static void print_power_constraint(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_POWER_CONSTRAINT);
+	if (!ie) {
+		return;
+	}
+	printf("\tPower constraint: %d dB\n", ie->value);
+}
+
 static void print_ht_capabilities(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_HT_CAPABILITIES);
@@ -603,6 +612,7 @@ static void print_bss(struct BSS* bss)
 	print_tpc_report(bss);
 	print_erp(bss);
 	print_extended_supported_rates(bss);
+	print_power_constraint(bss);
 	print_ht_capabilities(bss);
 	print_ht_operation(bss);
 	print_extended_capabilities(bss);

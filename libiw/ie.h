@@ -51,6 +51,7 @@ typedef enum {
 	IE_TIM = 5, // there are those who call me...
 	IE_COUNTRY = 7,
 	IE_BSS_LOAD = 11,
+	IE_POWER_CONSTRAINT = 32,
 	IE_TPC_REPORT = 35,
 	IE_ERP = 42,
 	IE_HT_CAPABILITIES = 45,
@@ -63,7 +64,7 @@ typedef enum {
 	IE_VHT_CAPABILITIES = 191,
 	IE_VHT_OPERATION = 192,
 	IE_VENDOR = 221,
-		
+	IE_EXTENSION = 255
 } IE_ID;
 
 extern const uint8_t ms_oui[3];
@@ -186,6 +187,11 @@ struct IE_BSS_Load
 	uint16_t station_count;
 	uint8_t channel_utilization;
 	uint16_t available_capacity;
+};
+
+struct IE_Power_Constraint
+{
+	IE_SPECIFIC_FIELDS
 };
 
 struct IE_TPC_Report

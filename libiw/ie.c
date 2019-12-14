@@ -160,6 +160,17 @@ static void ie_bss_load_free(struct IE* ie)
 	DESTRUCT(struct IE_BSS_Load)
 }
 
+static int ie_power_constraint_new(struct IE* ie)
+{
+	// store the Local Power Constraint value in the IE itself, no
+	// need to create a "child class"
+	//
+	// "The Local Power Constraint field is coded as an unsigned integer in
+	// units of decibels."
+	ie->value = (uint32_t)ie->buf[0];
+	return 0;
+}
+
 static int ie_tpc_report_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_TPC_Report)
@@ -748,6 +759,19 @@ static void ie_vendor_free(struct IE* ie)
 	DBG("%s %p id=%d\n", __func__, (void *)ie, ie->id);
 }
 
+static int ie_extension_new(struct IE* ie)
+{
+//	CONSTRUCT(struct IE_Vendor)
+
+	// TODO
+	return -EINVAL;
+}
+
+
+static void ie_extension_free(struct IE* ie)
+{
+
+}
 
 static const struct ie_class {
 	int (*constructor)(struct IE *);
@@ -776,6 +800,11 @@ static const struct ie_class {
 	[IE_BSS_LOAD] = {
 		ie_bss_load_new,
 		ie_bss_load_free,
+	},
+
+	[IE_POWER_CONSTRAINT] = {
+		ie_power_constraint_new,
+		NULL,
 	},
 
 	[IE_TPC_REPORT] = {
@@ -837,6 +866,11 @@ static const struct ie_class {
 		ie_vendor_new,
 		ie_vendor_free,
 	},
+
+//	[IE_EXTENSION] = {
+//		ie_extension_new,
+//		ie_extension_free,
+//	},
 };
 
 
