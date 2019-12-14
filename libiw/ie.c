@@ -293,6 +293,86 @@ static void ie_ht_capabilities_free(struct IE* ie)
 	DESTRUCT(struct IE_HT_Capabilities)
 }
 
+static int ie_rsn_new(struct IE* ie)
+{
+	CONSTRUCT(struct IE_RSN)
+
+	const uint8_t* ptr = ie->buf;
+	const uint8_t* endptr = ptr + ie->len;
+
+	// we are movinq through untrusted data encoded with data length so let's
+	// be super paranoid.
+	//  length data data data data length data data
+	//   ^-- I don't trust you -----^
+	//
+	// ptr == endptr => hit end of RSN
+	// ptr > endptr  => blown past the valid end of buffer so bad RSN
+#define CHECK\
+	if (ptr == endptr) {\
+		return 0;\
+	}\
+	else if (ptr > endptr) {\
+		return -EINVAL;\
+	}
+
+	sie->version = htole16(*(const uint16_t*)ptr);
+	ptr += 2;
+	CHECK
+
+	sie->group_data = (const struct RSN_Cipher_Suite*)ptr;
+	ptr += 4;
+	CHECK
+
+	sie->pairwise_cipher_count = htole16(*(const uint16_t*)ptr);
+	ptr += 2;
+	CHECK
+
+	if (sie->pairwise_cipher_count) {
+		sie->pairwise = (const struct RSN_Cipher_Suite*)ptr;
+		ptr += 4 * sie->pairwise_cipher_count;
+		CHECK
+	}
+
+	sie->akm_suite_count = htole16(*(const uint16_t*)ptr);
+	ptr += 2;
+	CHECK
+
+	if (sie->akm_suite_count) {
+		sie->akm_suite = (const struct RSN_Cipher_Suite*)ptr;
+		ptr += 4 * sie->akm_suite_count;
+		CHECK
+	}
+
+	sie->capabilities = htole16(*(const uint16_t*)ptr);
+	ptr += 2;
+#define CAPA(field,bit)\
+	sie->field = !!(sie->capabilities & (1<<bit))
+
+	CAPA(preauth, 0);
+	CAPA(no_pairwise, 1);
+	
+	CAPA(mfp_required, 6);
+	CAPA(mfp_capable, 7);
+	CAPA(multiband_rsna, 8);
+	CAPA(peerkey_enabled, 9);
+	CAPA(spp_amsdu_capable, 10);
+	CAPA(spp_amsdu_required, 11);
+	CAPA(pbac, 12);
+	CAPA(extkey_id, 13);
+
+	CHECK
+
+#undef cAPA
+#undef CHECK
+
+	return 0;
+}
+
+static void ie_rsn_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_RSN)
+}
+
 static int ie_ht_operation_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_HT_Operation)
@@ -606,6 +686,11 @@ static const struct ie_class {
 	[IE_HT_CAPABILITIES] = {
 		ie_ht_capabilities_new,
 		ie_ht_capabilities_free,
+	},
+
+	[IE_RSN] = {
+		ie_rsn_new,
+		ie_rsn_free,
 	},
 
 	[IE_HT_OPERATION] = {

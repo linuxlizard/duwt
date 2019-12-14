@@ -25,7 +25,7 @@ static const struct {
 	{ .name = "160", .val = NL80211_CHAN_WIDTH_160, },
 };
 
-const char* bw_to_str(enum nl80211_chan_width w)
+const char* bw_str(enum nl80211_chan_width w)
 {
 	unsigned int i;
 	for (i = 0; i < ARRAY_SIZE(bwmap); i++) {
@@ -237,5 +237,143 @@ const char* vht_channel_width_str(uint8_t w)
 		return "(invalid)";
 	}
 	return width_str[w];
+}
+
+static int unknown_suite(const struct RSN_Cipher_Suite* suite, char* s, size_t len)
+{
+	return snprintf(s, len, "%02x-%02x-%02x-%3d", 
+			suite->oui[0],
+			suite->oui[1],
+			suite->oui[2],
+			suite->type);
+}
+
+// iw scan.c print_cipher()
+int cipher_suite_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len)
+{
+	static const char* const ms_str[] = {
+		"Use group cipher suite",
+		"WEP-40",
+		"TKIP",
+		"(Reserved)", 
+		"CCMP",
+		"WEP-104",
+	};
+
+	static const char* const ieee80211_str[] = {
+		"Use group cipher suite",
+		"WEP-40",
+		"TKIP",
+		"(Reserved)", 
+		"CCMP",
+		"WEP-104",
+		"AES-128-CMAC",
+		"NO-GROUP",
+		"GCMP",
+	};
+
+	if (memcmp(suite->oui, ms_oui, 3) == 0) {
+		if (suite->type == 3 || suite->type > 4) {
+			return unknown_suite(suite, s, len);
+		}
+		return snprintf(s, len, "%s", ms_str[suite->type]);
+	} else if (memcmp(suite->oui, ieee80211_oui, 3) == 0) {
+		if (suite->type == 3 || suite->type > 7) {
+			return unknown_suite(suite, s, len);
+		}
+		return snprintf(s, len, "%s", ieee80211_str[suite->type]);
+	} 
+	return unknown_suite(suite, s, len);
+}
+
+// iw scan.c print_auth() 
+int auth_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len)
+{
+	static const char* const ms_str[] = {
+		"", // reserved
+		"IEEE 802.1X",
+		"PSK",
+	};
+	static const char* const ieee80211_str[] = {
+		"", // reserved 
+		"IEEE 802.1X",
+		"PSK",
+		"FT/IEEE 802.1X",
+		"FT/PSK",
+		"IEEE 802.1X/SHA-256",
+		"PSK/SHA-256",
+		"TDLS/TPK",
+		"SAE",
+		"FT/SAE",
+		"IEEE 802.1X/SUITE-B",
+		"IEEE 802.1X/SUITE-B-192",
+		"FT/IEEE 802.1X/SHA-384",
+		"FILS/SHA-256",
+		"FILS/SHA-384",
+		"FT/FILS/SHA-256",
+		"FT/FILS/SHA-384",
+		"OWE",
+	};
+
+	static const char* const wfa_str[] = {
+		"", // reserved
+		"OSEN",
+		"DPP",
+	};
+
+	if (memcmp(suite->oui, ms_oui, 3) == 0) {
+		if (suite->type == 0 || suite->type > 3) {
+			return unknown_suite(suite, s, len);
+		}
+		return snprintf(s, len, "%s", ms_str[suite->type]);
+
+	} else if (memcmp(suite->oui, ieee80211_oui, 3) == 0) {
+		if (suite->type == 0 || suite->type > 18) {
+			return unknown_suite(suite, s, len);
+		}
+		return snprintf(s, len, "%s", ieee80211_str[suite->type]);
+
+	} else if (memcmp(suite->oui, wfa_oui, 3) == 0) {
+		if (suite->type == 0 || suite->type > 3) {
+			return unknown_suite(suite, s, len);
+		}
+		return snprintf(s, len, "%s", wfa_str[suite->type]);
+	} 
+	return unknown_suite(suite, s, len);
+}
+
+int rsn_capabilities_to_str(const struct IE* ie, char* s, size_t len)
+{
+	static const char* ptksa_str[] = {
+		" 1-PTKSA-RC",
+		" 2-PTKSA-RC",
+		" 4-PTKSA-RC",
+		" 16-PTKSA-RC",
+	};
+	static const char* gtksa_str[] = {
+		" 1-GTKSA-RC",
+		" 2-GTKSA-RC",
+		" 4-GTKSA-RC",
+		" 16-GTKSA-RC",
+	};
+
+	const struct IE_RSN* sie = IE_CAST(ie, struct IE_RSN);
+
+	// strings from iw scan.c _print_rsn_ie()
+	return snprintf(s, len, "%s%s%s%s%s%s%s%s%s%s%s%s",
+			sie->preauth ? " PreAuth" : "",
+			sie->no_pairwise ? " NoPairwise" : "",
+			ptksa_str[sie->ptksa_rc],
+			gtksa_str[sie->gtksa_rc],
+			sie->mfp_required ? " MFP-required" : "",
+			sie->mfp_capable ? " MFP-capable" : "",
+			sie->multiband_rsna ? " JointMulti-bandRSNA": "",
+			sie->peerkey_enabled ? " Peerkey-enabled" : "",
+			sie->spp_amsdu_capable ? " SPP-AMSDU-capable" : "",
+			sie->spp_amsdu_required ? " SPP-AMSDU-required": "",
+			sie->pbac ? " PBAC" : "",
+			sie->extkey_id ? " extKeyID" : ""
+			);
+
 }
 

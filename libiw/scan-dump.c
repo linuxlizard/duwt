@@ -244,6 +244,44 @@ static void print_vht_operation(const struct BSS* bss)
 
 }
 
+static void print_rsn(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_RSN);
+	if (!ie) {
+		return;
+	}
+	char s[128];
+
+	const struct IE_RSN* sie = IE_CAST(ie, const struct IE_RSN);
+	printf("\tRSN:\t * Version: %d\n", sie->version);
+	int err = cipher_suite_to_str(sie->group_data, s, 128);
+	XASSERT(err<128, err);
+	printf("\t\t * Group cipher: %s\n", s);
+
+	printf("\t\t * Pairwise ciphers:");
+	for (size_t i=0 ; i<sie->pairwise_cipher_count ; i++) {
+		XASSERT((sie->pairwise) != NULL, i);
+		err = cipher_suite_to_str(&sie->pairwise[i], s, 128);
+		XASSERT(err<128, err);
+		printf(" %s", s);
+	}
+	printf("\n");
+
+	printf("\t\t * Authentication suites:");
+	for (size_t i=0 ; i<sie->akm_suite_count; i++) {
+		XASSERT((sie->akm_suite) != NULL, i);
+		err = auth_to_str(&sie->akm_suite[i], s, 128);
+		XASSERT(err<128, err);
+		printf(" %s", s);
+	}
+	printf("\n");
+
+	err = rsn_capabilities_to_str(ie, s, 128);
+	XASSERT(err<128, err);
+	printf("\t\t * Capabilities:%s", s);
+	printf(" (%#06x)\n", sie->capabilities);
+}
+
 // iw util.c print_ht_mcs_index()
 static void print_ht_mcs_index(const struct HT_MCS_Set* mcs)
 {
@@ -486,6 +524,7 @@ static void print_bss(struct BSS* bss)
 	print_extended_capabilities(bss);
 	print_vht_capabilities(bss);
 	print_vht_operation(bss);
+	print_rsn(bss);
 }
 
 static void print_bss_to_csv(struct BSS* bss, bool header)

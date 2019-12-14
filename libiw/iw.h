@@ -24,7 +24,7 @@ void peek_nla_attr( struct nlattr* tb_msg[], size_t count);
 int parse_nla_ies(struct nlattr* ies, struct IE_List* ie_list);
 int parse_nla_bss(struct nlattr* attr, struct BSS* bss);
 
-const char* bw_to_str(enum nl80211_chan_width w);
+const char* bw_str(enum nl80211_chan_width w);
 const char* country_env_str(enum Environment environment);
 const char* ht_max_amsdu_str(uint8_t max_amsdu);
 const char* vht_max_mpdu_length_str(uint8_t len);
@@ -37,6 +37,9 @@ int erp_to_str(const struct IE* ie, char* s, size_t len);
 int ht_ampdu_length_to_str(uint8_t exponent, char* s, size_t len);
 int ht_ampdu_spacing_to_str(uint8_t spacing, char* s, size_t len);
 int mcs_index_bitmask_to_str(const uint8_t* buf, char* s, size_t len);
+int cipher_suite_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len);
+int auth_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len);
+int rsn_capabilities_to_str(const struct IE* ie, char* s, size_t len);
 
 #endif
 

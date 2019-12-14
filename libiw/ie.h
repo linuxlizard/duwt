@@ -52,6 +52,7 @@ typedef enum {
 	IE_COUNTRY = 7,
 	IE_ERP = 42,
 	IE_HT_CAPABILITIES = 45,
+	IE_RSN = 48,
 	IE_HT_OPERATION = 61,
 	IE_EXTENDED_SUPPORTED_RATES = 50,
 	IE_MESH_ID = 114,
@@ -239,6 +240,69 @@ struct IE_HT_Capabilities
 	uint8_t min_ampdu_spacing : 3;
 
 	struct HT_MCS_Set mcs;
+};
+
+struct RSN_Cipher_Suite
+{
+	uint8_t oui[3];
+	uint8_t type;
+} __attribute__ ((packed));
+
+struct IE_RSN
+{
+	IE_SPECIFIC_FIELDS
+
+	uint16_t version;
+
+	// the cipher suite structs point into the ie->buf since there are varying
+	// number of suites and why bother malloc'ing more memory since we already
+	// have the buffer
+
+	const struct RSN_Cipher_Suite* group_data;
+
+	uint16_t pairwise_cipher_count;
+	const struct RSN_Cipher_Suite* pairwise;
+
+	uint16_t akm_suite_count;
+	const struct RSN_Cipher_Suite* akm_suite;
+
+	uint16_t capabilities;
+
+	// PMK == Pairwise Master Key
+	uint16_t pmk_count;
+	// 16 * pmk_count byte buffer (points into ie->buf)
+	const uint8_t* pmkid_list;
+
+	struct RSN_Cipher_Suite* group_mgmt;
+
+	//
+	// capabilities decoded
+	//
+	uint8_t preauth : 1;
+	uint8_t no_pairwise : 1;
+
+	// PTKSA Replay Counter
+	uint8_t ptksa_rc : 2;
+	// GTKSA Replay Counter
+	uint8_t gtksa_rc : 2;
+
+	// Management Frame Protection Required
+	uint8_t mfp_required : 1;
+	// Management Frame Protection Capable
+	uint8_t mfp_capable : 1;
+
+	uint8_t multiband_rsna : 1;
+	uint8_t peerkey_enabled : 1;
+
+	// signaling and payload protected A-MSDU
+	uint8_t spp_amsdu_capable : 1;
+	uint8_t spp_amsdu_required : 1;
+
+	// protected block ack agreement capable
+	uint8_t pbac : 1; 
+	// Extended Key ID for Individually Addressed Frames
+	uint8_t extkey_id : 1;
+
 };
 
 struct IE_HT_Operation
