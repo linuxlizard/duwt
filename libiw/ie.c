@@ -423,6 +423,8 @@ static int ie_rm_enabled_capabilities_new(struct IE* ie)
 		return -EINVAL;
 	}
 
+	hex_dump(__func__, ie->buf, ie->len);
+
 #define CAPA(field,byte,bit)\
 	sie->field = !!(ie->buf[byte] & (1<<bit))
 

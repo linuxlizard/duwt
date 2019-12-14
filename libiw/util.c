@@ -427,9 +427,11 @@ int rm_enabled_capa_to_str(const struct IE* ie, unsigned int idx, char* s, size_
 		"Civic Location Measurement",
 	};
 
+//	DBG("%s idx=%d\n", __func__, idx);
+
 	// Trying something new. With this many strings, maybe can do an
 	// iterator-style look-up.
-	if (idx > ARRAY_SIZE(rm_str)) {
+	if (idx >= ARRAY_SIZE(rm_str)) {
 		return -EINVAL;
 	}
 

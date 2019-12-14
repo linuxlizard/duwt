@@ -104,10 +104,13 @@ static void print_extended_capabilities(const struct BSS* bss)
 	}
 	const struct IE_Extended_Capabilities* sie = IE_CAST(ie, const struct IE_Extended_Capabilities);
 	printf("\tExtended capabilities:\n");
+
+	// TODO rewrite this iterator style like RM_Enabled_Capabilities
+
 	// using the macros+strings from iw scan.c print_capabilities() but
 	// slightly modified for my IE_Extended_Capabilities structure
 #define CAPA(field,str)\
-	if (sie->field) printf("\t\t* %s\n", str)
+	if (sie->field) printf("\t\t * %s\n", str)
 
 	CAPA(bss_2040_coexist, "HT Information Exchange Supported");
 	CAPA(ESS, "Extended Channel Switching");
@@ -292,11 +295,16 @@ static void print_rm_enabled_capabilities(const struct BSS* bss)
 	char s[128];
 	int err;
 	for (size_t i=0 ; ; i++) {
-		err = rm_enabled_capa_to_str(ie, i, s, 128);
-		if (err == -ENOENT) break; // end of list
-		if (err == -EINVAL) continue;  // no value for this bit
-		XASSERT(err < 128, err);
-		printf("\t\t * %s\n", s);
+		// I feel like cheating and not looking at each individual structure field
+		unsigned int byte = i/8;
+		unsigned int bit = i%8;
+		if (ie->buf[byte] & (1<<bit) || i==18 || i==21 || i==24) {
+			err = rm_enabled_capa_to_str(ie, i, s, 128);
+			if (err == -ENOENT) continue;  // no value for this bit
+			if (err == -EINVAL) break; // end of list
+			XASSERT(err < 128, err);
+			printf("\t\t * %s\n", s);
+		}
 	}
 
 }
