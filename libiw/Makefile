@@ -63,7 +63,7 @@ nlnames.o:nlnames.c nlnames.h
 test_xassert:test_xassert.o xassert.o
 test_xassert.o:test_xassert.c xassert.h
 
-test_ie:test_ie.o ie.o log.o xassert.o
+test_ie:test_ie.o ie.o $(CORE_O)
 test_ie.o:test_ie.c ie.h $(CORE_H)
 
 test_bytebuf:test_bytebuf.o bytebuf.o xassert.o hdump.o log.o
