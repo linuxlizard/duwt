@@ -9,28 +9,13 @@
 
 #include "core.h"
 #include "ie.h"
+#include "ie_he.h"
 
 const uint8_t ms_oui[3] = { 0x00, 0x50, 0xf2 };
 const uint8_t ieee80211_oui[3] = { 0x00, 0x0f, 0xac };
 const uint8_t wfa_oui[3] = { 0x50, 0x6f, 0x9a };
 
 #define IE_LIST_DEFAULT_MAX 32
-
-#define CONSTRUCT(type)\
-	type* sie;\
-	sie = calloc(1,sizeof(type));\
-	if (!sie) {\
-		return -ENOMEM;\
-	}\
-	sie->cookie = IE_SPECIFIC_COOKIE;\
-	ie->specific = sie;\
-	sie->base = ie;\
-
-#define DESTRUCT(type)\
-	type* sie = (type*)ie->specific;\
-	XASSERT(sie->cookie == IE_SPECIFIC_COOKIE, sie->cookie);\
-	memset(sie, 0, sizeof(*sie));\
-	PTR_FREE(ie->specific);
 
 #ifdef HAVE_MODULE_LOGLEVEL
 static int module_loglevel=LOG_LEVEL_INFO;
@@ -774,20 +759,46 @@ static void ie_vendor_free(struct IE* ie)
 	DBG("%s %p id=%d\n", __func__, (void *)ie, ie->id);
 }
 
+static const struct ie_ext_class {
+	int (*constructor)(struct IE*);
+	void (*destructor)(struct IE*);
+} ie_ext_classes[256] = {
+	[IE_EXT_HE_CAPABILITIES] = {
+		ie_he_capabilities_new,
+		ie_he_capabilities_free,
+	},
+
+	[IE_EXT_HE_OPERATION] = {
+		ie_he_operation_new,
+		ie_he_operation_free,
+	},
+};
+
 static int ie_extension_new(struct IE* ie)
 {
-//	CONSTRUCT(struct IE_Vendor)
+	hex_dump(__func__, ie->buf, ie->len);
 
-	// TODO
-	(void)ie;
-	return -EINVAL;
+	uint8_t ext_id = ie->buf[0];
+
+	if (ie_ext_classes[ext_id].constructor) {
+		return ie_ext_classes[ext_id].constructor(ie);
+	}
+	else {
+		WARN("%s unparsed IE extension ID=%d\n", __func__, ext_id);
+	}
+	return 0;
 }
 
 
 static void ie_extension_free(struct IE* ie)
 {
-	(void)ie;
+	uint8_t ext_id = ie->buf[0];
+
+	if (ie_ext_classes[ext_id].destructor && ie->specific) {
+		ie_ext_classes[ext_id].destructor(ie);
+	}
 }
+
 
 static const struct ie_class {
 	int (*constructor)(struct IE *);
@@ -883,10 +894,10 @@ static const struct ie_class {
 		ie_vendor_free,
 	},
 
-//	[IE_EXTENSION] = {
-//		ie_extension_new,
-//		ie_extension_free,
-//	},
+	[IE_EXTENSION] = {
+		ie_extension_new,
+		ie_extension_free,
+	},
 };
 
 
@@ -935,19 +946,16 @@ void ie_delete(struct IE** pie)
 
 	XASSERT( ie->cookie == IE_COOKIE, ie->cookie);
 
-	// free my memory
-	if (ie->buf) {
-		memset(ie->buf, POISON, ie->len);
-		PTR_FREE(ie->buf);
-	}
-
-	// now let the descendent free its memory
+	// first let the descendent free its memory
 	// (ie->specific could be NULL if we have a partially initialized IE)
 	if (ie_classes[ie->id].destructor && ie->specific) {
 		ie_classes[ie->id].destructor(ie);
 	}
-	else {
-		XASSERT(ie->specific == NULL, ie->id);
+
+	// now free my memory
+	if (ie->buf) {
+		memset(ie->buf, POISON, ie->len);
+		PTR_FREE(ie->buf);
 	}
 
 	memset(ie, POISON, sizeof(struct IE));
@@ -968,6 +976,13 @@ int decode_ie_buf( const uint8_t* ptr, size_t len, struct IE_List* ie_list)
 	while (ptr < endptr) {
 		id = *ptr++;
 		ielen =  *ptr++;
+
+		// sanity check buffer + lengths
+		if (ptr+ielen > endptr) {
+			ERR("%s buffer length exceeded\n", __func__);
+			return -EINVAL;
+		}
+
 		DBG("%s id=%u len=%u\n", __func__, id, ielen);
 
 		struct IE* ie = ie_new(id, ielen, ptr);
@@ -1051,8 +1066,8 @@ void ie_list_peek(const char *label, struct IE_List* list)
 
 const struct IE* ie_list_find_id(const struct IE_List* list, IE_ID id)
 {
-	// search for the first instance of an id; note this will not work when
-	// there are duplicates such as vendor id
+	// linear search (boo!) for the first instance of an id; note this will not
+	// work when there are duplicates such as vendor id
 	for (size_t i=0 ; i<list->count ; i++) {
 		if (list->ieptrlist[i]->id == id) {
 			return (const struct IE*)list->ieptrlist[i];
@@ -1070,6 +1085,7 @@ ssize_t ie_list_get_all(const struct IE_List* list, IE_ID id, const struct IE* i
 	size_t count=0;
 
 	for (size_t i=0 ; i<list->count ; i++) {
+		// linear search (shame!)
 		if (list->ieptrlist[i]->id == id) {
 			if (count+1 >= len) {
 				return -ENOMEM;
@@ -1081,5 +1097,21 @@ ssize_t ie_list_get_all(const struct IE_List* list, IE_ID id, const struct IE* i
 	}
 
 	return count;
+}
+
+const struct IE* ie_list_find_ext_id(struct IE_List const* list, IE_EXT_ID ext_id)
+{
+	// linear search (boo!) for the first instance of an extension id; 
+	struct IE const* const* pie = (const struct IE* const*)list->ieptrlist;
+	for (size_t i=0 ; i<list->count ; i++, pie++) {
+		INFO("%s %zu %p %d\n", __func__, i, (const void *)pie, (*pie)->id);
+
+		XASSERT((*pie)->cookie == IE_COOKIE, (*pie)->cookie);
+		if ((*pie)->id == IE_EXTENSION && (*pie)->buf[0] == ext_id ) {
+			return (const struct IE*)*pie;
+		}
+	}
+
+	return (const struct IE*)NULL;
 }
 

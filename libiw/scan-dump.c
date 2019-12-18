@@ -247,6 +247,24 @@ static void print_vht_operation(const struct BSS* bss)
 
 }
 
+static void print_he_capabilities(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES);
+	if (!ie) {
+		return;
+	}
+	printf("\tHE capabilities:\n");
+}
+
+static void print_he_operation(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_OPERATION);
+	if (!ie) {
+		return;
+	}
+	printf("\tHE operation:\n");
+}
+
 static void print_rsn(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_RSN);
@@ -474,10 +492,13 @@ static void print_ht_operation(const struct BSS* bss)
 	const struct IE_HT_Operation* sie = IE_CAST(ie, const struct IE_HT_Operation);
 	printf("\tHT operation:\n");
 	printf("\t\t * primary channel: %d\n", sie->primary_channel);
-	printf("\t\t * secondary channel offset: %s\n", "TODO"); //ht_secondary_offset[data[1] & 0x3]);
-	printf("\t\t * STA channel width: %s\n", "TODO"); // sta_chan_width[(data[1] & 0x4)>>2]);
+	printf("\t\t * secondary channel offset: %s\n", 
+			ht_secondary_offset_str(sie->secondary_channel_offset)); 
+	printf("\t\t * STA channel width: %s\n", 
+			ht_sta_channel_width_str(sie->sta_channel_width));
 	printf("\t\t * RIFS: %d\n", sie->rifs);
-	printf("\t\t * HT protection: %s\n", "TODO"); // protection[data[2] & 0x3]);
+	printf("\t\t * HT protection: %s\n", 
+			ht_protection_str(sie->ht_protection)); 
 	printf("\t\t * non-GF present: %d\n", sie->non_gf_present);
 //	printf("\t\t * Channel Center Freq 2: %d\n", sie->channel_center_frequency_2);
 	printf("\t\t * OBSS non-GF present: %d\n", sie->obss_non_gf_present);
@@ -618,6 +639,8 @@ static void print_bss(struct BSS* bss)
 	print_extended_capabilities(bss);
 	print_vht_capabilities(bss);
 	print_vht_operation(bss);
+	print_he_capabilities(bss);
+	print_he_operation(bss);
 	print_rsn(bss);
 	print_rm_enabled_capabilities(bss);
 	print_vendor(bss);

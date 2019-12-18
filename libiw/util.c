@@ -187,6 +187,50 @@ int ht_ampdu_spacing_to_str(uint8_t spacing, char* s, size_t len)
 	       space_str[spacing], spacing);
 }
 
+const char* ht_secondary_offset_str(uint8_t off)
+{
+	// strings from iw scan.c ht_secondary_offset
+	static const char* str[] = {
+		"no secondary",
+		"above",
+		"[reserved!]",
+		"below",
+	};
+
+	if (off > 4) {
+		return "invalid!";
+	}
+	return str[off];
+}
+
+const char* ht_sta_channel_width_str(uint8_t w)
+{
+	// strings from iw scan print_ht_op()
+	static const char* width_str[] = {
+		"20 MHz", "any",
+	};
+
+	if (w > 1) {
+		return "invalid!";
+	}
+	return width_str[w];
+}
+
+const char* ht_protection_str(uint8_t prot)
+{
+	// strings from iw scan.c print_ht_op()
+	static const char* prot_str[] = {
+		"no",
+		"nonmember",
+		"20 Mhz",
+		"non-HT mixed",
+	};
+	if (prot > 3) {
+		return "invalid!";
+	}
+	return prot_str[prot];
+}
+
 int mcs_index_bitmask_to_str(const uint8_t* buf, char* s, size_t len)
 {
 	// TODO

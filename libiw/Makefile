@@ -22,7 +22,7 @@ LDFLAGS:=-g $(shell pkg-config --libs $(PKGS))
 CORE_H:=xassert.h log.h core.h hdump.h
 CORE_O:=xassert.o log.o hdump.o util.o
 
-all:scan-event-ev scan-dump
+all:scan-event-ev scan-dump test_ie
 
 scan-event: scan-event.o hdump.o iw-scan.o nlnames.o log.o list_debug.o bug.o
 	$(CC) $(LDFLAGS) -o $@ $^
@@ -30,23 +30,24 @@ scan-event: scan-event.o hdump.o iw-scan.o nlnames.o log.o list_debug.o bug.o
 scan-event.o: scan-event.c
 	$(CC) $(CFLAGS) -c scan-event.c -o scan-event.o 
 
-scan-event-ev: scan-event-ev.o $(CORE_O) iw-scan.o nlnames.o bytebuf.o ie.o list_debug.o bug.o
+scan-event-ev: scan-event-ev.o $(CORE_O) iw-scan.o nlnames.o bytebuf.o ie.o ie_he.o list_debug.o bug.o
 	$(CC) $(LDFLAGS) -lev -o $@ $^
 
 scan-event-ev.o: scan-event-ev.c iw-scan.h bytebuf.h $(CORE_H)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o bss.o list_debug.o bug.o
+scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o list_debug.o bug.o
 	$(CC) $(LDFLAGS) -licuio -o $@ $^
 
-scan-dump.o: scan-dump.c iw.h ie.h $(CORE_H)
+scan-dump.o: scan-dump.c iw.h ie.h ie_he.h $(CORE_H)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 
 hdump.o:hdump.c hdump.h $(CORE_H)
 log.o:log.c log.h $(CORE_H)
 bytebuf.o:bytebuf.c bytebuf.h $(CORE_H)
-ie.o:ie.c ie.h $(CORE_H)
+ie.o:ie.c ie.h ie_he.h $(CORE_H)
+ie_he.o:ie_he.c ie_he.h $(CORE_H)
 iw.o:iw.c iw.h $(CORE_H)
 bss.o:bss.c bss.h $(CORE_H)
 xassert.o:xassert.c xassert.h $(CORE_H)
@@ -63,8 +64,8 @@ nlnames.o:nlnames.c nlnames.h
 test_xassert:test_xassert.o xassert.o
 test_xassert.o:test_xassert.c xassert.h
 
-test_ie:test_ie.o ie.o $(CORE_O)
-test_ie.o:test_ie.c ie.h $(CORE_H)
+test_ie:test_ie.o ie.o ie_he.o $(CORE_O)
+test_ie.o:test_ie.c ie.h ie_he.h $(CORE_H)
 
 test_bytebuf:test_bytebuf.o bytebuf.o xassert.o hdump.o log.o
 test_bytebuf.o:test_bytebuf.c bytebuf.h xassert.h log.h

@@ -67,6 +67,24 @@ typedef enum {
 	IE_EXTENSION = 255
 } IE_ID;
 
+// IE_EXTENSION
+typedef enum {
+	// 0-8 reserved
+	IE_EXT_FTM_SYNC_INFORMATION = 9,
+	IE_EXT_EXTENDED_REQUEST = 10,
+	IE_EXT_EST_SERVICE_PARAM = 11,
+	// 13 reserved
+	IE_EXT_FUTURE_CHANNEL_GUIDANCE = 14,
+
+	// 80211ax (aka WifI6 aka HE aka High Efficiency) currently here
+	// decoding via Wireshark examples
+	IE_EXT_HE_CAPABILITIES = 35,
+	IE_EXT_HE_OPERATION = 36,
+	IE_EXT_MU_EDCA_PARAM_SET = 38,
+	IE_EXT_SPATIAL_REUSE_PARAM_SET = 39,
+
+} IE_EXT_ID;
+
 extern const uint8_t ms_oui[3];
 extern const uint8_t ieee80211_oui[3];
 extern const uint8_t wfa_oui[3];
@@ -107,6 +125,22 @@ struct IE
 
 #define IE_CAST(_ie, _type)\
 	((_type*)((_ie)->specific))
+
+#define CONSTRUCT(type)\
+	type* sie;\
+	sie = calloc(1,sizeof(type));\
+	if (!sie) {\
+		return -ENOMEM;\
+	}\
+	sie->cookie = IE_SPECIFIC_COOKIE;\
+	ie->specific = sie;\
+	sie->base = ie;\
+
+#define DESTRUCT(type)\
+	type* sie = (type*)ie->specific;\
+	XASSERT(sie->cookie == IE_SPECIFIC_COOKIE, sie->cookie);\
+	memset(sie, 0, sizeof(*sie));\
+	PTR_FREE(ie->specific);
 
 struct IE_SSID
 {
@@ -583,6 +617,7 @@ int ie_list_move_back(struct IE_List* list, struct IE** pie);
 void ie_list_peek(const char *label, struct IE_List* list);
 const struct IE* ie_list_find_id(const struct IE_List* list, IE_ID id);
 ssize_t ie_list_get_all(const struct IE_List* list, IE_ID id, const struct IE* ielist[], size_t len);
+const struct IE* ie_list_find_ext_id(const struct IE_List* list, IE_EXT_ID ext_id);
 
 int decode_ie_buf( const uint8_t* buf, size_t len, struct IE_List* ielist);
 
