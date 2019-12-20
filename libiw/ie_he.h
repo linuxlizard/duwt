@@ -12,10 +12,10 @@ struct IE_HE_Capabilities
 	IE_SPECIFIC_FIELDS
 
 	// pointers into ie->buf
-	uint8_t* mac_capa;  // 6 bytes
-	uint8_t* phy_capa;  // 9 bytes
-	uint8_t* mcs_and_nss_set; // 4  bytes
-	uint8_t* ppe_threshold; // 7 bytes
+	const uint8_t* mac_capa;  // 6 bytes
+	const uint8_t* phy_capa;  // 9 bytes
+	const uint8_t* mcs_and_nss_set; // 4  bytes
+	const uint8_t* ppe_threshold; // 7 bytes
 
 	// following taken from Wireshark epan/dissectors/packet-ieee80211.c
 	// I changed to uint8_t and bitfield.
@@ -168,6 +168,11 @@ int ie_he_capabilities_new(struct IE* ie);
 void ie_he_capabilities_free(struct IE* ie);
 int ie_he_operation_new(struct IE* ie);
 void ie_he_operation_free(struct IE* ie);
+
+const char* he_fragmentation_support_str(uint8_t val);
+int he_max_frag_msdus_base_to_str(uint8_t max_frag_msdus_value, char* s, size_t len);
+const char* he_min_fragment_size_str(uint8_t val);
+const char* he_link_adapt_support_str(uint8_t w);
 
 #endif
 

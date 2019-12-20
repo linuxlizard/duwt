@@ -624,5 +624,7 @@ int decode_ie_buf( const uint8_t* buf, size_t len, struct IE_List* ielist);
 #define ie_list_for_each_entry(pos, list)\
 	for (size_t i=0 ; (pos=list.ieptrlist[i]) && i<list.count ; pos=list.ieptrlist[++i]) 
 
+#include "ie_he.h"
+
 #endif
 

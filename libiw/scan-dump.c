@@ -7,6 +7,7 @@
 
 #include "core.h"
 #include "iw.h"
+#include "ie.h"
 #include "list.h"
 #include "bss.h"
 #include "hdump.h"
@@ -253,7 +254,55 @@ static void print_he_capabilities(const struct BSS* bss)
 	if (!ie) {
 		return;
 	}
+	const struct IE_HE_Capabilities* sie = IE_CAST(ie, struct IE_HE_Capabilities);
+
 	printf("\tHE capabilities:\n");
+//	hex_dump(__func__, ie->buf, ie->len);
+#define PRN(field,label) \
+		if (sie->field) printf("\t\t * %s\n", label);
+	PRN(htc_he_support,"+HTC HE Support")
+	PRN(twt_requester_support,"TWT Requester Support")
+	PRN(twt_responder_support,"TWT Responder Support")
+	printf("\t\t * Fragmentation Support: %s (%d)\n", 
+			he_fragmentation_support_str(sie->fragmentation_support),
+			sie->fragmentation_support);
+	char s[128];
+	int ret = he_max_frag_msdus_base_to_str(sie->max_number_fragmented_msdus, s, 128);
+	XASSERT(ret < 128, ret);
+	printf("\t\t * Maximum Number of Fragmented MSDUs: %s\n", s);
+	printf("\t\t * Minimum Fragment Size: %s (%d)\n", 
+			he_min_fragment_size_str(sie->min_fragment_size),
+			sie->min_fragment_size);
+	printf("\t\t * Trigger Frame MAC Padding Duration: %d\n", sie->trigger_frame_mac_padding_dur);
+	printf("\t\t * Multi-TID Aggregation Support: %d\n", sie->multi_tid_aggregation_support);
+	printf("\t\t * HE Link Adaptation Support: %s (%d)\n", 
+			he_link_adapt_support_str(sie->he_link_adaptation_support),
+			sie->he_link_adaptation_support);
+	PRN(all_ack_support,"All Ack Support")
+	PRN(trs_support,"TRS Support")
+	PRN(bsr_support,"BSR Support")
+	PRN(broadcast_twt_support,"Broadcast TWT Support")
+	PRN(_32_bit_ba_bitmap_support,"32-bit BA Bitmap Support")
+	PRN(mu_cascading_support,"MU Cascading Support")
+	PRN(ack_enabled_aggregation_support,"Ack-Enabled Aggregation Support")
+	PRN(om_control_support,"OM Control Support")
+	PRN(ofdma_ra_support,"OFDMA RA Support")
+	printf("\t\t * Maximum A-MPDU Length Exponent Extension: %d\n", sie->max_a_mpdu_length_exponent_ext );
+	PRN(a_msdu_fragmentation_support,"A-MSDU Fragmentation Support")
+	PRN(flexible_twt_schedule_support,"Flexible TWT Schedule Support")
+	PRN(rx_control_frame_to_multibss,"Rx Control Frame to MultiBSS")
+	PRN(bsrp_bqrp_a_mpdu_aggregation,"BSRP BQRP A-MPDU Aggregation")
+	PRN(qtp_support,"QTP Support")
+	PRN(bqr_support,"BQR Support")
+	PRN(srp_responder,"SRP Responder Role")
+	PRN(ndp_feedback_report_support,"NDP Feedback Report Support")
+	PRN(ops_support,"OPS Support")
+	PRN(a_msdu_in_a_mpdu_support,"A-MSDU in A-MPDU Support")
+	printf("\t\t * Multi-TID Aggregation TX Support: %d\n", sie->multi_tid_aggregation_support);
+	PRN(subchannel_selective_trans_support,"HE Subchannel Selective Transmission Support")
+	PRN(ul_2_996_tone_ru_support,"UL 2x996-tone RU Support")
+	PRN(om_control_ul_mu_data_disable_rx_support,"OM Control UL MU Data Disable RX Support")
+#undef PRN
 }
 
 static void print_he_operation(const struct BSS* bss)

@@ -1104,7 +1104,7 @@ const struct IE* ie_list_find_ext_id(struct IE_List const* list, IE_EXT_ID ext_i
 	// linear search (boo!) for the first instance of an extension id; 
 	struct IE const* const* pie = (const struct IE* const*)list->ieptrlist;
 	for (size_t i=0 ; i<list->count ; i++, pie++) {
-		INFO("%s %zu %p %d\n", __func__, i, (const void *)pie, (*pie)->id);
+//		INFO("%s %zu %p %d\n", __func__, i, (const void *)pie, (*pie)->id);
 
 		XASSERT((*pie)->cookie == IE_COOKIE, (*pie)->cookie);
 		if ((*pie)->id == IE_EXTENSION && (*pie)->buf[0] == ext_id ) {

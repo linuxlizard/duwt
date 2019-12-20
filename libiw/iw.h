@@ -15,8 +15,6 @@
 // contains copied chunks from from iw iw.h
 //
 
-#define ARRAY_SIZE(ar) (sizeof(ar)/sizeof(ar[0]))
-
 void peek_nla_attr( struct nlattr* tb_msg[], size_t count);
 //void peek_nla_bss(struct nlattr* bss_msg[], size_t count);
 //void peek_nla_bss(const struct nlattr* bss_msg[const static NL80211_BSS_MAX], size_t count);
