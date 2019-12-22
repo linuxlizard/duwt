@@ -34,14 +34,14 @@ const char* vht_channel_width_str(uint8_t w);
 
 int tsf_to_timestamp_str(uint64_t tsf, char* s, size_t len);
 int capability_to_str(uint16_t capa, char* s, size_t len);
-int erp_to_str(const struct IE* ie, char* s, size_t len);
+int erp_to_str(const struct IE_ERP* sie, char* s, size_t len);
 int ht_ampdu_length_to_str(uint8_t exponent, char* s, size_t len);
 int ht_ampdu_spacing_to_str(uint8_t spacing, char* s, size_t len);
 int mcs_index_bitmask_to_str(const uint8_t* buf, char* s, size_t len);
 int cipher_suite_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len);
 int auth_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len);
-int rsn_capabilities_to_str(const struct IE* ie, char* s, size_t len);
-int rm_enabled_capa_to_str(const struct IE* ie, unsigned int idx, char* s, size_t len);
+int rsn_capabilities_to_str(const struct IE_RSN* ie, char* s, size_t len);
+int rm_enabled_capa_to_str(const struct IE_RM_Enabled_Capabilities* sie, unsigned int idx, char* s, size_t len);
 
 #endif
 

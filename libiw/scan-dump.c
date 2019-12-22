@@ -248,6 +248,7 @@ static void print_vht_operation(const struct BSS* bss)
 
 }
 
+
 static void print_he_capabilities(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES);
@@ -257,18 +258,99 @@ static void print_he_capabilities(const struct BSS* bss)
 	const struct IE_HE_Capabilities* sie = IE_CAST(ie, struct IE_HE_Capabilities);
 
 	printf("\tHE capabilities:\n");
-//	hex_dump(__func__, ie->buf, ie->len);
-#define PRN(field,label) \
-		if (sie->field) printf("\t\t * %s\n", label);
+	char s[128];
+
+	hex_dump(__func__, ie->buf, ie->len);
+
+	unsigned int bit;
+	int ret;
+
+#define PRN(field, _idx)\
+	do {\
+		typeof (_idx) s_idx = (_idx);\
+		ret = he_mac_capa_to_str(sie, s_idx, s, sizeof(s));\
+		XASSERT(ret > 0 && (size_t)ret<sizeof(s), ret);\
+		printf("%d \t\t * %s\n", s_idx, s);\
+	} while(0);
+
+#define PRNBOOL(field, _idx) \
+	do {\
+		typeof (_idx) s_idx = (_idx);\
+		if(sie->field) {\
+			ret = he_mac_capa_to_str(sie, s_idx, s, sizeof(s));\
+			XASSERT(ret > 0 && (size_t)ret<sizeof(s), ret);\
+			printf("%d\t\t * %s\n", s_idx, s);\
+		}\
+	} while(0);
+
+	// 0-7
+	bit = 0;
+	PRNBOOL(htc_he_support, bit++)
+	PRNBOOL(twt_requester_support,bit++)
+	PRNBOOL(twt_responder_support,bit++)
+	PRN(fragmentation_support,bit); bit+=2; // 2 bits
+	PRN(max_number_fragmented_msdus, bit); bit+=3; // 3 bits
+	XASSERT(bit==8, bit);
+
+	// 8-14
+	bit = 8;
+	PRN(min_fragment_size, bit); bit+=2; // 2 bits
+	PRN(trigger_frame_mac_padding_dur, bit); bit+=2;
+	PRN(multi_tid_aggregation_support, bit); bit+=3;
+	// bits 15,16
+	PRN(he_link_adaptation_support, bit); bit+=2;
+	XASSERT(bit==17, bit);
+
+	// bits 16-23
+	bit = 17; // first field is at bit1
+	PRNBOOL(all_ack_support,bit++)
+	PRNBOOL(trs_support,bit++)
+	PRNBOOL(bsr_support,bit++)
+	PRNBOOL(broadcast_twt_support,bit++)
+	PRNBOOL(_32_bit_ba_bitmap_support,bit++)
+	PRNBOOL(mu_cascading_support,bit++)
+	PRNBOOL(ack_enabled_aggregation_support,bit++)
+	XASSERT(bit==24, bit);
+
+	// bits 24-31
+	bit = 25; // bit 24 reserved
+	PRNBOOL(om_control_support,bit++)
+	PRNBOOL(ofdma_ra_support,bit++)
+	PRN(max_a_mpdu_length_exponent_ext,bit ); bit += 2; // 2 bits
+	PRNBOOL(a_msdu_fragmentation_support,bit++)
+	PRNBOOL(flexible_twt_schedule_support,bit++)
+	PRNBOOL(rx_control_frame_to_multibss,bit++)
+	XASSERT(bit==32, bit);
+
+	// bits 32-39
+	bit = 32;
+	PRNBOOL(bsrp_bqrp_a_mpdu_aggregation,bit++)
+	PRNBOOL(qtp_support,bit++)
+	PRNBOOL(bqr_support,bit++)
+	PRNBOOL(srp_responder,bit++)
+	PRNBOOL(ndp_feedback_report_support,bit++)
+	PRNBOOL(ops_support,bit++)
+	PRNBOOL(a_msdu_in_a_mpdu_support,bit++)
+	XASSERT(bit==39, bit);
+
+	// bits 39-41
+	PRN(multi_tid_aggregation_support, bit); bit+= 3;
+	XASSERT(bit==42, bit);
+
+	bit = 42;
+	PRNBOOL(subchannel_selective_trans_support,bit++)
+	PRNBOOL(ul_2_996_tone_ru_support,bit++)
+	PRNBOOL(om_control_ul_mu_data_disable_rx_support,bit++)
+
+#if 0
 	PRN(htc_he_support,"+HTC HE Support")
 	PRN(twt_requester_support,"TWT Requester Support")
 	PRN(twt_responder_support,"TWT Responder Support")
 	printf("\t\t * Fragmentation Support: %s (%d)\n", 
 			he_fragmentation_support_str(sie->fragmentation_support),
 			sie->fragmentation_support);
-	char s[128];
-	int ret = he_max_frag_msdus_base_to_str(sie->max_number_fragmented_msdus, s, 128);
-	XASSERT(ret < 128, ret);
+	ret = he_max_frag_msdus_base_to_str(sie->max_number_fragmented_msdus, s, sizeof(s));
+	XASSERT((size_t)ret < sizeof(s), ret);
 	printf("\t\t * Maximum Number of Fragmented MSDUs: %s\n", s);
 	printf("\t\t * Minimum Fragment Size: %s (%d)\n", 
 			he_min_fragment_size_str(sie->min_fragment_size),
@@ -302,6 +384,7 @@ static void print_he_capabilities(const struct BSS* bss)
 	PRN(subchannel_selective_trans_support,"HE Subchannel Selective Transmission Support")
 	PRN(ul_2_996_tone_ru_support,"UL 2x996-tone RU Support")
 	PRN(om_control_ul_mu_data_disable_rx_support,"OM Control UL MU Data Disable RX Support")
+#endif
 #undef PRN
 }
 
@@ -324,15 +407,15 @@ static void print_rsn(const struct BSS* bss)
 
 	const struct IE_RSN* sie = IE_CAST(ie, const struct IE_RSN);
 	printf("\tRSN:\t * Version: %d\n", sie->version);
-	int err = cipher_suite_to_str(sie->group_data, s, 128);
-	XASSERT(err<128, err);
+	int ret = cipher_suite_to_str(sie->group_data, s, sizeof(s));
+	XASSERT((size_t)ret<sizeof(s), ret);
 	printf("\t\t * Group cipher: %s\n", s);
 
 	printf("\t\t * Pairwise ciphers:");
 	for (size_t i=0 ; i<sie->pairwise_cipher_count ; i++) {
 		XASSERT((sie->pairwise) != NULL, i);
-		err = cipher_suite_to_str(&sie->pairwise[i], s, 128);
-		XASSERT(err<128, err);
+		ret = cipher_suite_to_str(&sie->pairwise[i], s, sizeof(s));
+		XASSERT((size_t)ret<sizeof(s), ret);
 		printf(" %s", s);
 	}
 	printf("\n");
@@ -340,14 +423,14 @@ static void print_rsn(const struct BSS* bss)
 	printf("\t\t * Authentication suites:");
 	for (size_t i=0 ; i<sie->akm_suite_count; i++) {
 		XASSERT((sie->akm_suite) != NULL, i);
-		err = auth_to_str(&sie->akm_suite[i], s, 128);
-		XASSERT(err<128, err);
+		ret = auth_to_str(&sie->akm_suite[i], s, sizeof(s));
+		XASSERT((size_t)ret<sizeof(s), ret);
 		printf(" %s", s);
 	}
 	printf("\n");
 
-	err = rsn_capabilities_to_str(ie, s, 128);
-	XASSERT(err<128, err);
+	ret = rsn_capabilities_to_str(sie, s, sizeof(s));
+	XASSERT((size_t)ret<sizeof(s), ret);
 	printf("\t\t * Capabilities:%s", s);
 	printf(" (%#06x)\n", sie->capabilities);
 }
@@ -358,18 +441,19 @@ static void print_rm_enabled_capabilities(const struct BSS* bss)
 	if (!ie) {
 		return;
 	}
+	const struct IE_RM_Enabled_Capabilities* sie = IE_CAST(ie, struct IE_RM_Enabled_Capabilities);
 	printf("\tRadio Measurement Capabilities:\n");
 	char s[128];
-	int err;
+	int ret;
 	for (size_t i=0 ; ; i++) {
 		// I feel like cheating and not looking at each individual structure field
 		unsigned int byte = i/8;
 		unsigned int bit = i%8;
 		if (ie->buf[byte] & (1<<bit) || i==18 || i==21 || i==24) {
-			err = rm_enabled_capa_to_str(ie, i, s, 128);
-			if (err == -ENOENT) continue;  // no value for this bit
-			if (err == -EINVAL) break; // end of list
-			XASSERT(err < 128, err);
+			ret = rm_enabled_capa_to_str(sie, i, s, sizeof(s));
+			if (ret == -ENOENT) continue;  // no value for this bit
+			if (ret == -EINVAL) break; // end of list
+			XASSERT((size_t)ret < sizeof(s), ret);
 			printf("\t\t * %s\n", s);
 		}
 	}
@@ -521,12 +605,12 @@ static void print_ht_capabilities(const struct BSS* bss)
 #undef PRINT_HT_CAP
 
 	char s[128];
-	int err = ht_ampdu_length_to_str(sie->max_ampdu_len, s, 128);
-	XASSERT(err<128, err);
+	int ret = ht_ampdu_length_to_str(sie->max_ampdu_len, s, sizeof(s));
+	XASSERT((size_t)ret<sizeof(s), ret);
 	printf("\t\t%s\n", s);
 
-	err = ht_ampdu_spacing_to_str(sie->min_ampdu_spacing, s, 128);
-	XASSERT(err<128, err);
+	ret = ht_ampdu_spacing_to_str(sie->min_ampdu_spacing, s, sizeof(s));
+	XASSERT((size_t)ret<sizeof(s), ret);
 	printf("\t\t%s\n", s);
 
 	print_ht_mcs(&sie->mcs);
@@ -635,9 +719,10 @@ static void print_erp(const struct BSS* bss)
 	if (!ie) {
 		return;
 	}
+	const struct IE_ERP* sie = IE_CAST(ie, struct IE_ERP);
 	char s[128];
-	int err = erp_to_str(ie, s, 128);
-	XASSERT(err<128, err);
+	int ret = erp_to_str(sie, s, sizeof(s));
+	XASSERT((size_t)ret<sizeof(s), ret);
 	printf("\tERP:%s\n", s);
 }
 

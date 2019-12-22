@@ -12,7 +12,7 @@ PKGS=libnl-3.0 libnl-genl-3.0 icu-i18n
 #PKGS=libnl-3.0 libnl-genl-3.0 libevent_core libevent libevent_extra
 CFLAGS:=-g -Wall -Wpedantic -Wextra $(shell pkg-config --cflags $(PKGS))
 # shamelessly copied extra warnings from m*lib https://github.com/P-p-H-d/mlib
-CFLAGS+=-Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes -Wswitch-default -Wswitch-enum -Wcast-align -Wpointer-arith -Wbad-function-cast -Wstrict-overflow=5 -Wstrict-prototypes -Winline -Wundef -Wnested-externs -Wcast-qual -Wshadow -Wunreachable-code -Wlogical-op -Wstrict-aliasing=2 -Wredundant-decls -Wold-style-definition -Wno-unused-function
+CFLAGS+=-Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes -Wswitch-default -Wswitch-enum -Wcast-align -Wbad-function-cast -Wstrict-overflow=5 -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wlogical-op -Wstrict-aliasing=2 -Wredundant-decls -Wold-style-definition -Wno-unused-function
 
 # http://userguide.icu-project.org/strings/utf-8
 CFLAGS+=-DU_CHARSET_IS_UTF8=1
@@ -22,7 +22,9 @@ LDFLAGS:=-g $(shell pkg-config --libs $(PKGS))
 CORE_H:=xassert.h log.h core.h hdump.h
 CORE_O:=xassert.o log.o hdump.o util.o
 
-all:scan-event-ev scan-dump test_ie
+TEST:=test_ie test_bss test_bytebuf test_ie_he
+
+all:scan-event-ev scan-dump $(TEST)
 
 scan-event: scan-event.o hdump.o iw-scan.o nlnames.o log.o list_debug.o bug.o
 	$(CC) $(LDFLAGS) -o $@ $^
@@ -67,10 +69,13 @@ test_xassert.o:test_xassert.c xassert.h
 test_ie:test_ie.o ie.o ie_he.o $(CORE_O)
 test_ie.o:test_ie.c ie.h ie_he.h $(CORE_H)
 
+test_ie_he:test_ie_he.o ie.o ie_he.o $(CORE_O)
+test_ie_he.o:test_ie_he.c ie.h ie_he.h $(CORE_H)
+
 test_bytebuf:test_bytebuf.o bytebuf.o xassert.o hdump.o log.o
 test_bytebuf.o:test_bytebuf.c bytebuf.h xassert.h log.h
 
-test_bss:test_bss.o bss.o ie.o iw.o list_debug.o nlnames.o bug.o $(CORE_O)
+test_bss:test_bss.o bss.o ie.o ie_he.o iw.o list_debug.o nlnames.o bug.o $(CORE_O)
 test_bss.o:test_bss.c $(CORE_H)
 
 VALGRIND_OPTS=--error-exitcode=1 --leak-check=yes

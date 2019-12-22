@@ -101,11 +101,9 @@ int capability_to_str(uint16_t capa, char* s, size_t len)
 	);
 }
 
-int erp_to_str(const struct IE* ie, char* s, size_t len)
+int erp_to_str(const struct IE_ERP* sie, char* s, size_t len)
 {
-	const struct IE_ERP* sie = IE_CAST(ie, struct IE_ERP);
-
-	if (!ie->buf[0]) {
+	if (!sie->base->buf[0]) {
 		return snprintf(s, len, " <no flags>");
 	}
 
@@ -386,7 +384,7 @@ int auth_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len)
 	return unknown_suite(suite, s, len);
 }
 
-int rsn_capabilities_to_str(const struct IE* ie, char* s, size_t len)
+int rsn_capabilities_to_str(const struct IE_RSN* sie, char* s, size_t len)
 {
 	static const char* ptksa_str[] = {
 		" 1-PTKSA-RC",
@@ -400,8 +398,6 @@ int rsn_capabilities_to_str(const struct IE* ie, char* s, size_t len)
 		" 4-GTKSA-RC",
 		" 16-GTKSA-RC",
 	};
-
-	const struct IE_RSN* sie = IE_CAST(ie, struct IE_RSN);
 
 	// strings from iw scan.c _print_rsn_ie()
 	return snprintf(s, len, "%s%s%s%s%s%s%s%s%s%s%s%s",
@@ -421,7 +417,7 @@ int rsn_capabilities_to_str(const struct IE* ie, char* s, size_t len)
 
 }
 
-int rm_enabled_capa_to_str(const struct IE* ie, unsigned int idx, char* s, size_t len)
+int rm_enabled_capa_to_str(const struct IE_RM_Enabled_Capabilities* sie, unsigned int idx, char* s, size_t len)
 {
 	static const char* rm_str[] = {
 		// bit 0
@@ -482,9 +478,6 @@ int rm_enabled_capa_to_str(const struct IE* ie, unsigned int idx, char* s, size_
 	if (!rm_str[idx]) {
 		return -ENOENT;
 	}
-
-	XASSERT(ie->id == IE_RM_ENABLED_CAPABILITIES, ie->id);
-	const struct IE_RM_Enabled_Capabilities* sie = IE_CAST(ie, struct IE_RM_Enabled_Capabilities);
 
 	int ret;
 	switch (idx) {

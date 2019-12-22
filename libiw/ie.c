@@ -250,9 +250,9 @@ static int ie_erp_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_ERP)
 
-	sie->NonERP_Present = !!(ie->buf[0] & 1);
-	sie->Use_Protection = !!(ie->buf[0] & 2);
-	sie->Barker_Preamble_Mode = !!(ie->buf[0] & 4);
+	sie->NonERP_Present = ie->buf[0] & 1;
+	sie->Use_Protection = (ie->buf[0] >> 1 ) & 1;
+	sie->Barker_Preamble_Mode = (ie->buf[0] >> 2) & 1;
 	return 0;
 }
 
@@ -302,7 +302,7 @@ static int ie_ht_capabilities_new(struct IE* ie)
 	// decode bitfields
 
 #define HTCAPA(field, bit)\
-		sie->field = !!(sie->capa & (1<<bit))
+		sie->field = (sie->capa >> bit) & 1
 	HTCAPA(LDPC_coding_capa, 0);
 	HTCAPA(supported_channel_width, 1);
 	sie->SM_power_save = (sie->capa >> 2) & 3;
@@ -385,7 +385,7 @@ static int ie_rsn_new(struct IE* ie)
 	sie->capabilities = htole16(*(const uint16_t*)ptr);
 	ptr += 2;
 #define CAPA(field,bit)\
-	sie->field = !!(sie->capabilities & (1<<bit))
+	sie->field = (sie->capabilities >> bit) & 1
 
 	CAPA(preauth, 0);
 	CAPA(no_pairwise, 1);
@@ -423,7 +423,7 @@ static int ie_rm_enabled_capabilities_new(struct IE* ie)
 	hex_dump(__func__, ie->buf, ie->len);
 
 #define CAPA(field,byte,bit)\
-	sie->field = !!(ie->buf[byte] & (1<<bit))
+	sie->field = (ie->buf[byte] >> bit) & 1
 
 	CAPA(link, 0, 0);
 	CAPA(neighbor_report, 0, 1);
@@ -561,7 +561,7 @@ static int ie_extended_capa_new(struct IE* ie)
 	if (idx+1 >= ie->len) return 0;\
 	b = ie->buf[idx++];
 
-#define ECBIT(field,bit) sie->field = !!(b & (1<<bit))
+#define ECBIT(field,bit) sie->field = (b >> bit) & 1
 
 	// bits 0-7
 	NEXTBYTE
@@ -691,7 +691,7 @@ static int ie_vht_capabilities_new(struct IE* ie)
 	sie->mcs_and_nss_ptr = ptr;
 
 #define VHT_CAPA(field, bit) \
-		sie->field = !!( sie->info & (1<<bit))
+		sie->field = (sie->info >> bit) & 1
 
 	sie->max_mpdu_length = sie->info & 3;
 	sie->supported_channel_width = (sie->info >>2) & 3;
