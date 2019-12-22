@@ -225,10 +225,19 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 
 	if (tb_msg[NL80211_ATTR_IE]) {
 		counter--;
-		struct nlattr* ie = tb_msg[NL80211_ATTR_IE];
-		DBG("ATTR_IE len=%"PRIu16"\n", nla_len(ie));
-		hex_dump("attr_ie", nla_data(ie), nla_len(ie));
-		err = decode_ie_buf(nla_data(ie), nla_len(ie), &ie_list);
+		struct nlattr* nlie = tb_msg[NL80211_ATTR_IE];
+		DBG("ATTR_IE len=%"PRIu16"\n", nla_len(nlie));
+		hex_dump("attr_ie", nla_data(nlie), nla_len(nlie));
+		err = decode_ie_buf(nla_data(nlie), nla_len(nlie), &ie_list);
+		if (!err) {
+			const struct IE* ie= (void*)-1;
+			ie_list_for_each_entry(ie, ie_list) {
+				XASSERT(ie->cookie == IE_COOKIE, ie->cookie);
+				printf("%3d ", ie->id);
+			}
+			printf("\n");
+		}
+		
 	}
 
 	if (tb_msg[NL80211_ATTR_SCAN_FREQUENCIES]) {

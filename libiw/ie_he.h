@@ -144,6 +144,10 @@ struct IE_HE_Operation
 	uint8_t mcs_and_nss_set[2];
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int ie_he_capabilities_new(struct IE* ie);
 void ie_he_capabilities_free(struct IE* ie);
 int ie_he_operation_new(struct IE* ie);
@@ -155,6 +159,10 @@ const char* he_min_fragment_size_str(uint8_t val);
 const char* he_link_adapt_support_str(uint8_t w);
 int he_mac_capa_to_str(const struct IE_HE_Capabilities* sie, unsigned int idx, char* s, size_t len);
 int he_phy_capa_to_str(const struct IE_HE_Capabilities* sie, unsigned int idx, char* s, size_t len);
+
+#ifdef __cplusplus
+} // end extern "C"
+#endif
 
 #endif
 

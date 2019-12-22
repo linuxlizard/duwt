@@ -3,6 +3,7 @@
 
 #include "core.h"
 #include "ie.h"
+#include "ie_print.h"
 
 const uint8_t buf[] = {
  0xff, 0x1d,
@@ -19,6 +20,8 @@ int main(void)
 	XASSERT(sie->htc_he_support, sie->htc_he_support);
 	XASSERT(!sie->twt_requester_support, sie->twt_requester_support);
 	XASSERT(sie->twt_responder_support, sie->twt_responder_support);
+
+	print_ie_he_capabilities(sie);
 
 	return EXIT_SUCCESS;
 }

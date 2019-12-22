@@ -605,6 +605,10 @@ struct IE_List
 	size_t count;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct IE* ie_new(uint8_t id, uint8_t len, const uint8_t* buf);
 void ie_delete(struct IE** pie);
 
@@ -620,6 +624,10 @@ ssize_t ie_list_get_all(const struct IE_List* list, IE_ID id, const struct IE* i
 const struct IE* ie_list_find_ext_id(const struct IE_List* list, IE_EXT_ID ext_id);
 
 int decode_ie_buf( const uint8_t* buf, size_t len, struct IE_List* ielist);
+
+#ifdef __cplusplus
+} // end extern "C"
+#endif
 
 #define ie_list_for_each_entry(pos, list)\
 	for (size_t i=0 ; (pos=list.ieptrlist[i]) && i<list.count ; pos=list.ieptrlist[++i]) 

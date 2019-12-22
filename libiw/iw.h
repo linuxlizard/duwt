@@ -15,6 +15,10 @@
 // contains copied chunks from from iw iw.h
 //
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void peek_nla_attr( struct nlattr* tb_msg[], size_t count);
 //void peek_nla_bss(struct nlattr* bss_msg[], size_t count);
 //void peek_nla_bss(const struct nlattr* bss_msg[const static NL80211_BSS_MAX], size_t count);
@@ -42,6 +46,10 @@ int cipher_suite_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t le
 int auth_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len);
 int rsn_capabilities_to_str(const struct IE_RSN* ie, char* s, size_t len);
 int rm_enabled_capa_to_str(const struct IE_RM_Enabled_Capabilities* sie, unsigned int idx, char* s, size_t len);
+
+#ifdef __cplusplus
+} // end extern "C"
+#endif
 
 #endif
 

@@ -106,6 +106,10 @@ struct Capability
 	bool IMM_BACK : 1;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct BSS* bss_new(void);
 void bss_free(struct BSS** pbss);
 
@@ -116,6 +120,10 @@ int bss_from_nlattr(struct nlattr* attr[], struct BSS** pbss);
 
 bool bss_is_vht(const struct BSS* bss);
 bool bss_is_ht(const struct BSS* bss);
+
+#ifdef __cplusplus
+} // end extern "C"
+#endif
 
 #endif
 

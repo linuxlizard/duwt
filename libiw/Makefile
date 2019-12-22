@@ -38,10 +38,10 @@ scan-event-ev: scan-event-ev.o $(CORE_O) iw-scan.o nlnames.o bytebuf.o ie.o ie_h
 scan-event-ev.o: scan-event-ev.c iw-scan.h bytebuf.h $(CORE_H)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o list_debug.o bug.o
+scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o list_debug.o bug.o ie_print.o
 	$(CC) $(LDFLAGS) -licuio -o $@ $^
 
-scan-dump.o: scan-dump.c iw.h ie.h ie_he.h $(CORE_H)
+scan-dump.o: scan-dump.c iw.h ie.h ie_he.h ie_print.h $(CORE_H)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 
@@ -69,8 +69,8 @@ test_xassert.o:test_xassert.c xassert.h
 test_ie:test_ie.o ie.o ie_he.o $(CORE_O)
 test_ie.o:test_ie.c ie.h ie_he.h $(CORE_H)
 
-test_ie_he:test_ie_he.o ie.o ie_he.o $(CORE_O)
-test_ie_he.o:test_ie_he.c ie.h ie_he.h $(CORE_H)
+test_ie_he:test_ie_he.o ie.o ie_he.o ie_print.o $(CORE_O)
+test_ie_he.o:test_ie_he.c ie.h ie_he.h ie_print.h $(CORE_H)
 
 test_bytebuf:test_bytebuf.o bytebuf.o xassert.o hdump.o log.o
 test_bytebuf.o:test_bytebuf.c bytebuf.h xassert.h log.h
