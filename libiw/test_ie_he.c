@@ -29,12 +29,12 @@ static void decode_and_print(const uint8_t* buf)
 	XASSERT(ie, 0);
 
 	struct IE_HE_Capabilities* sie = IE_CAST(ie, struct IE_HE_Capabilities);
-	XASSERT(sie->htc_he_support, sie->htc_he_support);
-	XASSERT(!sie->twt_requester_support, sie->twt_requester_support);
-	XASSERT(sie->twt_responder_support, sie->twt_responder_support);
-
 	hex_dump("IE HE MAC", sie->mac_capa, 6);
 	hex_dump("IE HE PHY", sie->phy_capa, 9);
+
+	XASSERT(sie->mac->htc_he_support, sie->mac->htc_he_support);
+	XASSERT(!sie->mac->twt_requester_support, sie->mac->twt_requester_support);
+	XASSERT(sie->mac->twt_responder_support, sie->mac->twt_responder_support);
 
 	ie_print_he_capabilities(sie);
 }
@@ -64,7 +64,8 @@ int main(void)
 			phy->partial_bw_ul_mu_mimo
 	);
 
-	ie_print_he_capabilities_2(mac, phy);
+	ie_print_he_capabilities_mac(mac);
+	ie_print_he_capabilities_phy(phy);
 
 	return EXIT_SUCCESS;
 }

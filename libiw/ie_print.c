@@ -7,130 +7,17 @@
 void ie_print_he_capabilities(const struct IE_HE_Capabilities* sie)
 {
 	printf("\tHE capabilities:\n");
+	ie_print_he_capabilities_mac(sie->mac);
+	ie_print_he_capabilities_phy(sie->phy);
+}
+
+void ie_print_he_capabilities_mac(const struct IE_HE_MAC* mac)
+{
 	char s[128];
-
-	hex_dump(__func__, sie->base->buf, sie->base->len);
-
 	unsigned int bit;
 	int ret;
 
 #define STRING_FN he_mac_capa_to_str
-
-#define PRN(field, _idx)\
-	do {\
-		typeof (_idx) s_idx = (_idx);\
-		ret = STRING_FN(sie, s_idx, s, sizeof(s));\
-		XASSERT(ret > 0 && (size_t)ret<sizeof(s), ret);\
-		printf("%d \t\t * %s\n", s_idx, s);\
-	} while(0);
-
-#define PRNBOOL(field, _idx) \
-	do {\
-		typeof (_idx) s_idx = (_idx);\
-		if(sie->field) {\
-			ret = STRING_FN(sie, s_idx, s, sizeof(s));\
-			XASSERT(ret > 0 && (size_t)ret<sizeof(s), ret);\
-			printf("%d\t\t * %s\n", s_idx, s);\
-		}\
-	} while(0);
-
-	printf("\tHE MAC capabilities:\n");
-	// 0-7
-	bit = 0;
-	PRNBOOL(htc_he_support, bit++)
-	PRNBOOL(twt_requester_support,bit++)
-	PRNBOOL(twt_responder_support,bit++)
-	PRN(fragmentation_support,bit); bit+=2; // 2 bits
-	PRN(max_number_fragmented_msdus, bit); bit+=3; // 3 bits
-	XASSERT(bit==8, bit);
-
-	// 8-14
-	bit = 8;
-	PRN(min_fragment_size, bit); bit+=2; // 2 bits
-	PRN(trigger_frame_mac_padding_dur, bit); bit+=2;
-	PRN(multi_tid_aggregation_support, bit); bit+=3;
-	// bits 15,16
-	PRN(he_link_adaptation_support, bit); bit+=2;
-	XASSERT(bit==17, bit);
-
-	// bits 16-23
-	bit = 17; // first field is at bit1
-	PRNBOOL(all_ack_support,bit++)
-	PRNBOOL(trs_support,bit++)
-	PRNBOOL(bsr_support,bit++)
-	PRNBOOL(broadcast_twt_support,bit++)
-	PRNBOOL(_32_bit_ba_bitmap_support,bit++)
-	PRNBOOL(mu_cascading_support,bit++)
-	PRNBOOL(ack_enabled_aggregation_support,bit++)
-	XASSERT(bit==24, bit);
-
-	// bits 24-31
-	bit = 25; // bit 24 reserved
-	PRNBOOL(om_control_support,bit++)
-	PRNBOOL(ofdma_ra_support,bit++)
-	PRN(max_a_mpdu_length_exponent_ext,bit ); bit += 2; // 2 bits
-	PRNBOOL(a_msdu_fragmentation_support,bit++)
-	PRNBOOL(flexible_twt_schedule_support,bit++)
-	PRNBOOL(rx_control_frame_to_multibss,bit++)
-	XASSERT(bit==32, bit);
-
-	// bits 32-39
-	bit = 32;
-	PRNBOOL(bsrp_bqrp_a_mpdu_aggregation,bit++)
-	PRNBOOL(qtp_support,bit++)
-	PRNBOOL(bqr_support,bit++)
-	PRNBOOL(srp_responder,bit++)
-	PRNBOOL(ndp_feedback_report_support,bit++)
-	PRNBOOL(ops_support,bit++)
-	PRNBOOL(a_msdu_in_a_mpdu_support,bit++)
-	XASSERT(bit==39, bit);
-
-	// bits 39-41
-	PRN(multi_tid_aggregation_support, bit); bit+= 3;
-	XASSERT(bit==42, bit);
-
-	bit = 42;
-	PRNBOOL(subchannel_selective_trans_support,bit++)
-	PRNBOOL(ul_2_996_tone_ru_support,bit++)
-	PRNBOOL(om_control_ul_mu_data_disable_rx_support,bit++)
-
-#undef STRING_FN
-#define STRING_FN he_phy_capa_to_str
-
-	printf("\tHE PHY capabilities:\n");
-	// bit 0 reserved
-	bit = 1;
-	PRNBOOL(ch40mhz_channel_2_4ghz, bit++)
-	PRNBOOL(ch40_and_80_mhz_5ghz , bit++)
-	PRNBOOL(ch160_mhz_5ghz       , bit++)
-	PRNBOOL(ch160_80_plus_80_mhz_5ghz , bit++)
-	PRNBOOL(ch242_tone_rus_in_2_4ghz , bit++)
-	PRNBOOL(ch242_tone_rus_in_5ghz, bit++)
-
-	// bits 8-23
-	bit = 8;
-	bit+=4; 
-	PRN(phy_cap_device_class,bit++)
-	PRNBOOL(phy_cap_ldpc_coding_in_payload, bit++);
-	PRNBOOL(phy_cap_he_su_ppdu_1x_he_ltf_08us, bit++);
-
-#undef STRING_FN
-#undef PRN
-#undef PRNBOOL
-}
-
-void ie_print_he_capabilities_2(const struct IE_HE_MAC* mac, const struct IE_HE_PHY* phy)
-{
-	printf("\tHE capabilities:\n");
-	char s[128];
-
-	hex_dump(__func__, (const unsigned char*)mac, 6);
-	hex_dump(__func__, (const unsigned char*)phy, 9);
-
-	unsigned int bit;
-	int ret;
-
-#define STRING_FN he_mac_capa_to_str_2
 
 #define sie mac
 
@@ -139,7 +26,7 @@ void ie_print_he_capabilities_2(const struct IE_HE_MAC* mac, const struct IE_HE_
 		typeof (_idx) s_idx = (_idx);\
 		ret = STRING_FN(sie, s_idx, s, sizeof(s));\
 		XASSERT(ret > 0 && (size_t)ret<sizeof(s), ret);\
-		printf("%d\t\t\t * %s\n", s_idx, s);\
+		printf("\t\t\t * %s\n", s);\
 	} while(0);
 
 #define PRNBOOL(field, _idx) \
@@ -148,7 +35,7 @@ void ie_print_he_capabilities_2(const struct IE_HE_MAC* mac, const struct IE_HE_
 		if(sie->field) {\
 			ret = STRING_FN(sie, s_idx, s, sizeof(s));\
 			XASSERT(ret > 0 && (size_t)ret<sizeof(s), ret);\
-			printf("%d\t\t\t * %s\n", s_idx, s);\
+			printf("\t\t\t * %s\n", s);\
 		}\
 	} while(0);
 
@@ -211,11 +98,18 @@ void ie_print_he_capabilities_2(const struct IE_HE_MAC* mac, const struct IE_HE_
 	PRNBOOL(subchannel_selective_trans_support,bit++)
 	PRNBOOL(ul_2_996_tone_ru_support,bit++)
 	PRNBOOL(om_control_ul_mu_data_disable_rx_support,bit++)
+}
+
+void ie_print_he_capabilities_phy(const struct IE_HE_PHY* phy)
+{
+	char s[128];
+	unsigned int bit;
+	int ret;
 
 #undef STRING_FN
 #undef sie
 #define sie phy
-#define STRING_FN he_phy_capa_to_str_2
+#define STRING_FN he_phy_capa_to_str
 
 	printf("\t\tHE PHY capabilities:\n");
 	// bit 0 reserved

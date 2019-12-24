@@ -37,172 +37,9 @@ int ie_he_capabilities_new(struct IE* ie)
 	ptr += 4;
 	sie->ppe_threshold = ptr;
 
-#define BIT(field,bit) sie->field = (*ptr >> bit) & 1;
+	sie->mac = (const struct IE_HE_MAC*)sie->mac_capa;
+	sie->phy = (const struct IE_HE_PHY*)sie->phy_capa;
 
-	//
-	// HE MAC Capabilities 
-	// 
-	ptr = sie->mac_capa;
-
-	// bits 0-7
-	BIT(htc_he_support, 0);
-	BIT(twt_requester_support, 1);
-	BIT(twt_responder_support, 2);
-	sie->fragmentation_support = (*ptr >> 3) & 3; // 2 bits
-	sie->max_number_fragmented_msdus = (*ptr >> 5) & 7; // 3 bits
-
-	// bits 8-14
-	ptr++; 
-	sie->min_fragment_size = *ptr & 3; // 2 bits
-	sie->trigger_frame_mac_padding_dur = (*ptr >> 2) & 3; // 2 bits
-	sie->multi_tid_aggregation_support = (*ptr >> 4) & 7; // 3 bits
-
-	// bits 15,16
-	// this two bit field is split across bytes
-	sie->he_link_adaptation_support = ((*ptr >> 7) & 1) | (((*ptr+1) & 1) << 1);
-
-	// bits 17-23
-	ptr++;
-	BIT(all_ack_support, 1);
-	BIT(trs_support, 2);
-	BIT(bsr_support, 3);
-	BIT(broadcast_twt_support, 4);
-	BIT(_32_bit_ba_bitmap_support, 5);
-	BIT(mu_cascading_support, 6);
-	BIT(ack_enabled_aggregation_support, 7);
-
-	// bits 24-31
-	ptr++;
-	// bit 0 reserved
-	BIT(om_control_support, 1);
-	BIT(ofdma_ra_support, 2);
-	sie->max_a_mpdu_length_exponent_ext = (*ptr >> 3) & 3; // 2 bits
-	BIT(a_msdu_fragmentation_support, 5);
-	BIT(flexible_twt_schedule_support, 6);
-	BIT(rx_control_frame_to_multibss, 7);
-
-	// bits 32-38
-	ptr++;
-	BIT(bsrp_bqrp_a_mpdu_aggregation, 0);
-	BIT(qtp_support, 1);
-	BIT(bqr_support, 2);
-	BIT(srp_responder, 3);
-	BIT(ndp_feedback_report_support, 4);
-	BIT(ops_support, 5);
-	BIT(a_msdu_in_a_mpdu_support, 6);
-
-	// 3-bit field spread across 2 bytes
-	sie->multi_tid_aggregation_tx_support = (((*ptr+1) & 3) << 1) | ((*ptr >> 7) & 1); // 3 bits
-
-	// bits 42-47
-	BIT(subchannel_selective_trans_support, 2);
-	BIT(ul_2_996_tone_ru_support, 3);
-	BIT(om_control_ul_mu_data_disable_rx_support, 4);
-	// last 3 bits reserved
-
-	//
-	// HE PHY Capabilities 
-	// 
-	ptr = sie->phy_capa;
-
-	hex_dump("IE HE PHY", ptr, 9);
-
-	// bits 0-7
-	// bit 0 reserved
-	BIT(ch40mhz_channel_2_4ghz, 1);
-	BIT(ch40_and_80_mhz_5ghz, 2);
-	BIT(ch160_mhz_5ghz, 3);
-	BIT(ch160_80_plus_80_mhz_5ghz, 4);
-	BIT(ch242_tone_rus_in_2_4ghz, 5);
-	BIT(ch242_tone_rus_in_5ghz, 6);
-	// bit 7 reserved
-
-	// wireshark decodes the PHY fields as 16-bit int (???)
-#define BITO16(field, bit)\
-		sie->field = (num16 >> bit) & 1
-	// bit 8-23
-	uint16_t num16 = htole16(*(const uint16_t*)ptr);
-	printf("%s %#02x\n", __func__, num16);
-	sie->phy_cap_punctured_preamble_rx = num16 & 0x0f; // 4 bits
-	BITO16(phy_cap_device_class, 4);
-	BITO16(phy_cap_ldpc_coding_in_payload, 5);
-	BITO16(phy_cap_he_su_ppdu_1x_he_ltf_08us, 6);
-	sie->phy_cap_midamble_rx_max_nsts = (num16 >> 7) & 3; // 2 bits
-	BITO16(phy_cap_ndp_with_4x_he_ltf_32us, 9);
-	BITO16(phy_cap_stbc_tx_lt_80mhz, 10);
-	BITO16(phy_cap_stbc_rx_lt_80mhz, 11);
-	BITO16(phy_cap_doppler_tx, 12);
-	BITO16(phy_cap_doppler_rx, 13);
-	BITO16(phy_cap_full_bw_ul_mu_mimo, 14);
-	BITO16(phy_cap_partial_bw_ul_mu_mimo, 15);
-
-	// bit 24-39
-	ptr+=2;
-	num16 = htole16(*(const uint16_t*)ptr);
-	sie->phy_cap_dcm_max_constellation_tx = num16 & 3; // 2 bits
-	BITO16(phy_cap_dcm_max_nss_tx, 2);
-	sie->phy_cap_dcm_max_constellation_rx = (num16 >> 3) & 3; // 2 bits
-	BITO16(phy_cap_dcm_max_nss_rx, 5);
-	BITO16(phy_cap_rx_he_muppdu_from_non_ap, 6);
-	BITO16(phy_cap_su_beamformer, 7);
-	BITO16(phy_cap_su_beamformee, 8);
-	BITO16(phy_cap_mu_beamformer, 9);
-	sie->phy_cap_beamformer_sts_lte_80mhz = (num16 >> 10) & 7;  // 3 bits
-	sie->phy_cap_beamformer_sts_gt_80mhz = (num16 >> 13) & 7; // 3 bits
-
-	// bits 40-55
-	ptr+=2;
-	num16 = htole16(*(const uint16_t*)ptr);
-	sie->phy_cap_number_of_sounding_dims_lte_80 = num16 & 7; // 3 bits
-	sie->phy_cap_number_of_sounding_dims_gt_80 = (num16 >> 3) & 7; // 3 bits
-	BITO16(phy_cap_ng_eq_16_su_fb, 6);
-	BITO16(phy_cap_ng_eq_16_mu_fb, 7);
-	BITO16(phy_cap_codebook_size_eq_4_2_fb, 8);
-	BITO16(phy_cap_codebook_size_eq_7_5_fb, 9);
-	BITO16(phy_cap_triggered_su_beamforming_fb, 10);
-	BITO16(phy_cap_triggered_mu_beamforming_fb, 11);
-	BITO16(phy_cap_triggered_cqi_fb, 12);
-	BITO16(phy_cap_partial_bw_extended_range, 13);
-	BITO16(phy_cap_partial_bw_dl_mu_mimo, 14);
-	BITO16(phy_cap_ppe_threshold_present, 15);
-
-	// bits 56-71
-	ptr+=2;
-	num16 = htole16(*(const uint16_t*)ptr);
-	BITO16(phy_cap_srp_based_sr_support, 0);
-	BITO16(phy_cap_power_boost_factor_ar_support, 1);
-	BITO16(phy_cap_he_su_ppdu_etc_gi, 2);
-	sie->phy_cap_max_nc = (num16 >> 3) & 7;  // 3 bits
-	BITO16(phy_cap_stbc_tx_gt_80_mhz, 6);
-	BITO16(phy_cap_stbc_rx_gt_80_mhz, 7);
-	BITO16(phy_cap_he_er_su_ppdu_4xxx_gi, 8);
-	BITO16(phy_cap_20mhz_in_40mhz_24ghz_band, 9);
-	BITO16(phy_cap_20mhz_in_160_80p80_ppdu, 10);
-	BITO16(phy_cap_80mgz_in_160_80p80_ppdu, 11);
-	BITO16(phy_cap_he_er_su_ppdu_1xxx_gi, 12);
-	BITO16(phy_cap_midamble_rx_2x_xxx_ltf, 13);
-	sie->phy_cap_dcm_max_bw = (num16 >> 14) & 3; // 2 bits
-
-	// bits 72 to 87
-	ptr+=2;
-	num16 = htole16(*(const uint16_t*)ptr);
-	BITO16(phy_cap_longer_than_16_he_sigb_ofdm_symbol_support, 0);
-	BITO16(phy_cap_non_triggered_cqi_feedback, 1);
-	BITO16(phy_cap_tx_1024_qam_242_tone_ru_support, 2);
-	BITO16(phy_cap_rx_1024_qam_242_tone_ru_support, 3);
-	BITO16(phy_cap_rx_full_bw_su_using_he_muppdu_w_compressed_sigb, 4);
-	BITO16(phy_cap_rx_full_bw_su_using_he_muppdu_w_non_compressed_sigb, 5);
-	BITO16(phy_cap_nominal_packet_padding, 6);
-	// bits 78-87 reserved
-
-	//
-	// HE MCS and NSS 
-	// 
-	// TODO
-	ptr = sie->mcs_and_nss_set;
-
-#undef BIT
-#undef BITO16
 	return 0;
 }
 
@@ -430,7 +267,8 @@ static const char* he_phy_cap_str[] = {
 	NULL,
 };
 
-int he_mac_capa_to_str(const struct IE_HE_Capabilities* sie, unsigned int idx, char* s, size_t len)
+
+int he_mac_capa_to_str(const struct IE_HE_MAC* mac, unsigned int idx, char* s, size_t len)
 {
 
 	if (idx >= ARRAY_SIZE(he_mac_cap_str)){
@@ -449,12 +287,12 @@ int he_mac_capa_to_str(const struct IE_HE_Capabilities* sie, unsigned int idx, c
 			// fragmentation support
 			return snprintf(s, len, "%s: %s (%d)", 
 					he_mac_cap_str[idx],
-					he_fragmentation_support_str(sie->fragmentation_support), 
-					sie->fragmentation_support);
+					he_fragmentation_support_str(mac->fragmentation_support), 
+					mac->fragmentation_support);
 
 		case 5:  // 6 7
 			// max frag msdu
-			ret = he_max_frag_msdus_base_to_str(sie->max_number_fragmented_msdus, tmpstr, sizeof(tmpstr));
+			ret = he_max_frag_msdus_base_to_str(mac->max_number_fragmented_msdus, tmpstr, sizeof(tmpstr));
 			XASSERT(ret<sizeof(tmpstr), ret);
 			return snprintf(s, len, "%s: %s",
 					he_mac_cap_str[idx], tmpstr);
@@ -462,123 +300,37 @@ int he_mac_capa_to_str(const struct IE_HE_Capabilities* sie, unsigned int idx, c
 		case 8: // 9
 			return snprintf(s, len, "%s: %s (%d)", 
 					he_mac_cap_str[idx],
-					he_min_fragment_size_str(sie->min_fragment_size),
-					sie->min_fragment_size);
+					he_min_fragment_size_str(mac->min_fragment_size),
+					mac->min_fragment_size);
 
 		case 10: // 11
 			// min trigger frame mac
 			return snprintf(s, len, "%s (%d)", 
 					he_mac_cap_str[idx],
-					sie->trigger_frame_mac_padding_dur);
+					mac->trigger_frame_mac_padding_dur);
 
 		case 12: // 13 14
 			// multi tid
 			return snprintf(s, len, "%s: %d", 
 					he_mac_cap_str[idx],
-					sie->multi_tid_aggregation_support);
+					mac->multi_tid_aggregation_support);
 
 		case 15: // 16
 			// he link adaptation
 			return snprintf(s, len, "%s: %s (%d)",
 					he_mac_cap_str[idx], 
-					he_link_adapt_support_str(sie->he_link_adaptation_support),
-					sie->he_link_adaptation_support);
+					he_link_adapt_support_str(mac->he_link_adaptation_support),
+					mac->he_link_adaptation_support);
 
 		case 27: // 28
 			// max ampdu len exponent exten
 			return snprintf(s, len, "%s (%d)",
-					he_mac_cap_str[idx], sie->max_a_mpdu_length_exponent_ext);
+					he_mac_cap_str[idx], mac->max_a_mpdu_length_exponent_ext);
 
 		case 39: // 40 41
 			// multi-tid agg support
 			return snprintf(s, len, "%s (%d)",
-					he_mac_cap_str[idx], sie->multi_tid_aggregation_support);
-
-		default:
-			break;
-	}
-	return snprintf(s, len, "%s", he_mac_cap_str[idx]);
-}
-
-int he_phy_capa_to_str(const struct IE_HE_Capabilities* sie, unsigned int idx, char* s, size_t len)
-{
-	(void)sie;
-
-	if (idx >= ARRAY_SIZE(he_phy_cap_str)){
-		return -EINVAL;
-	}
-
-	if (!he_phy_cap_str[idx]) {
-		return -ENOENT;
-	}
-
-	return snprintf(s, len, "%s", he_phy_cap_str[idx]);
-}
-
-
-int he_mac_capa_to_str_2(const struct IE_HE_MAC* sie, unsigned int idx, char* s, size_t len)
-{
-
-	if (idx >= ARRAY_SIZE(he_mac_cap_str)){
-		return -EINVAL;
-	}
-
-	if (!he_mac_cap_str[idx]) {
-		return -ENOENT;
-	}
-
-	char tmpstr[32];
-	size_t ret;
-
-	switch (idx) {
-		case 3: // 4
-			// fragmentation support
-			return snprintf(s, len, "%s: %s (%d)", 
-					he_mac_cap_str[idx],
-					he_fragmentation_support_str(sie->fragmentation_support), 
-					sie->fragmentation_support);
-
-		case 5:  // 6 7
-			// max frag msdu
-			ret = he_max_frag_msdus_base_to_str(sie->max_number_fragmented_msdus, tmpstr, sizeof(tmpstr));
-			XASSERT(ret<sizeof(tmpstr), ret);
-			return snprintf(s, len, "%s: %s",
-					he_mac_cap_str[idx], tmpstr);
-
-		case 8: // 9
-			return snprintf(s, len, "%s: %s (%d)", 
-					he_mac_cap_str[idx],
-					he_min_fragment_size_str(sie->min_fragment_size),
-					sie->min_fragment_size);
-
-		case 10: // 11
-			// min trigger frame mac
-			return snprintf(s, len, "%s (%d)", 
-					he_mac_cap_str[idx],
-					sie->trigger_frame_mac_padding_dur);
-
-		case 12: // 13 14
-			// multi tid
-			return snprintf(s, len, "%s: %d", 
-					he_mac_cap_str[idx],
-					sie->multi_tid_aggregation_support);
-
-		case 15: // 16
-			// he link adaptation
-			return snprintf(s, len, "%s: %s (%d)",
-					he_mac_cap_str[idx], 
-					he_link_adapt_support_str(sie->he_link_adaptation_support),
-					sie->he_link_adaptation_support);
-
-		case 27: // 28
-			// max ampdu len exponent exten
-			return snprintf(s, len, "%s (%d)",
-					he_mac_cap_str[idx], sie->max_a_mpdu_length_exponent_ext);
-
-		case 39: // 40 41
-			// multi-tid agg support
-			return snprintf(s, len, "%s (%d)",
-					he_mac_cap_str[idx], sie->multi_tid_aggregation_support);
+					he_mac_cap_str[idx], mac->multi_tid_aggregation_support);
 
 		default:
 			break;
@@ -617,7 +369,7 @@ static const char* he_phy_nominal_packet_padding_vals[] = {
   "Reserved",
 };
 
-int he_phy_capa_to_str_2(const struct IE_HE_PHY* phy, unsigned int idx, char* s, size_t len)
+int he_phy_capa_to_str(const struct IE_HE_PHY* phy, unsigned int idx, char* s, size_t len)
 {
 
 	if (idx >= ARRAY_SIZE(he_phy_cap_str)){
