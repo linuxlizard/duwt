@@ -1039,7 +1039,7 @@ int ie_list_move_back(struct IE_List* list, struct IE** pie)
 		struct IE** new_ieptrlist;
 		INFO("%s resize list=%p from %zu to %zu\n", __func__,
 				(void*)list, list->max, list->max*2);
-		new_ieptrlist = reallocarray(list->ieptrlist, list->max*2, sizeof(struct IE*));
+		new_ieptrlist = realloc(list->ieptrlist, list->max*2*sizeof(struct IE*));
 		if( !new_ieptrlist ) {
 			WARN("%s realloc of %zu failed\n", __func__, sizeof(struct IE*)*(list->max*2));
 			return -ENOMEM;
