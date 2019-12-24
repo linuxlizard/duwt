@@ -2,7 +2,12 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <net/if.h>
+
+// https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/
+#include <unicode/utypes.h>
 #include <unicode/ustring.h>
+#include <unicode/utext.h>
+#include <unicode/utf8.h>
 #include <unicode/ustdio.h>
 
 #include "core.h"
@@ -517,24 +522,33 @@ static void print_ht_operation(const struct BSS* bss)
 
 }
 
-static const UChar* get_ssid(const struct BSS* bss)
+static int ssid_to_unicode_str(const struct BSS* bss, UChar ssid[], size_t len )
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
-	const UChar* ssid = NULL;
 
-	if (ie) {
-		const struct IE_SSID *ie_ssid = IE_CAST(ie, const struct IE_SSID);
-		if (ie_ssid->ssid_len) {
-			ssid = ie_ssid->ssid;
-//				hex_dump("ssid", ie->buf, ie->len);
-		}
+	if (!ie) {
+		return -ENOENT;
 	}
-	else {
-		ERR("BSS %s has no SSID\n", bss->bssid_str);
+
+	// return 0 to indicate a hidden SSID
+	if (ie->len == 0 || ie->buf[0] == 0) {
+		return 0;
+	}
+
+	int32_t ssid_len = len;
+
+	// http://userguide.icu-project.org/strings
+	// http://userguide.icu-project.org/strings/utf-8
+//	UChar ssid[SSID_MAX_LEN*2];
+	UErrorCode status = U_ZERO_ERROR;
+	u_strFromUTF8(ssid, len, &ssid_len, (const char*)ie->buf, ie->len, &status);
+	if ( !U_SUCCESS(status)) {
+		ERR("%s unicode parse fail status=%d\n", __func__, status);
+		return -EINVAL;
 	}
 
 	// TODO check for weird-o SSIDs full of NULLs
-	return ssid ? ssid : hidden;
+	return ssid_len;
 }
 
 static void print_country(const struct BSS* bss)
@@ -613,6 +627,20 @@ static void print_extended_supported_rates(const struct BSS* bss)
 	printf("\n");
 }
 
+static void print_ssid(struct BSS* bss)
+{
+	UChar ssid[SSID_MAX_LEN*2];
+	int ret = ssid_to_unicode_str(bss, ssid, sizeof(ssid));
+	XASSERT(ret>=0, ret);
+
+	if (ret==0) {
+		u_printf("%32S ", hidden);
+	}
+	else {
+		u_printf("%32S ", ssid);
+	}
+}
+
 static void print_bss(struct BSS* bss)
 {
 	XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
@@ -632,7 +660,7 @@ static void print_bss(struct BSS* bss)
 	printf("\tcapability: %s (%#06x)\n", str, bss->capability);
 
 	printf("\tsignal: %0.2f dBm\n", bss->signal_strength_mbm/100.0);
-	u_printf("\tSSID: %S\n", get_ssid(bss));
+	print_ssid(bss);
 	print_supported_rates(bss);
 	print_dsss_param(bss);
 	print_country(bss);
@@ -659,15 +687,34 @@ static void print_bss_to_csv(struct BSS* bss, bool header)
 		printf("BSSID,frequency,signal_strength,SSID\n");
 	}
 
+	UChar ssid[SSID_MAX_LEN*2];
+	int ret = ssid_to_unicode_str(bss, ssid, sizeof(ssid));
+	XASSERT(ret>=0, ret);
+
 	printf("%s, %d, %0.2f, ", bss->bssid_str, bss->frequency, bss->signal_strength_mbm/100.0);
-	u_printf("\"%S\"", get_ssid(bss));
+	if (ret==0) {
+		u_printf("%32S ", hidden);
+	}
+	else {
+		u_printf("%32S ", ssid);
+	}
 	printf("\n");
 }
 
 static void print_short(const struct BSS* bss)
 {
+	UChar ssid[SSID_MAX_LEN*2];
+	int ret = ssid_to_unicode_str(bss, ssid, sizeof(ssid));
+	XASSERT(ret>=0, ret);
+
 	//  SSID            BSSID              CHAN RATE  S:N   INT CAPS
-	u_printf("%32S ", get_ssid(bss));
+	if (ret==0) {
+		u_printf("%32S ", hidden);
+	}
+	else {
+		u_printf("%32S ", ssid);
+	}
+
 	printf("%18s  %d  %d  %0.2f ", bss->bssid_str, bss->frequency, -1, bss->signal_strength_mbm/100.0);
 //	for( size_t i=0 ; i<bss->ie_list.count ; i++) {
 //		printf("%3d ", bss->ie_list.ieptrlist[i]->id);

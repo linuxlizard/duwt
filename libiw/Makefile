@@ -8,16 +8,18 @@
 # 	https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/index.html
 
 CC=gcc
-PKGS=libnl-3.0 libnl-genl-3.0 icu-i18n
+PKGS=libnl-3.0 libnl-genl-3.0 
 #PKGS=libnl-3.0 libnl-genl-3.0 libevent_core libevent libevent_extra
 CFLAGS:=-g -Wall -Wpedantic -Wextra $(shell pkg-config --cflags $(PKGS))
 # shamelessly copied extra warnings from m*lib https://github.com/P-p-H-d/mlib
 CFLAGS+=-Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes -Wswitch-default -Wswitch-enum -Wcast-align -Wbad-function-cast -Wstrict-overflow=5 -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wlogical-op -Wstrict-aliasing=2 -Wredundant-decls -Wold-style-definition -Wno-unused-function
 
-# http://userguide.icu-project.org/strings/utf-8
-CFLAGS+=-DU_CHARSET_IS_UTF8=1
-
 LDFLAGS:=-g $(shell pkg-config --libs $(PKGS))
+
+# http://userguide.icu-project.org/strings/utf-8
+ICU_CFLAGS += -DU_CHARSET_IS_UTF8=1 $(shell pkg-config --cflags icu-i18n)
+ICU_LDFLAGS += $(shell pkg-config --libs icu-i18n) -licuio
+
 
 CORE_H:=xassert.h log.h core.h hdump.h
 CORE_O:=xassert.o log.o hdump.o util.o
@@ -39,10 +41,10 @@ scan-event-ev.o: scan-event-ev.c iw-scan.h bytebuf.h $(CORE_H)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o list_debug.o bug.o ie_print.o
-	$(CC) $(LDFLAGS) -licuio -o $@ $^
+	$(CC) $(LDFLAGS) $(ICU_LDFLAGS) -o $@ $^
 
 scan-dump.o: scan-dump.c iw.h ie.h ie_he.h ie_print.h $(CORE_H)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) $(ICU_CFLAGS) -c $< -o $@
 
 
 hdump.o:hdump.c hdump.h $(CORE_H)

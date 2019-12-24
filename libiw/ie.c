@@ -2,8 +2,11 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include <unicode/utypes.h>
-#include <unicode/ustdio.h>
+//#include <unicode/utypes.h>
+//#include <unicode/ustring.h>
+//#include <unicode/utext.h>
+//#include <unicode/utf8.h>
+//#include <unicode/ustdio.h>
 
 #define HAVE_MODULE_LOGLEVEL 1
 
@@ -26,8 +29,10 @@ static int ie_ssid_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_SSID)
 
+#if 0
+	UChar ssid[SSID_MAX_LEN*2];
 	UErrorCode status = U_ZERO_ERROR;
-	u_strFromUTF8( sie->ssid, sizeof(sie->ssid), &sie->ssid_len, ie->buf, ie->len, &status);
+	u_strFromUTF8( ssid, sizeof(ssid), &sie->ssid_len, ie->buf, ie->len, &status);
 	if ( !U_SUCCESS(status)) {
 		PTR_FREE(sie);
 		ERR("%s unicode parse fail status=%d\n", __func__, status);
@@ -37,6 +42,7 @@ static int ie_ssid_new(struct IE* ie)
 	if (sie->ssid_len > SSID_MAX_LEN) {
 		WARN("ssid too long len=%d\n", sie->ssid_len);
 	}
+#endif
 
 	return 0;
 }

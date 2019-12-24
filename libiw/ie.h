@@ -40,9 +40,9 @@
 #include <stdbool.h>
 
 // https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/
-#include <unicode/utypes.h>
-#include <unicode/utext.h>
-#include <unicode/utf8.h>
+//#include <unicode/utypes.h>
+//#include <unicode/utext.h>
+//#include <unicode/utf8.h>
 
 typedef enum {
 	IE_SSID = 0,
@@ -148,8 +148,8 @@ struct IE_SSID
 
 	// http://userguide.icu-project.org/strings
 	// http://userguide.icu-project.org/strings/utf-8
-	UChar ssid[SSID_MAX_LEN*2];
-	int32_t ssid_len;
+//	UChar ssid[SSID_MAX_LEN*2];
+//	int32_t ssid_len;
 };
 
 struct Supported_Rate
