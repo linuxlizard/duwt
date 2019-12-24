@@ -63,22 +63,6 @@ void ie_he_operation_free(struct IE* ie)
 	DESTRUCT(struct IE_HE_Operation);
 }
 
-const char* he_fragmentation_support_str(uint8_t val)
-{
-	// packet-ieee80211.c array of same name
-	static const char* he_fragmentation_support_vals[] = {
-	  "No support for dynamic fragmentation",
-	  "Support for dynamic fragments in MPDUs or S-MPDUs",
-	  "Support for dynamic fragments in MPDUs and S-MPDUs and up to 1 dyn frag in MSDUs...",
-	  "Support for all types of dynamic fragments",
-	};
-
-	if (val > ARRAY_SIZE(he_fragmentation_support_vals)) {
-		return "(invalid)";
-	}
-	return he_fragmentation_support_vals[val];
-}
-
 // from packet-ieee80211.c function max_frag_msdus_base_custom()
 int he_max_frag_msdus_base_to_str(uint8_t max_frag_msdus_value, char* s, size_t len)
 {
@@ -86,39 +70,6 @@ int he_max_frag_msdus_base_to_str(uint8_t max_frag_msdus_value, char* s, size_t 
     return snprintf(s, len, "No restriction");
   else
     return snprintf( s, len, "%u", 1 << max_frag_msdus_value);
-}
-
-const char* he_min_fragment_size_str(uint8_t val)
-{
-	// from packet-ieee80211.c array of same name
-	static const char* he_minimum_fragmentation_size_vals[] = {
-	  "No restriction on minimum payload size",
-	  "Minimum payload size of 128 bytes",
-	  "Minimum payload size of 256 bytes",
-	  "Minimum payload size of 512 bytes",
-	};
-	
-	if (val > ARRAY_SIZE(he_minimum_fragmentation_size_vals)) {
-		return "(invalid)";
-	}
-	return he_minimum_fragmentation_size_vals[val];
-}
-
-
-const char* he_link_adapt_support_str(uint8_t val)
-{
-	// from packet-ieee80211.c array of same name
-	static const char* he_link_adaptation_support_vals[] = {
-	  "No feedback if the STA does not provide HE MFB",
-	  "Reserved",
-	  "Unsolicited if the STA can receive and provide only unsolicited HE MFB",
-	  "Both",
-	};
-
-	if (val > ARRAY_SIZE(he_link_adaptation_support_vals)) {
-		return "(invalid)";
-	}
-	return he_link_adaptation_support_vals[val];
 }
 
 static const char* he_mac_cap_str[] = {
@@ -267,6 +218,29 @@ static const char* he_phy_cap_str[] = {
 	NULL,
 };
 
+// packet-ieee80211.c array of same name
+static const char* he_fragmentation_support_vals[] = {
+  "No support for dynamic fragmentation",
+  "Support for dynamic fragments in MPDUs or S-MPDUs",
+  "Support for dynamic fragments in MPDUs and S-MPDUs and up to 1 dyn frag in MSDUs...",
+  "Support for all types of dynamic fragments",
+};
+
+// from packet-ieee80211.c array of same name
+static const char* he_link_adaptation_support_vals[] = {
+  "No feedback if the STA does not provide HE MFB",
+  "Reserved",
+  "Unsolicited if the STA can receive and provide only unsolicited HE MFB",
+  "Both",
+};
+
+// from packet-ieee80211.c array of same name
+static const char* he_minimum_fragmentation_size_vals[] = {
+  "No restriction on minimum payload size",
+  "Minimum payload size of 128 bytes",
+  "Minimum payload size of 256 bytes",
+  "Minimum payload size of 512 bytes",
+};
 
 int he_mac_capa_to_str(const struct IE_HE_MAC* mac, unsigned int idx, char* s, size_t len)
 {
@@ -287,7 +261,7 @@ int he_mac_capa_to_str(const struct IE_HE_MAC* mac, unsigned int idx, char* s, s
 			// fragmentation support
 			return snprintf(s, len, "%s: %s (%d)", 
 					he_mac_cap_str[idx],
-					he_fragmentation_support_str(mac->fragmentation_support), 
+					he_fragmentation_support_vals[mac->fragmentation_support], 
 					mac->fragmentation_support);
 
 		case 5:  // 6 7
@@ -300,7 +274,7 @@ int he_mac_capa_to_str(const struct IE_HE_MAC* mac, unsigned int idx, char* s, s
 		case 8: // 9
 			return snprintf(s, len, "%s: %s (%d)", 
 					he_mac_cap_str[idx],
-					he_min_fragment_size_str(mac->min_fragment_size),
+					he_minimum_fragmentation_size_vals[mac->min_fragment_size],
 					mac->min_fragment_size);
 
 		case 10: // 11
@@ -319,7 +293,7 @@ int he_mac_capa_to_str(const struct IE_HE_MAC* mac, unsigned int idx, char* s, s
 			// he link adaptation
 			return snprintf(s, len, "%s: %s (%d)",
 					he_mac_cap_str[idx], 
-					he_link_adapt_support_str(mac->he_link_adaptation_support),
+					he_link_adaptation_support_vals[mac->he_link_adaptation_support],
 					mac->he_link_adaptation_support);
 
 		case 27: // 28

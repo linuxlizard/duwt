@@ -7,6 +7,8 @@
 // Wireshark's decode code. I'm putting HE decode into its own file to
 // carefully show the HE code from Wireshark.
 
+// the structure member names taken from Wireshark epan/dissectors/packet-ieee80211.c
+
 struct __attribute__((__packed__)) IE_HE_MAC
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -35,7 +37,7 @@ struct __attribute__((__packed__)) IE_HE_MAC
 	ack_enabled_aggregation_support : 1,
 
 	// 24-31
-	reserved_24 : 1,
+	reserved_b24 : 1,
 	om_control_support : 1,
 	ofdma_ra_support : 1,
 	max_a_mpdu_length_exponent_ext : 2,
@@ -59,9 +61,9 @@ struct __attribute__((__packed__)) IE_HE_MAC
 	subchannel_selective_trans_support : 1,
 	ul_2_996_tone_ru_support : 1,
 	om_control_ul_mu_data_disable_rx_support : 1,
-	reserved_45: 1,
-	reserved_46: 1,
-	reserved_47: 1;
+	reserved_b45: 1,
+	reserved_b46: 1,
+	reserved_b47: 1;
 #else
 #error TODO big endian
 #endif
@@ -70,14 +72,14 @@ struct __attribute__((__packed__)) IE_HE_MAC
 struct __attribute__((__packed__)) IE_HE_PHY 
 {
 	// 0-7
-	uint8_t reserved_0 : 1,
-		ch40mhz_channel_2_4ghz : 1,
-	ch40_and_80_mhz_5ghz : 1,
-	ch160_mhz_5ghz : 1,
-	ch160_80_plus_80_mhz_5ghz : 1,
-	ch242_tone_rus_in_2_4ghz : 1,
-	ch242_tone_rus_in_5ghz : 1,
-	reserved_7 : 1;
+	uint8_t reserved_b0 : 1,
+	 ch40mhz_channel_2_4ghz : 1,
+	 ch40_and_80_mhz_5ghz : 1,
+	 ch160_mhz_5ghz : 1,
+	 ch160_80_plus_80_mhz_5ghz : 1,
+	 ch242_tone_rus_in_2_4ghz : 1,
+	 ch242_tone_rus_in_5ghz : 1,
+	 reserved_b7 : 1;
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 	// wireshark using uint16 for reasons I don't fully comprehend so when in
@@ -145,7 +147,7 @@ struct __attribute__((__packed__)) IE_HE_PHY
 	 rx_full_bw_su_using_he_muppdu_w_compressed_sigb : 1,
 	 rx_full_bw_su_using_he_muppdu_w_non_compressed_sigb : 1,
 	 nominal_packet_padding : 2,
-	reserved_;
+	 reserved_b80_b87;
 #else
 # error TODO big endian
 #endif
@@ -161,12 +163,6 @@ struct IE_HE_Capabilities
 	const uint8_t* mcs_and_nss_set; // 4  bytes
 	const uint8_t* ppe_threshold; // 7 bytes
 
-	// following taken from Wireshark epan/dissectors/packet-ieee80211.c
-	// I changed to uint8_t and bitfield.
-	//
-	/* ************************************************************************* */
-	/*                              802.11AX fields                              */
-	/* ************************************************************************* */
 	// HE Mac Capabilities
 	const struct IE_HE_MAC* mac;
 	const struct IE_HE_PHY* phy;
@@ -193,10 +189,7 @@ void ie_he_capabilities_free(struct IE* ie);
 int ie_he_operation_new(struct IE* ie);
 void ie_he_operation_free(struct IE* ie);
 
-const char* he_fragmentation_support_str(uint8_t val);
 int he_max_frag_msdus_base_to_str(uint8_t max_frag_msdus_value, char* s, size_t len);
-const char* he_min_fragment_size_str(uint8_t val);
-const char* he_link_adapt_support_str(uint8_t w);
 int he_mac_capa_to_str(const struct IE_HE_MAC* sie, unsigned int idx, char* s, size_t len);
 int he_phy_capa_to_str(const struct IE_HE_PHY* sie, unsigned int idx, char* s, size_t len);
 
