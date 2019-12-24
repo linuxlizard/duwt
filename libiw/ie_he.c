@@ -103,7 +103,9 @@ int ie_he_capabilities_new(struct IE* ie)
 	//
 	// HE PHY Capabilities 
 	// 
-	ptr = sie->mac_capa;
+	ptr = sie->phy_capa;
+
+	hex_dump("IE HE PHY", ptr, 9);
 
 	// bits 0-7
 	// bit 0 reserved
@@ -120,6 +122,7 @@ int ie_he_capabilities_new(struct IE* ie)
 		sie->field = (num16 >> bit) & 1
 	// bit 8-23
 	uint16_t num16 = htole16(*(const uint16_t*)ptr);
+	printf("%s %#02x\n", __func__, num16);
 	sie->phy_cap_punctured_preamble_rx = num16 & 0x0f; // 4 bits
 	BITO16(phy_cap_device_class, 4);
 	BITO16(phy_cap_ldpc_coding_in_payload, 5);
@@ -199,6 +202,7 @@ int ie_he_capabilities_new(struct IE* ie)
 	ptr = sie->mcs_and_nss_set;
 
 #undef BIT
+#undef BITO16
 	return 0;
 }
 
@@ -337,14 +341,19 @@ static const char* he_mac_cap_str[] = {
 };
 
 static const char* he_phy_cap_str[] = {
+	// bits 0-7
+	NULL,
 	"40MHz in 2.4GHz band", // 40mhz_in_2_4ghz
 	"40 & 80MHz in the 5GHz band", // 40_80_in_5ghz
 	"160MHz in the 5GHz band", // 160_in_5ghz
 	"160/80+80MHz in the 5GHz band", // 160_80_80_in_5ghz
 	"242 tone RUs in the 2.4GHz band", // 242_tone_in_2_4ghz
 	"242 tone RUs in the 5GHz band", // 242_tone_in_5ghz
+	NULL,
 
-	"Punctured Preamble RX", // punc_preamble_rx 3-bits
+	// bits 8-23
+	"Punctured Preamble RX", // punc_preamble_rx 4-bits
+	NULL, 
 	NULL, 
 	NULL, 
 	"Device Class", // device_class
@@ -506,3 +515,201 @@ int he_phy_capa_to_str(const struct IE_HE_Capabilities* sie, unsigned int idx, c
 	return snprintf(s, len, "%s", he_phy_cap_str[idx]);
 }
 
+
+int he_mac_capa_to_str_2(const struct IE_HE_MAC* sie, unsigned int idx, char* s, size_t len)
+{
+
+	if (idx >= ARRAY_SIZE(he_mac_cap_str)){
+		return -EINVAL;
+	}
+
+	if (!he_mac_cap_str[idx]) {
+		return -ENOENT;
+	}
+
+	char tmpstr[32];
+	size_t ret;
+
+	switch (idx) {
+		case 3: // 4
+			// fragmentation support
+			return snprintf(s, len, "%s: %s (%d)", 
+					he_mac_cap_str[idx],
+					he_fragmentation_support_str(sie->fragmentation_support), 
+					sie->fragmentation_support);
+
+		case 5:  // 6 7
+			// max frag msdu
+			ret = he_max_frag_msdus_base_to_str(sie->max_number_fragmented_msdus, tmpstr, sizeof(tmpstr));
+			XASSERT(ret<sizeof(tmpstr), ret);
+			return snprintf(s, len, "%s: %s",
+					he_mac_cap_str[idx], tmpstr);
+
+		case 8: // 9
+			return snprintf(s, len, "%s: %s (%d)", 
+					he_mac_cap_str[idx],
+					he_min_fragment_size_str(sie->min_fragment_size),
+					sie->min_fragment_size);
+
+		case 10: // 11
+			// min trigger frame mac
+			return snprintf(s, len, "%s (%d)", 
+					he_mac_cap_str[idx],
+					sie->trigger_frame_mac_padding_dur);
+
+		case 12: // 13 14
+			// multi tid
+			return snprintf(s, len, "%s: %d", 
+					he_mac_cap_str[idx],
+					sie->multi_tid_aggregation_support);
+
+		case 15: // 16
+			// he link adaptation
+			return snprintf(s, len, "%s: %s (%d)",
+					he_mac_cap_str[idx], 
+					he_link_adapt_support_str(sie->he_link_adaptation_support),
+					sie->he_link_adaptation_support);
+
+		case 27: // 28
+			// max ampdu len exponent exten
+			return snprintf(s, len, "%s (%d)",
+					he_mac_cap_str[idx], sie->max_a_mpdu_length_exponent_ext);
+
+		case 39: // 40 41
+			// multi-tid agg support
+			return snprintf(s, len, "%s (%d)",
+					he_mac_cap_str[idx], sie->multi_tid_aggregation_support);
+
+		default:
+			break;
+	}
+	return snprintf(s, len, "%s", he_mac_cap_str[idx]);
+}
+
+static const char* he_phy_device_class_vals[] = {
+  "Class A Device",
+  "Class B Device",
+};
+
+static const char* he_phy_midamble_rx_max_nsts_vals[] = {
+  "1 Space-Time Stream",
+  "2 Space-Time Streams",
+  "3 Space-Time Streams",
+  "4 Space-Time Streams",
+};
+
+static const char* he_phy_dcm_max_constellation_vals[] = {
+  "DCM is not supported",
+  "BPSK",
+  "QPSK",
+  "16-QAM",
+};
+
+static const char* he_phy_dcm_max_nss_vals[] = {
+  "1 Space-Time Stream",
+  "2 Space-Time Streams",
+};
+
+static const char* he_phy_nominal_packet_padding_vals[] = {
+  "0 µs for all Constellations",
+  "8 µs for all Constellations",
+  "16 µs for all Constellations",
+  "Reserved",
+};
+
+int he_phy_capa_to_str_2(const struct IE_HE_PHY* phy, unsigned int idx, char* s, size_t len)
+{
+
+	if (idx >= ARRAY_SIZE(he_phy_cap_str)){
+		return -EINVAL;
+	}
+
+	if (!he_phy_cap_str[idx]) {
+		return -ENOENT;
+	}
+
+	switch(idx)
+	{
+		case 8:
+			return snprintf(s, len, "%s: %d",
+					he_phy_cap_str[idx],
+					phy->punctured_preamble_rx);
+
+		case 12:
+			return snprintf(s, len, "%s: %s (%d)",
+					he_phy_cap_str[idx],
+					he_phy_device_class_vals[phy->device_class],
+					phy->device_class);
+
+		case 15: // 16
+			return snprintf(s, len, "%s: %s (%d)", 
+					he_phy_cap_str[idx], 
+					he_phy_midamble_rx_max_nsts_vals[phy->midamble_rx_max_nsts], 
+					phy->midamble_rx_max_nsts);
+
+		case 24: // 25
+			return snprintf(s, len, "%s: %s (%d)", 
+					he_phy_cap_str[idx], 
+					he_phy_dcm_max_constellation_vals[phy->dcm_max_constellation_tx],
+					phy->dcm_max_constellation_tx);
+
+		case 26:
+			return snprintf(s, len, "%s: %s (%d)", 
+					he_phy_cap_str[idx], 
+					he_phy_dcm_max_nss_vals[phy->dcm_max_nss_tx],
+					phy->dcm_max_nss_tx);
+
+		case 27: // 28
+			return snprintf(s, len, "%s: %s (%d)", 
+					he_phy_cap_str[idx], 
+					he_phy_dcm_max_constellation_vals[phy->dcm_max_constellation_rx],
+					phy->dcm_max_constellation_rx);
+
+		case 29:
+			return snprintf(s, len, "%s: %s (%d)", 
+					he_phy_cap_str[idx], 
+					he_phy_dcm_max_nss_vals[phy->dcm_max_nss_rx],
+					phy->dcm_max_nss_rx);
+
+		case 34: // 35 36
+			return snprintf(s, len, "%s: %d",
+					he_phy_cap_str[idx],
+					phy->beamformer_sts_lte_80mhz);
+
+		case 37: // 38 39
+			return snprintf(s, len, "%s: %d",
+					he_phy_cap_str[idx],
+					phy->beamformer_sts_gt_80mhz);
+
+		case 40: // 41 42
+			return snprintf(s, len, "%s: %d",
+					he_phy_cap_str[idx],
+					phy->number_of_sounding_dims_lte_80);
+
+		case 43: // 44 45
+			return snprintf(s, len, "%s: %d",
+					he_phy_cap_str[idx],
+					phy->number_of_sounding_dims_gt_80);
+
+		case 59: // 60 61
+			return snprintf(s, len, "%s: %d",
+					he_phy_cap_str[idx],
+					phy->max_nc);
+
+		case 70: // 71
+			return snprintf(s, len, "%s: %d",
+					he_phy_cap_str[idx],
+					phy->dcm_max_bw);
+
+		case 78: // 79
+			return snprintf(s, len, "%s: %s (%d)", 
+					he_phy_cap_str[idx], 
+					he_phy_nominal_packet_padding_vals[phy->nominal_packet_padding],
+					phy->nominal_packet_padding);
+
+		default:
+			break;
+	}
+
+	return snprintf(s, len, "%s", he_phy_cap_str[idx]);
+}

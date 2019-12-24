@@ -258,7 +258,7 @@ static void print_he_capabilities(const struct BSS* bss)
 	}
 	const struct IE_HE_Capabilities* sie = IE_CAST(ie, struct IE_HE_Capabilities);
 
-	print_ie_he_capabilities(sie);
+	ie_print_he_capabilities(sie);
 }
 
 static void print_he_operation(const struct BSS* bss)
