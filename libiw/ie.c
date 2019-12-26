@@ -29,6 +29,8 @@ static int ie_ssid_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_SSID)
 
+	sie->ssid = (char *)ie->buf;
+	sie->ssid_len = ie->len;
 #if 0
 	UChar ssid[SSID_MAX_LEN*2];
 	UErrorCode status = U_ZERO_ERROR;

@@ -146,6 +146,19 @@ struct IE_SSID
 {
 	IE_SPECIFIC_FIELDS
 
+	// The ssid must >always< be treated as untrusted, dangerous input. The
+	// 80211 standard says nothing about it being null terminated or a valid
+	// printable string. Anyone could put any garbage into the SSID. I have
+	// amused myself by putting JavaScript or console control characters
+	// (terminal blink) or bash/shell code into SSIDs and catch scanners.  
+	// https://www.xkcd.com/327/
+	//
+	// attribute nonstring ref:
+	// https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#Common-Variable-Attributes
+	// 
+	char* ssid  __attribute__ ((nonstring));
+	size_t ssid_len;
+
 	// http://userguide.icu-project.org/strings
 	// http://userguide.icu-project.org/strings/utf-8
 //	UChar ssid[SSID_MAX_LEN*2];

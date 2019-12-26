@@ -535,13 +535,18 @@ static int ssid_to_unicode_str(const struct BSS* bss, UChar ssid[], size_t len )
 		return 0;
 	}
 
+	const struct IE_SSID* sie = IE_CAST(ie, struct IE_SSID);
+
+//	printf("%s\n", sie->ssid);
+
+	// length of output buffer ssid[]
 	int32_t ssid_len = len;
 
 	// http://userguide.icu-project.org/strings
 	// http://userguide.icu-project.org/strings/utf-8
 //	UChar ssid[SSID_MAX_LEN*2];
 	UErrorCode status = U_ZERO_ERROR;
-	u_strFromUTF8(ssid, len, &ssid_len, (const char*)ie->buf, ie->len, &status);
+	u_strFromUTF8(ssid, len, &ssid_len, (const char*)sie->ssid, sie->ssid_len, &status);
 	if ( !U_SUCCESS(status)) {
 		ERR("%s unicode parse fail status=%d\n", __func__, status);
 		return -EINVAL;
@@ -693,10 +698,10 @@ static void print_bss_to_csv(struct BSS* bss, bool header)
 
 	printf("%s, %d, %0.2f, ", bss->bssid_str, bss->frequency, bss->signal_strength_mbm/100.0);
 	if (ret==0) {
-		u_printf("%32S ", hidden);
+		u_printf("%S ", hidden);
 	}
 	else {
-		u_printf("%32S ", ssid);
+		u_printf("%S ", ssid);
 	}
 	printf("\n");
 }
@@ -780,11 +785,11 @@ int main(int argc, char* argv[])
 		print_bss(bss);
 	}
 
-//	bool first=true;
-//	list_for_each_entry(bss, &bss_list, node) {
-//		print_bss_to_csv(bss, first);
-//		first = false;
-//	}
+	bool first=true;
+	list_for_each_entry(bss, &bss_list, node) {
+		print_bss_to_csv(bss, first);
+		first = false;
+	}
 
 	printf("\n\n");
 	list_for_each_entry(bss, &bss_list, node) {
