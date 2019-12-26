@@ -10,6 +10,12 @@ void logmsg(int level, const char* fmt, ...)
 	(void)level;  // TODO
 
 	va_start(arg, fmt);
-	vfprintf(stdout, fmt, arg);
+	if (level < LOG_LEVEL_INFO) {
+		vfprintf(stderr, fmt, arg);
+	}
+	else { 
+		vfprintf(stdout, fmt, arg);
+	}
+
 	va_end(arg);
 }
