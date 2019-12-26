@@ -158,7 +158,7 @@ def test_exists(src, testname):
         return False
 
 
-def add_test_function(src, testname, new_test):
+def add_test_function(src, testname, testargs, new_test):
     main_start = src.index("int main(void)\n")
     main_return = src.index("\treturn EXIT_SUCCESS;\n", main_start)
     print(f"found main at {main_start}:{main_return}")
@@ -167,7 +167,7 @@ def add_test_function(src, testname, new_test):
         src[:main_start]
         + new_test
         + src[main_start:main_return]
-        + ["\ttest_{}(mac);\n".format(testname),]
+        + ["\ttest_{}({});\n".format(testname, ",".join(testargs)),]
         + src[main_return:]
     )
 
@@ -240,7 +240,7 @@ def run(exe):
 
 def build_run_fix_loop(filename, exe_name, test_src):
     counter = 0
-    while counter < 20:
+    while counter < 100:
         counter += 1
         build(exe_name)
 
@@ -268,31 +268,103 @@ def build_run_fix_loop(filename, exe_name, test_src):
     assert 0, counter
 
 
-def main():
-    filename = "test_ie_he.c"
+def test_mac_buf1(testname):
+    new_test = []
+    new_test.append(
+        "static void test_{}(const struct IE_HE_MAC* mac)\n".format(testname)
+    )
+    new_test.append("{\n")
+    for field in he_capa_mac:
+        new_test.append("\tXASSERT(mac->{0} == 0, mac->{0});\n".format(field))
+    new_test.append("}\n\n")
+
+    return new_test
+
+
+def test_phy_buf1(testname):
+    new_test = (
+        ["static void test_{}(const struct IE_HE_PHY* phy)\n".format(testname), "{\n",]
+        + [
+            "\tXASSERT(phy->{0} == 0, phy->{0});\n".format(field)
+            for field in he_capa_phy
+        ]
+        + ["}\n\n",]
+    )
+    return new_test
+
+
+def test_buf2(testname):
+    new_test = (
+        [
+            "static void test_buf2(void)\n",
+            "{\n",
+            "\tconst struct IE_HE_MAC* mac = (const struct IE_HE_MAC*)(buf2 + 3);\n",
+            "\tconst struct IE_HE_PHY* phy = (const struct IE_HE_PHY*)(buf2 + 3 + 6);\n",
+        ]
+        + [
+            "\tXASSERT(mac->{0} == 0, mac->{0});\n".format(field)
+            for field in he_capa_mac
+        ]
+        + [
+            "\tXASSERT(phy->{0} == 0, phy->{0});\n".format(field)
+            for field in he_capa_phy
+        ]
+        + ["}\n\n",]
+    )
+
+    return new_test
+
+
+def make_test(filename, test_builder):
     exe_name, _ = os.path.splitext(filename)
 
     with open(filename, "r") as infile:
         test_src = infile.readlines()
-    print(len(test_src))
 
-    testname = "mac_buf1"
-
-    if test_exists(test_src, testname):
-        print(f"the {testname} test already exists")
+    if test_exists(test_src, test_builder["name"]):
+        print(f"the {test_builder['name']} test already exists")
     else:
-        new_test = []
-        new_test.append(
-            "static void test_{}(const struct IE_HE_MAC* mac)\n".format(testname)
+        # Have to be VERY careful to make sure file line numbers and array
+        # index match. I spent hours chasing a line number problem because I
+        # had one string (a test_src[] entry) with two \n which became two
+        # lines in the output file.
+        new_test = test_builder["get_code"](test_builder["name"])
+
+        test_src = add_test_function(
+            test_src, test_builder["name"], test_builder["args"], new_test
         )
-        new_test.append("{\n")
-        for field in he_capa_mac:
-            new_test.append("\tXASSERT(mac->{0} == 0, mac->{0});\n".format(field))
-        new_test.append("}\n\n")
-        test_src = add_test_function(test_src, testname, new_test)
         save_src(test_src, filename)
 
     build_run_fix_loop(filename, exe_name, test_src)
+
+
+def main():
+    filename = "test_ie_he.c"
+    #    exe_name, _ = os.path.splitext(filename)
+    #
+    #    with open(filename, "r") as infile:
+    #        test_src = infile.readlines()
+
+    builder = {
+        "name": "mac_buf1",
+        "args": ["mac",],
+        "get_code": test_mac_buf1,
+    }
+    make_test(filename, builder)
+
+    builder = {
+        "name": "phy_buf1",
+        "args": ["phy",],
+        "get_code": test_phy_buf1,
+    }
+    make_test(filename, builder)
+
+    builder = {
+        "name": "buf2",
+        "args": [],
+        "get_code": test_buf2,
+    }
+    make_test(filename, builder)
 
 
 if __name__ == "__main__":
