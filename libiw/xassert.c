@@ -7,8 +7,10 @@
 
 void xassert_fail(const char *expr, const char *file, int line, uintmax_t value)
 {
-	ERR("XASSET fail: %s:%d \"%s\" value=%#" PRIxMAX "\n", 
+	ERR("XASSERT fail: %s:%d \"%s\" value=%#" PRIxMAX "\n", 
 			file, line, expr, value);
+	fflush(stdout);
+	fflush(stderr);
 	abort();
 }
 
