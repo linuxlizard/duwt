@@ -9,8 +9,20 @@
 # test until the run no longer fails. Yay! I'm doing "machine learning" (ha ha).
 # davep 20191225
 
+import os
+import re
 import itertools
 import subprocess
+
+# e.g., XASSERT fail: test_ie_he.c:44 "mac->htc_he_support == 0" value=0x1
+# global so only have to compile once
+_file_line = r"([a-zA-Z09_\.]+:\d+)"
+_qstring = r"(\"[^\"]+\")"
+_hex_num = r"(0x[a-fA-F\d]+)"
+_value = r"value=" + _hex_num
+
+_assert_str = _file_line + " " + _qstring + " " + _value
+_assert_re = re.compile(_assert_str)
 
 he_capa_mac = [
     "htc_he_support",
@@ -134,11 +146,19 @@ def find_test_function(src, fn_name):
         raise ValueError(fn_name + " not found") from err
 
 
+def make_test_function_name(testname):
+    return "test_" + testname
+
+
 def test_exists(src, testname):
-    return find_test_function("test_" + testname)
+    try:
+        find_test_function(src, make_test_function_name(testname))
+        return True
+    except ValueError:
+        return False
 
 
-def add_test(src, testname, new_test):
+def add_test_function(src, testname, new_test):
     main_start = src.index("int main(void)\n")
     main_return = src.index("\treturn EXIT_SUCCESS;\n", main_start)
     print(f"found main at {main_start}:{main_return}")
@@ -152,75 +172,128 @@ def add_test(src, testname, new_test):
     )
 
 
+def save_src(src, filename):
+    with open(filename, "w") as outfile:
+        outfile.write("".join([s for s in src]))
+
+
+def parse_assert_fail(err):
+    # b'XASSET fail: test_ie_he.c:44 "mac->htc_he_support == 0" value=0x1\n'
+
+    if not err.startswith("XASSERT fail:"):
+        raise ValueError("Not a proper assert fail string.")
+
+    robj = _assert_re.search(err)
+    assert robj
+
+    filename, line = robj.group(1).split(":")
+
+    return {
+        "filename": filename,
+        # -1 because assert line numbers (__LINE__) are 1-based but Python
+        # arrays are 0-based
+        "linenumber": int(line) - 1,
+        # note we slice off the enclosing quotes
+        "expression": robj.group(2)[1:-1],
+        # always assume it's a hex
+        "value": int(robj.group(3), 16),
+    }
+
+
+def new_assert(expression, value):
+    # replace e.g., "mac->htc_he_support == 0" with new value
+    # "mac->htc_he_support == 1"
+
+    # let's assume all expressions are string == value
+    value_pos = expression.index("=")
+
+    new_str = "\tXASSERT({0} == {1}, {0});\n".format(expression[: value_pos - 1], value)
+
+    return new_str
+
+
+def build(exe):
+    cmd = ["/usr/bin/make", exe]
+    subprocess.run(cmd, check=True, shell=False, stdout=subprocess.DEVNULL)
+
+
+def run(exe):
+    try:
+        job = subprocess.run(
+            "./" + exe, check=True, shell=False, capture_output=True, text=True
+        )
+    except subprocess.CalledProcessError as err:
+        print("err=", err)
+        print("return=", err.returncode)
+        print("stderr=", err.stderr)
+        stderr = err.stderr
+        returncode = err.returncode
+    else:
+        stderr = None
+        returncode = job.returncode
+
+    return returncode, stderr
+
+
+# def test_mac_buf1(test_src):
+
+
+def build_run_fix_loop(filename, exe_name, test_src):
+    counter = 0
+    while counter < 20:
+        counter += 1
+        build(exe_name)
+
+        returncode, stderr = run(exe_name)
+        print(f"{counter} job return={returncode}")
+        if returncode == 0:
+            print(f"{filename} runs successfully")
+            return
+
+        failure = parse_assert_fail(stderr)
+        print(f"{counter} failure={failure}")
+        linenum = failure["linenumber"]
+        print("line=", test_src[linenum])
+        print(test_src[0:10])
+        print(test_src[linenum - 2 : linenum + 2])
+
+        test_src[failure["linenumber"]] = new_assert(
+            failure["expression"], failure["value"]
+        )
+
+        print("line=", test_src[linenum])
+        print(test_src[linenum - 2 : linenum + 2])
+        save_src(test_src, filename)
+
+    assert 0, counter
+
+
 def main():
-    infilename = "test_ie_he.c"
-    with open(infilename, "r") as infile:
+    filename = "test_ie_he.c"
+    exe_name, _ = os.path.splitext(filename)
+
+    with open(filename, "r") as infile:
         test_src = infile.readlines()
     print(len(test_src))
 
     testname = "mac_buf1"
-    try:
-        test_fn = test_exists(test_src, testname)
-    except ValueError:
-        raise
-        test_fn = None
 
-    print(test_fn)
-    if test_fn:
-        print(f"{testname} already exists")
+    if test_exists(test_src, testname):
+        print(f"the {testname} test already exists")
     else:
         new_test = []
         new_test.append(
-            "static void test_{}(const struct IE_HE_MAC* mac)\n{{\n".format(testname)
+            "static void test_{}(const struct IE_HE_MAC* mac)\n".format(testname)
         )
+        new_test.append("{\n")
         for field in he_capa_mac:
             new_test.append("\tXASSERT(mac->{0} == 0, mac->{0});\n".format(field))
         new_test.append("}\n\n")
-        test_src = add_test(test_src, testname, new_test)
+        test_src = add_test_function(test_src, testname, new_test)
+        save_src(test_src, filename)
 
-        with open("test_ie_he.c", "w") as outfile:
-            outfile.write("".join([s for s in test_src]))
+    build_run_fix_loop(filename, exe_name, test_src)
 
-    return
-
-    cmd = ["/usr/bin/make", "test_ie_he"]
-    subprocess.run(cmd, check=True, shell=False)
-
-    try:
-        job = subprocess.run(
-            "./test_ie_he", check=True, shell=False, capture_output=True
-        )
-    #                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    except subprocess.CalledProcessError as err:
-        print("err=", err)
-        print("return=", err.returncode)
-        print("output=", err.output)
-        print("stdout=", err.stdout)
-        print("stderr=", err.stderr)
-    else:
-        job.communicate()
-        print(job)
-
-    job = subprocess.Popen(
-        "./test_ie_he",
-        shell=False,
-        bufsize=0,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    job_stdout, job_stderr = job.communicate()
-    print("stdout=", job_stdout)
-    print("stderr=", job_stderr)
-
-
-#    print(job)
-#    buf = job.stdout.read()
-#    print("buf=",buf)
-#    ret = job.wait()
-#    print("ret=",ret)
-
-#    ret = job.poll()
-#    job.wait()
 
 if __name__ == "__main__":
     main()
