@@ -17,7 +17,6 @@
 int ie_he_capabilities_new(struct IE* ie)
 {
 	INFO("%s\n", __func__);
-	CONSTRUCT(struct IE_HE_Capabilities)
 
 	// I don't know officially how big this IE is (could be variable length
 	// like Extended Capabilities) but let's assume it's a fixed size until I
@@ -25,6 +24,8 @@ int ie_he_capabilities_new(struct IE* ie)
 	if (ie->len < 26) {
 		return -EINVAL;
 	}
+
+	CONSTRUCT(struct IE_HE_Capabilities)
 
 	const uint8_t* ptr = ie->buf;
 	// skip the Extension Id 
@@ -53,6 +54,11 @@ void ie_he_capabilities_free(struct IE* ie)
 int ie_he_operation_new(struct IE* ie)
 {
 	INFO("%s\n", __func__);
+
+	if (ie->len != 10) {
+		return -EINVAL;
+	}
+
 	CONSTRUCT(struct IE_HE_Operation)
 
 	sie->params = ie->buf;

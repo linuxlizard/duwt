@@ -504,3 +504,19 @@ int rm_enabled_capa_to_str(const struct IE_RM_Enabled_Capabilities* sie, unsigne
 	return ret;
 }
 
+int mobility_domain_to_str(const struct IE_Mobility_Domain* sie, unsigned int bit, char* s, size_t len)
+{
+	static const char* md_str[] = {
+		"Fast BSS Transition over DSS",
+		"Resource Request Protocol Capability",
+	};
+
+	(void)sie;
+
+	if (bit > 2) {
+		return -EINVAL;
+	}
+
+	return snprintf(s, len, "%s", md_str[bit]);
+}
+

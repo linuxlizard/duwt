@@ -39,6 +39,7 @@ static void decode_and_print(const uint8_t* buf)
 	XASSERT(sie->mac->twt_responder_support, sie->mac->twt_responder_support);
 
 	ie_print_he_capabilities(sie);
+	ie_delete(&ie);
 }
 
 static void test_mac_buf1(const struct IE_HE_MAC* mac)

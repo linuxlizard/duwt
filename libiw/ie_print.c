@@ -1,15 +1,21 @@
+// TODO move IE printfs from scan-dump here. Want to make this file responsible
+// for "stringify"-ing the IE contents.
+//
 #include <stdio.h>
 
 #include "core.h"
+#include "iw.h"
 #include "ie.h"
 #include "ie_print.h"
+
+#define INDENT "\t\t\t"
 
 #define PRN(field, _idx)\
 	do {\
 		typeof (_idx) s_idx = (_idx);\
 		ret = STRING_FN(_struct, s_idx, s, sizeof(s));\
 		XASSERT(ret > 0 && (size_t)ret<sizeof(s), ret);\
-		printf("\t\t\t * %s\n", s);\
+		printf(INDENT " * %s\n", s);\
 	} while(0);
 
 #define PRNBOOL(field, _idx) \
@@ -18,9 +24,28 @@
 		if(_struct->field) {\
 			ret = STRING_FN(_struct, s_idx, s, sizeof(s));\
 			XASSERT(ret > 0 && (size_t)ret<sizeof(s), ret);\
-			printf("\t\t\t * %s\n", s);\
+			printf(INDENT " * %s\n", s);\
 		}\
 	} while(0);
+
+void ie_print_mobility_domain(const struct IE_Mobility_Domain* sie)
+{
+	char s[128];
+	unsigned int bit;
+	int ret;
+
+	printf("\tMobility domain: \n");
+	printf("\t\tMDID: 0x%02x\n", sie->mdid);
+
+#define STRING_FN mobility_domain_to_str
+#define _struct sie
+	bit = 0;
+	PRNBOOL(fast_bss_transition_over_ds, bit++);
+	PRNBOOL(resource_req_proto, bit++);
+
+#undef STRING_FN
+#undef _struct
+}
 
 void ie_print_he_capabilities(const struct IE_HE_Capabilities* sie)
 {

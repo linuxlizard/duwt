@@ -57,6 +57,7 @@ typedef enum {
 	IE_HT_CAPABILITIES = 45,
 	IE_RSN = 48,
 	IE_EXTENDED_SUPPORTED_RATES = 50,
+	IE_MOBILITY_DOMAIN = 54,
 	IE_HT_OPERATION = 61,
 	IE_RM_ENABLED_CAPABILITIES = 70,
 	IE_MESH_ID = 114,
@@ -76,7 +77,7 @@ typedef enum {
 	// 13 reserved
 	IE_EXT_FUTURE_CHANNEL_GUIDANCE = 14,
 
-	// 80211ax (aka WifI6 aka HE aka High Efficiency) currently here
+	// 80211ax (aka WiFi6 aka HE aka High Efficiency) currently here
 	// decoding via Wireshark examples
 	IE_EXT_HE_CAPABILITIES = 35,
 	IE_EXT_HE_OPERATION = 36,
@@ -451,6 +452,16 @@ struct IE_Extended_Supported_Rates
 
 	size_t count;
 	struct Supported_Rate rates[];
+};
+
+struct IE_Mobility_Domain
+{
+	IE_SPECIFIC_FIELDS
+
+	uint16_t mdid;
+	uint8_t fast_bss_transition_over_ds : 1,
+		resource_req_proto : 1,
+		reserved : 6;
 };
 
 struct IE_Extended_Capabilities

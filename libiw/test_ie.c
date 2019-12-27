@@ -3,6 +3,7 @@
 
 #include "core.h"
 #include "ie.h"
+#include "ie_print.h"
 
 static const uint8_t vendor_ie[] = {
 	"\x7f\x08\x04\x00\x00\x00\x00\x00\x00\x40\xdd\x69\x00\x50\xf2\x04"\
@@ -34,6 +35,56 @@ static void test_ie_ssid(void)
 	XASSERT(ie, 0);
 
 	ie_delete(&ie);
+}
+
+static void test_ie_mobility_domain(void)
+{
+	struct IE* ie;
+
+	uint8_t buf[3] = { 0x30, 0x00, 0xff };
+
+	ie = ie_new(IE_MOBILITY_DOMAIN, sizeof(buf), buf);
+	XASSERT(ie, 0);
+
+	const struct IE_Mobility_Domain* sie = IE_CAST(ie, struct IE_Mobility_Domain);
+	ie_print_mobility_domain(sie);
+
+	ie_delete(&ie);
+}
+
+static void test_short_ie(void)
+{
+	struct IE* ie;
+	uint8_t buf[255];
+
+	for (uint8_t id=0 ; id<255 ; id++) {
+		ie = ie_new(id, 0, buf);
+		if (ie != NULL) {
+			INFO("%s id=%d\n", __func__, id);
+			ie_delete(&ie);
+		}
+	}
+}
+
+static void test_fuzzing_ie(void)
+{
+	// what happens if I randomly generate crap ?
+	// (running under valgrind)
+	struct IE* ie;
+
+	uint8_t buf[255];
+
+	memset(buf, 0xff, sizeof(buf));
+	for (uint8_t id=0 ; id<255 ; id++) {
+		for (size_t len=0 ; len<255 ; len++) {
+			INFO("%s trying id=%d len=%zu\n", __func__, id, len);
+			ie = ie_new(id, len, buf);
+			if (ie != NULL) {
+				INFO("%s id=%d\n", __func__, id);
+				ie_delete(&ie);
+			}
+		}
+	}
 }
 
 int main(void)
@@ -104,6 +155,12 @@ int main(void)
 	ie_list_release(&ie_list);
 
 	test_ie_ssid();
+	test_ie_mobility_domain();
+
+	// for best results, this program should be run under valgrind for the
+	// following two functins.
+	test_short_ie();
+	test_fuzzing_ie();
 
 	return EXIT_SUCCESS;
 }

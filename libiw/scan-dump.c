@@ -632,6 +632,16 @@ static void print_extended_supported_rates(const struct BSS* bss)
 	printf("\n");
 }
 
+static void print_mobility_domain(const struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_MOBILITY_DOMAIN);
+	if (!ie) {
+		return;
+	}
+	const struct IE_Mobility_Domain* sie = IE_CAST(ie, struct IE_Mobility_Domain);
+	ie_print_mobility_domain(sie);
+}
+
 static void print_ssid(struct BSS* bss)
 {
 	UChar ssid[SSID_MAX_LEN*2];
@@ -673,6 +683,7 @@ static void print_bss(struct BSS* bss)
 	print_tpc_report(bss);
 	print_erp(bss);
 	print_extended_supported_rates(bss);
+	print_mobility_domain(bss);
 	print_power_constraint(bss);
 	print_ht_capabilities(bss);
 	print_ht_operation(bss);

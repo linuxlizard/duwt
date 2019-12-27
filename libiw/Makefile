@@ -68,8 +68,8 @@ nlnames.o:nlnames.c nlnames.h
 test_xassert:test_xassert.o xassert.o
 test_xassert.o:test_xassert.c xassert.h
 
-test_ie:test_ie.o ie.o ie_he.o $(CORE_O)
-test_ie.o:test_ie.c ie.h ie_he.h $(CORE_H)
+test_ie:test_ie.o ie.o ie_he.o ie_print.o $(CORE_O)
+test_ie.o:test_ie.c ie.h ie_he.h ie_print.h $(CORE_H)
 
 test_ie_he:test_ie_he.o ie.o ie_he.o ie_print.o $(CORE_O)
 test_ie_he.o:test_ie_he.c ie.h ie_he.h ie_print.h $(CORE_H)
@@ -80,10 +80,11 @@ test_bytebuf.o:test_bytebuf.c bytebuf.h xassert.h log.h
 test_bss:test_bss.o bss.o ie.o ie_he.o iw.o list_debug.o nlnames.o bug.o $(CORE_O)
 test_bss.o:test_bss.c $(CORE_H)
 
-VALGRIND_OPTS=--error-exitcode=1 --leak-check=yes
-test: test_bytebuf test_ie test_bss
+VALGRIND_OPTS=--error-exitcode=1 --leak-check=yes --exit-on-first-error=yes
+test: test_bytebuf test_ie test_bss test_ie_he
 	valgrind  $(VALGRIND_OPTS) ./test_bytebuf
 	valgrind $(VALGRIND_OPTS)  ./test_ie
+	valgrind $(VALGRIND_OPTS)  ./test_ie_he
 	valgrind $(VALGRIND_OPTS)  ./test_bss
 
 clean:

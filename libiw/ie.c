@@ -115,6 +115,10 @@ static void ie_supported_rates_free(struct IE* ie)
 
 static int ie_tim_new(struct IE* ie)
 {
+	if (ie->len < 5) {
+		return -EINVAL;
+	}
+
 	CONSTRUCT(struct IE_TIM)
 
 	sie->dtim_count = ie->buf[0];
@@ -155,6 +159,10 @@ static void ie_bss_load_free(struct IE* ie)
 
 static int ie_power_constraint_new(struct IE* ie)
 {
+	if (ie->len != 1) {
+		return -EINVAL;
+	}
+
 	// store the Local Power Constraint value in the IE itself, no
 	// need to create a "child class"
 	//
@@ -166,12 +174,12 @@ static int ie_power_constraint_new(struct IE* ie)
 
 static int ie_tpc_report_new(struct IE* ie)
 {
-	CONSTRUCT(struct IE_TPC_Report)
-
-	// you would not believe how hard it is to not type "TPS Report"
 	if (ie->len < 2) {
 		return -EINVAL;
 	}
+
+	// you would not believe how hard it is to not type "TPS Report"
+	CONSTRUCT(struct IE_TPC_Report)
 
 	sie->tx_power = ie->buf[0];
 	sie->link_margin = ie->buf[1];
@@ -256,6 +264,10 @@ static void ie_country_free(struct IE* ie)
 
 static int ie_erp_new(struct IE* ie)
 {
+	if (ie->len != 1) {
+		return -EINVAL;
+	}
+
 	CONSTRUCT(struct IE_ERP)
 
 	sie->NonERP_Present = ie->buf[0] & 1;
@@ -284,11 +296,11 @@ static void ht_mcs_decode(uint8_t* buf, struct HT_MCS_Set* mcs)
 
 static int ie_ht_capabilities_new(struct IE* ie)
 {
-	CONSTRUCT(struct IE_HT_Capabilities)
-
-	if (ie->len < 14) {
+	if (ie->len != 26) {
 		return -EINVAL;
 	}
+
+	CONSTRUCT(struct IE_HT_Capabilities)
 
 	uint8_t* ptr = ie->buf;
 
@@ -341,6 +353,10 @@ static void ie_ht_capabilities_free(struct IE* ie)
 
 static int ie_rsn_new(struct IE* ie)
 {
+	if (ie->len < 2) {
+		return -EINVAL;
+	}
+
 	CONSTRUCT(struct IE_RSN)
 
 	const uint8_t* ptr = ie->buf;
@@ -354,42 +370,53 @@ static int ie_rsn_new(struct IE* ie)
 	//
 	// ptr == endptr => hit end of RSN
 	// ptr > endptr  => blown past the valid end of buffer so bad RSN
+	int err = 0;
+#define EXPECT(numbytes)\
+	if (ptr+numbytes > endptr) {\
+		err = -EINVAL;\
+		goto fail;\
+	}
+
 #define CHECK\
 	if (ptr == endptr) {\
 		return 0;\
-	}\
-	else if (ptr > endptr) {\
-		return -EINVAL;\
 	}
 
+	EXPECT(2)
 	sie->version = htole16(*(const uint16_t*)ptr);
 	ptr += 2;
 	CHECK
 
+	EXPECT(4)
 	sie->group_data = (const struct RSN_Cipher_Suite*)ptr;
 	ptr += 4;
 	CHECK
 
+	EXPECT(2)
 	sie->pairwise_cipher_count = htole16(*(const uint16_t*)ptr);
 	ptr += 2;
 	CHECK
 
 	if (sie->pairwise_cipher_count) {
+		EXPECT(4 * sie->pairwise_cipher_count)
 		sie->pairwise = (const struct RSN_Cipher_Suite*)ptr;
 		ptr += 4 * sie->pairwise_cipher_count;
 		CHECK
 	}
 
+	EXPECT(2)
 	sie->akm_suite_count = htole16(*(const uint16_t*)ptr);
 	ptr += 2;
 	CHECK
 
 	if (sie->akm_suite_count) {
+		EXPECT(4 * sie->akm_suite_count)
 		sie->akm_suite = (const struct RSN_Cipher_Suite*)ptr;
 		ptr += 4 * sie->akm_suite_count;
 		CHECK
 	}
 
+	EXPECT(2)
 	sie->capabilities = htole16(*(const uint16_t*)ptr);
 	ptr += 2;
 #define CAPA(field,bit)\
@@ -411,8 +438,14 @@ static int ie_rsn_new(struct IE* ie)
 
 #undef CAPA
 #undef CHECK
+#undef EXPECT
 
 	return 0;
+fail:
+	if (ie->specific) {
+		PTR_FREE(ie->specific);
+	}
+	return err;
 }
 
 static void ie_rsn_free(struct IE* ie)
@@ -422,11 +455,11 @@ static void ie_rsn_free(struct IE* ie)
 
 static int ie_rm_enabled_capabilities_new(struct IE* ie)
 {
-	CONSTRUCT(struct IE_RM_Enabled_Capabilities)
-
 	if (ie->len != 5) {
 		return -EINVAL;
 	}
+
+	CONSTRUCT(struct IE_RM_Enabled_Capabilities)
 
 	hex_dump(__func__, ie->buf, ie->len);
 
@@ -479,6 +512,10 @@ static void ie_rm_enabled_capabilities_free(struct IE* ie)
 
 static int ie_ht_operation_new(struct IE* ie)
 {
+	if (ie->len != 22) {
+		return -EINVAL;
+	}
+
 	CONSTRUCT(struct IE_HT_Operation)
 
 	uint8_t* ptr = ie->buf;
@@ -520,6 +557,27 @@ static void ie_ht_operation_free(struct IE* ie)
 	DESTRUCT(struct IE_HT_Operation);
 }
 
+static int ie_mobility_domain_new(struct IE* ie)
+{
+	if (ie->len != 3) {
+		return -EINVAL;
+	}
+
+	CONSTRUCT(struct IE_Mobility_Domain);
+
+	sie->mdid = htole16(*(const uint16_t*)ie->buf);
+	sie->fast_bss_transition_over_ds = ie->buf[2] & 1;
+	sie->resource_req_proto = (ie->buf[2] >> 1) & 1;
+	sie->reserved = (ie->buf[2] >> 2) & 0x3f;
+
+	return 0;
+}
+
+static void ie_mobility_domain_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_Mobility_Domain);
+}
+
 static int ie_extended_supported_rates_new(struct IE* ie)
 {
 	struct IE_Extended_Supported_Rates* sie;
@@ -548,6 +606,10 @@ static void ie_extended_supported_rates_free(struct IE* ie)
 
 static int ie_dsss_parameter_set_new(struct IE* ie)
 {
+	if (ie->len != 1) {
+		return -EINVAL;
+	}
+
 	// store the DSSS Param value in the IE itself, no
 	// need to create a "child class"
 	ie->value = (int)ie->buf[0];
@@ -556,12 +618,13 @@ static int ie_dsss_parameter_set_new(struct IE* ie)
 
 static int ie_extended_capa_new(struct IE* ie)
 {
+	if (ie->len < 1) return 0;
+
 	CONSTRUCT(struct IE_Extended_Capabilities)
 
 	DBG("%s len=%zu\n", __func__, ie->len);
 //	hex_dump(__func__, ie->buf, ie->len);
 
-	if (ie->len < 1) return 0;
 	size_t idx = 0;
 	uint8_t b = ie->buf[0];
 
@@ -688,6 +751,10 @@ static void ie_extended_capa_free(struct IE* ie)
 
 static int ie_vht_capabilities_new(struct IE* ie)
 {
+	if (ie->len != 12) { 
+		return -EINVAL;
+	}
+
 	CONSTRUCT(struct IE_VHT_Capabilities)
 
 	uint8_t* ptr = ie->buf;
@@ -734,6 +801,10 @@ static void ie_vht_capabilities_free(struct IE* ie)
 
 static int ie_vht_operation_new(struct IE* ie)
 {
+	if (ie->len != 5) {
+		return -EINVAL;
+	}
+
 	CONSTRUCT(struct IE_VHT_Operation)
 
 	sie->channel_width = ie->buf[0];
@@ -751,6 +822,10 @@ static void ie_vht_operation_free(struct IE* ie)
 
 static int ie_vendor_new(struct IE* ie)
 {
+	if (ie->len < 4) {
+		return -EINVAL;
+	}
+
 	CONSTRUCT(struct IE_Vendor)
 
 	DBG("%s id=%d len=%zu oui=0x%02x%02x%02x\n", __func__, 
@@ -880,6 +955,11 @@ static const struct ie_class {
 	[IE_EXTENDED_SUPPORTED_RATES] = {
 		ie_extended_supported_rates_new,
 		ie_extended_supported_rates_free,
+	},
+
+	[IE_MOBILITY_DOMAIN] = {
+		ie_mobility_domain_new,
+		ie_mobility_domain_free,
 	},
 
 	[IE_EXTENDED_CAPABILITIES] = {
