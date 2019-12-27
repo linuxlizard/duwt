@@ -31,8 +31,8 @@ static void test_ie_ssid(void)
 {
 	struct IE* ie;
 
-	ie = ie_new(IE_SSID, 13, (const uint8_t*)"hello, world");
-	XASSERT(ie, 0);
+	int err = ie_new(IE_SSID, 13, (const uint8_t*)"hello, world", &ie);
+	XASSERT(err==0, err);
 
 	ie_delete(&ie);
 }
@@ -43,8 +43,8 @@ static void test_ie_mobility_domain(void)
 
 	uint8_t buf[3] = { 0x30, 0x00, 0xff };
 
-	ie = ie_new(IE_MOBILITY_DOMAIN, sizeof(buf), buf);
-	XASSERT(ie, 0);
+	int err = ie_new(IE_MOBILITY_DOMAIN, sizeof(buf), buf, &ie);
+	XASSERT(err==0, err);
 
 	const struct IE_Mobility_Domain* sie = IE_CAST(ie, struct IE_Mobility_Domain);
 	ie_print_mobility_domain(sie);
@@ -58,8 +58,8 @@ static void test_short_ie(void)
 	uint8_t buf[255];
 
 	for (uint8_t id=0 ; id<255 ; id++) {
-		ie = ie_new(id, 0, buf);
-		if (ie != NULL) {
+		int err = ie_new(id, 0, buf, &ie);
+		if (err == 0) {
 			INFO("%s id=%d\n", __func__, id);
 			ie_delete(&ie);
 		}
@@ -78,8 +78,8 @@ static void test_fuzzing_ie(void)
 	for (uint8_t id=0 ; id<255 ; id++) {
 		for (size_t len=0 ; len<255 ; len++) {
 			INFO("%s trying id=%d len=%zu\n", __func__, id, len);
-			ie = ie_new(id, len, buf);
-			if (ie != NULL) {
+			int err = ie_new(id, len, buf, &ie);
+			if (err==0) {
 				INFO("%s id=%d\n", __func__, id);
 				ie_delete(&ie);
 			}
@@ -140,8 +140,8 @@ int main(void)
 
 	// verify list can grow
 	for (i=0 ; i<1024 ; i++) {
-		ie = ie_new(vendor_ie[10], vendor_ie[11], (const uint8_t*)&vendor_ie[12]);
-		XASSERT(ie, 0);
+		err = ie_new(vendor_ie[10], vendor_ie[11], (const uint8_t*)&vendor_ie[12], &ie);
+		XASSERT(err==0, err);
 		XASSERT(ie->buf, 0);
 		ie_validate(ie, IE_VENDOR, vendor_ie[11]);
 		err = memcmp(ie->buf, (const void *)&vendor_ie[12], ie->len);

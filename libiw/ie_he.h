@@ -176,21 +176,30 @@ struct __attribute__((__packed__)) IE_HE_Operation_Fields
 #endif
 };
 
+#define IE_HE_CAPA_MAC_SIZE 6
+#define IE_HE_CAPA_PHY_SIZE 11
+#define IE_HE_CAPA_MCS_SIZE 4
+
 struct IE_HE_Capabilities
 {
 	IE_SPECIFIC_FIELDS
 
 	// pointers into ie->buf
 	const uint8_t* mac_capa;  // 6 bytes
-	const uint8_t* phy_capa;  // 9 bytes
+	const uint8_t* phy_capa;  // 11 bytes
 	const uint8_t* mcs_and_nss_set; // 4  bytes
-	const uint8_t* ppe_threshold; // 7 bytes
+	const uint8_t* ppe_threshold; // 1+3*SS bytes
 
 	// HE Mac Capabilities
 	const struct IE_HE_MAC* mac;
 	const struct IE_HE_PHY* phy;
 
 	// HE MCS and NSS Set
+	// TODO
+
+	// PPE Thresholds
+	// Note this is a variable length field. Has an entry for each SS (Spatial
+	// Stream).  
 	// TODO
 };
 

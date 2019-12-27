@@ -863,6 +863,8 @@ static int ie_extension_new(struct IE* ie)
 
 	uint8_t ext_id = ie->buf[0];
 
+	INFO("%s eid=%d\n", __func__, ext_id);
+
 	if (ie_ext_classes[ext_id].constructor) {
 		return ie_ext_classes[ext_id].constructor(ie);
 	}
@@ -989,13 +991,14 @@ static const struct ie_class {
 };
 
 
-struct IE* ie_new(uint8_t id, uint8_t len, const uint8_t* buf)
+int ie_new(uint8_t id, uint8_t len, const uint8_t* buf, struct IE** pie)
 {
 	DBG("%s id=%d len=%d\n", __func__, id, len);
 
+	*pie = NULL;
 	struct IE* ie = (struct IE*)calloc(1, sizeof(struct IE));
 	if (!ie) {
-		return NULL;
+		return -ENOMEM;
 	} 
 
 	ie->cookie = IE_COOKIE;
@@ -1005,7 +1008,7 @@ struct IE* ie_new(uint8_t id, uint8_t len, const uint8_t* buf)
 	ie->buf = malloc(len);
 	if (!ie->buf) {
 		PTR_FREE(ie);
-		return NULL;
+		return -ENOMEM;
 	}
 	memcpy(ie->buf, buf, ie->len);
 
@@ -1014,14 +1017,15 @@ struct IE* ie_new(uint8_t id, uint8_t len, const uint8_t* buf)
 		if (err) {
 			ERR("%s id=%d failed err=%d\n", __func__, id, err);
 			ie_delete(&ie);
-			return NULL;
+			return err;
 		}
 	}
 	else {
 		WARN("%s unparsed IE=%d\n", __func__, id);
 	}
 
-	return ie;
+	PTR_ASSIGN(*pie, ie);
+	return 0;
 }
 
 void ie_delete(struct IE** pie)
@@ -1073,10 +1077,11 @@ int decode_ie_buf( const uint8_t* ptr, size_t len, struct IE_List* ie_list)
 
 		DBG("%s id=%u len=%u\n", __func__, id, ielen);
 
-		struct IE* ie = ie_new(id, ielen, ptr);
-		if (!ie) {
-			ERR("%s failed to create ie\n", __func__);
-			return -ENOMEM;
+		struct IE* ie;
+		err = ie_new(id, ielen, ptr, &ie);
+		if (err) {
+			ERR("%s failed to create ie err=%d\n", __func__, err);
+			return err;
 		}
 		err = ie_list_move_back(ie_list, &ie);
 		if (err) {

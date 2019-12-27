@@ -16,6 +16,7 @@ const uint8_t buf1[] = {
 };
 
 // ASUS RT_AX88U (BRCM)
+// note larger IE
 const uint8_t buf2[] = {
 	0xff, 0x1d,
 
@@ -27,12 +28,14 @@ const uint8_t buf2[] = {
 
 static void decode_and_print(const uint8_t* buf)
 {
-	struct IE* ie = ie_new(buf[0], buf[1], buf+2);
-	XASSERT(ie, 0);
+	struct IE* ie;
+	int err = ie_new(buf[0], buf[1], buf+2, &ie);
+	XASSERT(err==0, err);
 
 	struct IE_HE_Capabilities* sie = IE_CAST(ie, struct IE_HE_Capabilities);
-	hex_dump("IE HE MAC", sie->mac_capa, 6);
-	hex_dump("IE HE PHY", sie->phy_capa, 9);
+	hex_dump("IE HE MAC", sie->mac_capa, IE_HE_CAPA_MAC_SIZE);
+	hex_dump("IE HE PHY", sie->phy_capa, IE_HE_CAPA_PHY_SIZE);
+	hex_dump("IE HE MCS", sie->mcs_and_nss_set, IE_HE_CAPA_MCS_SIZE);
 
 	XASSERT(sie->mac->htc_he_support, sie->mac->htc_he_support);
 	XASSERT(!sie->mac->twt_requester_support, sie->mac->twt_requester_support);

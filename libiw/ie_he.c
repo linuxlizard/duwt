@@ -18,10 +18,11 @@ int ie_he_capabilities_new(struct IE* ie)
 {
 	INFO("%s\n", __func__);
 
-	// I don't know officially how big this IE is (could be variable length
-	// like Extended Capabilities) but let's assume it's a fixed size until I
-	// know different
-	if (ie->len < 26) {
+	// I don't know officially how big this IE is (PPE is variable length, one
+	// entry per SS (Spatial Stream). Everything forward of PPE seems fixed length
+	// 1 byte exten id
+	// 26 bytes of data, min
+	if (ie->len < 1+26) {
 		return -EINVAL;
 	}
 
@@ -32,11 +33,11 @@ int ie_he_capabilities_new(struct IE* ie)
 	ptr++;
 	// point into the ie buf
 	sie->mac_capa = ptr;
-	ptr += 6; 
+	ptr += IE_HE_CAPA_MAC_SIZE; 
 	sie->phy_capa = ptr;
-	ptr += 9;
+	ptr += IE_HE_CAPA_PHY_SIZE;
 	sie->mcs_and_nss_set = ptr;
-	ptr += 4;
+	ptr += IE_HE_CAPA_MCS_SIZE;
 	sie->ppe_threshold = ptr;
 
 	sie->mac = (const struct IE_HE_MAC*)sie->mac_capa;
@@ -55,7 +56,10 @@ int ie_he_operation_new(struct IE* ie)
 {
 	INFO("%s\n", __func__);
 
-	if (ie->len != 10) {
+	// 1 byte for the extension ID
+	// 6 bytes for the payload
+	if (ie->len != 7) {
+		XASSERT(0, ie->len);
 		return -EINVAL;
 	}
 

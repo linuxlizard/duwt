@@ -633,7 +633,7 @@ struct IE_List
 extern "C" {
 #endif
 
-struct IE* ie_new(uint8_t id, uint8_t len, const uint8_t* buf);
+int ie_new(uint8_t id, uint8_t len, const uint8_t* buf, struct IE** pie);
 void ie_delete(struct IE** pie);
 
 #define IE_LIST_BLANK\
