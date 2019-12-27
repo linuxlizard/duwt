@@ -262,7 +262,6 @@ static void print_he_capabilities(const struct BSS* bss)
 		return;
 	}
 	const struct IE_HE_Capabilities* sie = IE_CAST(ie, struct IE_HE_Capabilities);
-
 	ie_print_he_capabilities(sie);
 }
 
@@ -272,7 +271,8 @@ static void print_he_operation(const struct BSS* bss)
 	if (!ie) {
 		return;
 	}
-	printf("\tHE operation:\n");
+	const struct IE_HE_Operation* sie = IE_CAST(ie, struct IE_HE_Operation);
+	ie_print_he_operation(sie);
 }
 
 static void print_rsn(const struct BSS* bss)
@@ -342,8 +342,8 @@ static void print_vendor(const struct BSS* bss)
 {
 	const struct IE* ie_list[64];
 
-	ssize_t ret = ie_list_get_all(&bss->ie_list, IE_VENDOR, ie_list, 64);
-	XASSERT(ret > 0, ret);
+	ssize_t ret = ie_list_get_all(&bss->ie_list, IE_VENDOR, ie_list, sizeof(ie_list));
+	XASSERT(ret >= 0, ret);
 
 	for( ssize_t i=0 ; i<ret ; i++ ) {
 

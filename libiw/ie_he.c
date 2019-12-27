@@ -13,6 +13,7 @@
 #include "ie_he.h"
 
 
+
 int ie_he_capabilities_new(struct IE* ie)
 {
 	INFO("%s\n", __func__);
@@ -53,6 +54,12 @@ int ie_he_operation_new(struct IE* ie)
 {
 	INFO("%s\n", __func__);
 	CONSTRUCT(struct IE_HE_Operation)
+
+	sie->params = ie->buf;
+	sie->bss_color = ie->buf + 4;
+	sie->mcs_and_nss_set = ie->buf + 5;
+
+	sie->fields = (struct IE_HE_Operation_Fields*)ie->buf;
 
 	return 0;
 }
@@ -439,3 +446,63 @@ int he_phy_capa_to_str(const struct IE_HE_PHY* phy, unsigned int idx, char* s, s
 
 	return snprintf(s, len, "%s", he_phy_cap_str[idx]);
 }
+
+static const char* he_operation_str[] = {
+	"Default PE Duration",  // 3 bits
+	NULL, NULL,
+	"TWT Required",
+	"TXOP Duration RTS Threshold", // 10 bits
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+	"VHT Operation Information Present",
+	"Co-located BSS",
+	"ER SU Disable",
+	// 7 bits reserved
+	NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
+
+	// bits 24-31
+	"BSS Color", // 6 bits
+	NULL, NULL, NULL, NULL, NULL, NULL, 
+	"Partial BSS Color",
+	"BSS Color Disabled",
+};
+
+int he_operation_to_str(const struct IE_HE_Operation* sie, unsigned int idx, char* s, size_t len)
+{
+	if (idx >= ARRAY_SIZE(he_operation_str)){
+		return -EINVAL;
+	}
+
+	if (!he_operation_str[idx]) {
+		return -ENOENT;
+	}
+
+	switch (idx) {
+		// default PE duration
+		case 0:
+			return snprintf(s, len, "%s: %d", 
+					he_operation_str[idx], 
+					sie->fields->default_pe_duration);
+
+		case 3:
+			return snprintf(s, len, "%s: %s",
+					he_operation_str[idx], 
+					sie->fields->twt_required ? "Required" : "Not required" );
+
+		case 4:
+			return snprintf(s, len, "%s: %d", 
+					he_operation_str[idx], 
+					sie->fields->txop_duration_rts_thresh);
+
+		case 24:
+			// bss color
+			return snprintf(s, len, "%s: 0x%02x", 
+					he_operation_str[idx],
+					sie->fields->bss_color);
+
+		default:
+			break;
+	}
+
+	return snprintf(s, len, "%s", he_operation_str[idx]);
+}
+

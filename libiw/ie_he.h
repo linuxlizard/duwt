@@ -153,6 +153,29 @@ struct __attribute__((__packed__)) IE_HE_PHY
 #endif
 } ;
 
+struct __attribute__((__packed__)) IE_HE_Operation_Fields
+{
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+	uint16_t default_pe_duration : 3,
+	 twt_required : 1,
+	 txop_duration_rts_thresh : 10,
+	 vht_op_info_present : 1,
+	 co_located_bss : 1;
+	uint8_t er_su_disable : 1,
+	 reserved_b17_b23 : 7;
+
+	uint8_t bss_color : 6,
+	 partial_bss_color : 1,
+	 bss_color_disabled : 1;
+
+	// HE MCS and NSS Set
+	// TODO
+
+#else
+# error TODO big endian
+#endif
+};
+
 struct IE_HE_Capabilities
 {
 	IE_SPECIFIC_FIELDS
@@ -175,9 +198,12 @@ struct IE_HE_Operation
 {
 	IE_SPECIFIC_FIELDS
 
-	uint8_t params[3];
-	uint8_t bss_color;
-	uint8_t mcs_and_nss_set[2];
+	// pointers into ie->buf
+	const uint8_t* params;  // 3 bytes
+	const uint8_t* bss_color;  // 1 byte
+	const uint8_t* mcs_and_nss_set; // 2 bytes
+
+	struct IE_HE_Operation_Fields* fields;
 };
 
 #ifdef __cplusplus
@@ -192,6 +218,8 @@ void ie_he_operation_free(struct IE* ie);
 int he_max_frag_msdus_base_to_str(uint8_t max_frag_msdus_value, char* s, size_t len);
 int he_mac_capa_to_str(const struct IE_HE_MAC* sie, unsigned int idx, char* s, size_t len);
 int he_phy_capa_to_str(const struct IE_HE_PHY* sie, unsigned int idx, char* s, size_t len);
+
+int he_operation_to_str(const struct IE_HE_Operation* sie, unsigned int idx, char* s, size_t len);
 
 #ifdef __cplusplus
 } // end extern "C"
