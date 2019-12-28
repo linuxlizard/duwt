@@ -64,6 +64,7 @@ typedef enum {
 	IE_EXTENDED_CAPABILITIES = 127,
 	IE_VHT_CAPABILITIES = 191,
 	IE_VHT_OPERATION = 192,
+	IE_TX_POWER_ENVELOPE = 195,
 	IE_VENDOR = 221,
 	IE_EXTENSION = 255
 } IE_ID;
@@ -610,6 +611,20 @@ struct IE_VHT_Operation
 	uint8_t channel_center_freq_segment_0;
 	uint8_t channel_center_freq_segment_1;
 	uint16_t mcs_and_nss_set;
+};
+
+struct IE_TX_Power_Envelope
+{
+	IE_SPECIFIC_FIELDS
+
+	uint8_t count : 3;
+	uint8_t unit_interp : 3;
+	uint8_t reserved : 2;
+
+	uint8_t tx_20Mhz;
+	uint8_t tx_40Mhz;
+	uint8_t tx_80Mhz;
+	uint8_t tx_160_8080Mhz;
 };
 
 #define IE_VENDOR_OUI_LEN 5

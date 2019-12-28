@@ -115,7 +115,7 @@ static void ie_supported_rates_free(struct IE* ie)
 
 static int ie_tim_new(struct IE* ie)
 {
-	if (ie->len < 5) {
+	if (ie->len < 4) {
 		return -EINVAL;
 	}
 
@@ -820,6 +820,43 @@ static void ie_vht_operation_free(struct IE* ie)
 	DESTRUCT(struct IE_VHT_Operation)
 }
 
+static int ie_tx_power_envelope_new(struct IE* ie)
+{
+	if (ie->len < 2) {
+		return -EINVAL;
+	}
+
+	hex_dump(__func__, ie->buf, ie->len);
+
+	CONSTRUCT(struct IE_TX_Power_Envelope)
+
+	sie->count = ie->buf[0] & 7;
+	sie->unit_interp = (ie->buf[0] >> 3) & 7;
+
+	// 8-bit signed two's compliment with step 0.5
+	// range -64 dBm to 63 dBm (63.5 dBm => unlimited)
+	switch (sie->count) {
+		case 3:
+			sie->tx_160_8080Mhz = ie->buf[4]; __attribute__((fallthrough));
+		case 2:
+			sie->tx_80Mhz = ie->buf[3]; __attribute__((fallthrough));
+		case 1:
+			sie->tx_40Mhz = ie->buf[2]; __attribute__((fallthrough));
+		case 0:
+			sie->tx_20Mhz = ie->buf[1];
+			break;
+		default:
+			break;
+	}
+
+	return 0;
+}
+
+static void ie_tx_power_envelope_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_TX_Power_Envelope)
+}
+
 static int ie_vendor_new(struct IE* ie)
 {
 	if (ie->len < 4) {
@@ -977,6 +1014,11 @@ static const struct ie_class {
 	[IE_VHT_OPERATION] = {
 		ie_vht_operation_new,
 		ie_vht_operation_free,
+	},
+
+	[IE_TX_POWER_ENVELOPE] = {
+		ie_tx_power_envelope_new,
+		ie_tx_power_envelope_free,
 	},
 
 	[IE_VENDOR] = {
