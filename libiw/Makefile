@@ -8,7 +8,7 @@
 # 	https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/index.html
 
 CC=gcc
-PKGS=libnl-3.0 libnl-genl-3.0 
+PKGS=libnl-3.0 libnl-genl-3.0 jansson
 #PKGS=libnl-3.0 libnl-genl-3.0 libevent_core libevent libevent_extra
 CFLAGS:=-g -Wall -Wpedantic -Wextra $(shell pkg-config --cflags $(PKGS))
 # shamelessly copied extra warnings from m*lib https://github.com/P-p-H-d/mlib
@@ -43,7 +43,7 @@ scan-event-ev: scan-event-ev.o $(CORE_O) iw-scan.o nlnames.o bytebuf.o ie.o ie_h
 scan-event-ev.o: scan-event-ev.c iw-scan.h bytebuf.h $(CORE_H)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o list_debug.o bug.o ie_print.o
+scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o list_debug.o bug.o ie_print.o bss_json.o
 	$(CC) $(LDFLAGS) $(ICU_LDFLAGS) -o $@ $^
 
 scan-dump-lib: scan-dump.o 
@@ -72,6 +72,7 @@ iw-scan.o:iw-scan.c iw-scan.h bytebuf.h $(CORE_H)
 list_debug.o:list_debug.c list.h bug.h $(CORE_H)
 bug.o:bug.c bug.h $(CORE_H)
 util.o:util.c $(CORE_H)
+bss_json.o:bss_json.c bss_json.h $(CORE_H)
 
 # nl80211.h uses duplicates for certain enum values so need to turn off the
 # strict switch+enum checking

@@ -10,6 +10,8 @@
 #include <unicode/utf8.h>
 #include <unicode/ustdio.h>
 
+#include <jansson.h>
+
 #include "core.h"
 #include "iw.h"
 #include "ie.h"
@@ -17,6 +19,7 @@
 #include "bss.h"
 #include "hdump.h"
 #include "ie_print.h"
+#include "bss_json.h"
 
 U_STRING_DECL(hidden, "<hidden>", 8);
 
@@ -748,6 +751,12 @@ static void print_short(const struct BSS* bss)
 
 }
 
+static void print_json(const struct BSS* bss)
+{
+	int err= bss_to_json(bss);
+
+}
+
 int main(int argc, char* argv[])
 {
 	if (argc != 2) {
@@ -796,11 +805,28 @@ int main(int argc, char* argv[])
 		print_bss(bss);
 	}
 
-	bool first=true;
+//	bool first=true;
+//	list_for_each_entry(bss, &bss_list, node) {
+//		print_bss_to_csv(bss, first);
+//		first = false;
+//	}
+
+	printf("\n\n");
 	list_for_each_entry(bss, &bss_list, node) {
-		print_bss_to_csv(bss, first);
-		first = false;
+		print_json(bss);
 	}
+	json_t* jlist=NULL;
+	err = bss_list_to_json(&bss_list, &jlist);
+	XASSERT(err==0, err);
+
+	printf("json list len=%zu\n", json_array_size(jlist));
+
+//	char* s = json_dumps(jlist, JSON_INDENT(1));
+	char* s = json_dumps(jlist, 0);
+	printf("%s\n", s);
+	PTR_FREE(s);
+	json_array_clear(jlist);
+	json_decref(jlist);
 
 	printf("\n\n");
 	list_for_each_entry(bss, &bss_list, node) {
