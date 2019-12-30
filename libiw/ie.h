@@ -170,7 +170,7 @@ struct IE_SSID
 struct Supported_Rate
 {
 	float rate;
-	bool basic : 1;
+	bool basic;
 };
 
 struct IE_Supported_Rates
@@ -179,7 +179,7 @@ struct IE_Supported_Rates
 
 	size_t count;
 	float rate[8];
-	bool basic[8];
+	uint8_t basic[8];
 };
 
 // TIM == Traffic Indication Map
@@ -256,9 +256,9 @@ struct IE_ERP
 	IE_SPECIFIC_FIELDS
 
 	// bitfields; using same name as the IEEE 80211-2016.pdf
-	bool NonERP_Present : 1;
-	bool Use_Protection : 1;
-	bool Barker_Preamble_Mode : 1;
+	uint8_t NonERP_Present : 1;
+	uint8_t Use_Protection : 1;
+	uint8_t Barker_Preamble_Mode : 1;
 };
 
 // RX STBC bits of HT Capabilities IE
@@ -472,103 +472,103 @@ struct IE_Extended_Capabilities
 	// bitfields ahoy!
 
 	// octet [0]
-	bool bss_2040_coexist : 1;
+	uint8_t bss_2040_coexist : 1;
 	// bit 1 reserved
-	bool ESS : 1;
+	uint8_t ESS : 1;
 	// bit 3 reserved but iw scan.c says "Wave Indication" and who am I to
 	// disagree
-	bool wave_indication : 1;
-	bool psmp_capa : 1;
+	uint8_t wave_indication : 1;
+	uint8_t psmp_capa : 1;
 	// bit 5 reserved but iw scan.c says "Service Interval Granularity"
-	bool service_interval_granularity_flag;
-	bool spsmp_support : 1;
-	bool event : 1;
+	uint8_t service_interval_granularity_flag;
+	uint8_t spsmp_support : 1;
+	uint8_t event : 1;
 
 	// octest [1]
-	bool diagnostics : 1;
-	bool multicast_diagnostics : 1;
-	bool location_tracking : 1;  // you should be ashamed
-	bool FMS : 1;
-	bool proxy_arp : 1;
-	bool collocated_interference_reporting : 1;
-	bool civic_location : 1;
-	bool geospatial_location : 1;
+	uint8_t diagnostics : 1;
+	uint8_t multicast_diagnostics : 1;
+	uint8_t location_tracking : 1;  // you should be ashamed
+	uint8_t FMS : 1;
+	uint8_t proxy_arp : 1;
+	uint8_t collocated_interference_reporting : 1;
+	uint8_t civic_location : 1;
+	uint8_t geospatial_location : 1;
 
 	// octet [2]
-	bool TFS : 1;
-	bool WNM_sleep_mode : 1;
-	bool TIM_broadcast : 1;
-	bool BSS_transition : 1;
-	bool QoS_traffic_capa : 1;
-	bool AC_station_count : 1;
-	bool multiple_BSSID : 1;
-	bool timing_measurement : 1;
+	uint8_t TFS : 1;
+	uint8_t WNM_sleep_mode : 1;
+	uint8_t TIM_broadcast : 1;
+	uint8_t BSS_transition : 1;
+	uint8_t QoS_traffic_capa : 1;
+	uint8_t AC_station_count : 1;
+	uint8_t multiple_BSSID : 1;
+	uint8_t timing_measurement : 1;
 
 	// octet [3]
-	bool channel_usage : 1;
-	bool SSID_list : 1;
-	bool DMS : 1;
-	bool UTC_TSF_offset : 1;
-	bool TPU_buffer_STA_support : 1;
-	bool TDLS_peer_PSM_support : 1;
-	bool TDLS_channel_switching : 1;
-	bool internetworking : 1;
+	uint8_t channel_usage : 1;
+	uint8_t SSID_list : 1;
+	uint8_t DMS : 1;
+	uint8_t UTC_TSF_offset : 1;
+	uint8_t TPU_buffer_STA_support : 1;
+	uint8_t TDLS_peer_PSM_support : 1;
+	uint8_t TDLS_channel_switching : 1;
+	uint8_t internetworking : 1;
 
 	// octet[4]
-	bool QoS_map : 1;
-	bool EBR : 1;
-	bool SSPN_interface : 1;
+	uint8_t QoS_map : 1;
+	uint8_t EBR : 1;
+	uint8_t SSPN_interface : 1;
 	// 35 reserved
-	bool MSGCF_capa : 1;
-	bool TDLS_support : 1;
-	bool TDLS_prohibited : 1;
-	bool TDLS_channel_switch_prohibited : 1;
+	uint8_t MSGCF_capa : 1;
+	uint8_t TDLS_support : 1;
+	uint8_t TDLS_prohibited : 1;
+	uint8_t TDLS_channel_switch_prohibited : 1;
 
 	// octet [5]
-	bool reject_unadmitted_frame : 1;
+	uint8_t reject_unadmitted_frame : 1;
 	// 3 bits
 	unsigned int service_interval_granularity : 3;
-	bool identifier_location : 1;
-	bool UAPSD_coexist : 1;
-	bool WNM_notification : 1;
-	bool QAB_capa : 1;
+	uint8_t identifier_location : 1;
+	uint8_t UAPSD_coexist : 1;
+	uint8_t WNM_notification : 1;
+	uint8_t QAB_capa : 1;
 
 	// octet [6]
-	bool UTF8_ssid : 1; // ¯\_(ツ)_/¯
-	bool QMF_activated : 1;
-	bool QMF_reconfig_activated : 1;
-	bool robust_av_streaming : 1;
-	bool advanced_GCR : 1;
-	bool mesh_GCR : 1;
-	bool SCS : 1;
-	bool q_load_report : 1;
+	uint8_t UTF8_ssid : 1; // ¯\_(ツ)_/¯
+	uint8_t QMF_activated : 1;
+	uint8_t QMF_reconfig_activated : 1;
+	uint8_t robust_av_streaming : 1;
+	uint8_t advanced_GCR : 1;
+	uint8_t mesh_GCR : 1;
+	uint8_t SCS : 1;
+	uint8_t q_load_report : 1;
 
 	// octet[7];
-	bool alternate_EDCA : 1;
-	bool unprot_TXOP_negotiation : 1;
-	bool prot_TXOP_negotiation : 1;
+	uint8_t alternate_EDCA : 1;
+	uint8_t unprot_TXOP_negotiation : 1;
+	uint8_t prot_TXOP_negotiation : 1;
 	// bit 59 reserved
-	bool prot_q_load_report : 1;
-	bool TDLS_wider_bandwidth : 1;
-	bool operating_mode_notification : 1;
+	uint8_t prot_q_load_report : 1;
+	uint8_t TDLS_wider_bandwidth : 1;
+	uint8_t operating_mode_notification : 1;
 
 	// 2 bits broken across octet[7] and octet[8]
 	// (thanks, 802.11 technical committee(s)!)
 	unsigned int max_MSDU_in_AMSDU : 2;
 
 	// rest of octet[8] starting with bit 65
-	bool channel_mgmt_sched : 1;
-	bool geo_db_inband : 1;
-	bool network_channel_control : 1;
-	bool whitespace_map : 1;
-	bool channel_avail_query : 1;
-	bool FTM_responder : 1;
-	bool FTM_initiator : 1;
+	uint8_t channel_mgmt_sched : 1;
+	uint8_t geo_db_inband : 1;
+	uint8_t network_channel_control : 1;
+	uint8_t whitespace_map : 1;
+	uint8_t channel_avail_query : 1;
+	uint8_t FTM_responder : 1;
+	uint8_t FTM_initiator : 1;
 
 	// octet [9]
 	// bit 72 reserved (skipped) in IEEE 80211-2016.pdf 
-	bool extended_spectrum_mgmt : 1;
-	bool future_channel_guidance : 1;
+	uint8_t extended_spectrum_mgmt : 1;
+	uint8_t future_channel_guidance : 1;
 
 };
 

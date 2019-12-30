@@ -88,22 +88,22 @@ struct BSS
 // (TODO DMG)
 struct Capability
 {
-	bool ESS : 1;
-	bool IBSS : 1;
-	bool CF_POLLABLE : 1;
-	bool CF_POLL_REQUEST : 1;
-	bool PRIVACY : 1;
-	bool SHORT_PREAMBLE : 1;
-	bool PBCC : 1;
-	bool CHANNEL_AGILITY : 1;
-	bool SPECTRUM_MGMT : 1;
-	bool QOS : 1;
-	bool SHORT_SLOT_TIME : 1;
-	bool APSD : 1;
-	bool RADIO_MEASURE : 1;
-	bool DSSS_OFDM : 1;
-	bool DEL_BACK : 1;
-	bool IMM_BACK : 1;
+	uint8_t ESS : 1;
+	uint8_t IBSS : 1;
+	uint8_t CF_POLLABLE : 1;
+	uint8_t CF_POLL_REQUEST : 1;
+	uint8_t PRIVACY : 1;
+	uint8_t SHORT_PREAMBLE : 1;
+	uint8_t PBCC : 1;
+	uint8_t CHANNEL_AGILITY : 1;
+	uint8_t SPECTRUM_MGMT : 1;
+	uint8_t QOS : 1;
+	uint8_t SHORT_SLOT_TIME : 1;
+	uint8_t APSD : 1;
+	uint8_t RADIO_MEASURE : 1;
+	uint8_t DSSS_OFDM : 1;
+	uint8_t DEL_BACK : 1;
+	uint8_t IMM_BACK : 1;
 };
 
 #ifdef __cplusplus
