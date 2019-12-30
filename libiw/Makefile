@@ -28,6 +28,9 @@ TEST:=test_ie test_bss test_bytebuf test_ie_he
 
 all:scan-event-ev scan-dump $(TEST)
 
+libiw.a: iw.o iw-scan.o bytebuf.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o list_debug.o bug.o ie_print.o
+	$(AR) rcs $@ $^
+
 scan-event: scan-event.o hdump.o iw-scan.o nlnames.o log.o list_debug.o bug.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
@@ -43,9 +46,19 @@ scan-event-ev.o: scan-event-ev.c iw-scan.h bytebuf.h $(CORE_H)
 scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o list_debug.o bug.o ie_print.o
 	$(CC) $(LDFLAGS) $(ICU_LDFLAGS) -o $@ $^
 
+scan-dump-lib: scan-dump.o 
+	$(CC) $(LDFLAGS) $(ICU_LDFLAGS) -o $@ $^ -L../libiw -liw 
+
 scan-dump.o: scan-dump.c iw.h ie.h ie_he.h ie_print.h $(CORE_H)
 	$(CC) $(CFLAGS) $(ICU_CFLAGS) -c $< -o $@
 
+.PHONY:tst
+tst:
+	gcc -g -Wall -o hello.o -c hello.c
+	gcc -g -Wall -o tst.o -c tst.c
+	ar rcs libhello.a hello.o xassert.o log.o
+	ranlib libhello.a
+	gcc -g -Wall -o tst tst.o -L. -lhello
 
 hdump.o:hdump.c hdump.h $(CORE_H)
 log.o:log.c log.h $(CORE_H)
@@ -88,4 +101,4 @@ test: test_bytebuf test_ie test_bss test_ie_he
 	valgrind $(VALGRIND_OPTS)  ./test_bss
 
 clean:
-	$(RM) *.o scan-event scan-event-ev test_bss test_bytebuf test_ie test_xassert scan-dump
+	$(RM) *.o *.a scan-event scan-event-ev test_bss test_bytebuf test_ie test_xassert scan-dump
