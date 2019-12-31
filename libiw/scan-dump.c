@@ -57,7 +57,7 @@ static int ack_handler(struct nl_msg *msg, void *arg)
 
 static int valid_handler(struct nl_msg *msg, void *arg)
 {
-	struct list_head* bss_list = (struct list_head*)arg;
+	struct dl_list* bss_list = (struct dl_list*)arg;
 	struct BSS* bss = NULL;
 
 	INFO("%s\n", __func__);
@@ -77,7 +77,7 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 		goto fail;
 	}
 
-	list_add(&bss->node, bss_list);
+	dl_list_add_tail(bss_list, &bss->node);
 
 	DBG("%s success\n", __func__);
 	return NL_OK;
@@ -766,7 +766,7 @@ int main(int argc, char* argv[])
 
 	const char* ifname = argv[1];
 
-	LIST_HEAD(bss_list);
+	DEFINE_DL_LIST(bss_list);
 	struct nl_cb* cb = nl_cb_alloc(NL_CB_DEFAULT);
 
 	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, valid_handler, (void*)&bss_list);
@@ -801,7 +801,7 @@ int main(int argc, char* argv[])
 
 	U_STRING_INIT(hidden, "<hidden>", 8);
 	struct BSS* bss;
-	list_for_each_entry(bss, &bss_list, node) {
+	dl_list_for_each(bss, &bss_list, struct BSS, node) {
 		print_bss(bss);
 	}
 
@@ -812,9 +812,9 @@ int main(int argc, char* argv[])
 //	}
 
 	printf("\n\n");
-	list_for_each_entry(bss, &bss_list, node) {
-		print_json(bss);
-	}
+//	list_for_each_entry(bss, &bss_list, node) {
+//		print_json(bss);
+//	}
 	json_t* jlist=NULL;
 	err = bss_list_to_json(&bss_list, &jlist);
 	XASSERT(err==0, err);
@@ -829,7 +829,7 @@ int main(int argc, char* argv[])
 	json_decref(jlist);
 
 	printf("\n\n");
-	list_for_each_entry(bss, &bss_list, node) {
+	dl_list_for_each(bss, &bss_list, struct BSS, node) {
 		print_short(bss);
 	}
 

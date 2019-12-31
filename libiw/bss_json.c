@@ -23,7 +23,7 @@ int bss_to_json(const struct BSS* bss)
 	return 0;
 }
 
-int bss_list_to_json(struct list_head* bss_list, json_t** p_jarray)
+int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray)
 {
 	int err = 0;
 	json_t* jarray = NULL; // array of bss
@@ -45,7 +45,7 @@ int bss_list_to_json(struct list_head* bss_list, json_t** p_jarray)
 		}
 
 	struct BSS* bss;
-	list_for_each_entry(bss, bss_list, node) {
+	dl_list_for_each(bss, bss_list, struct BSS, node) {
 		const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
 		const struct IE_SSID* sie = IE_CAST(ie, struct IE_SSID);
 		jssid = json_stringn(sie->ssid, sie->ssid_len);

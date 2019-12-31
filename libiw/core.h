@@ -21,7 +21,7 @@ extern "C" {
 #endif
 
 // from iw util.c
-void mac_addr_n2a(char mac_addr[static 24], const unsigned char *arg);
+void mac_addr_n2a(char mac_addr[], const unsigned char *arg);
 
 #ifdef __cplusplus
 } // end extern "C"

@@ -38,16 +38,16 @@ void bss_free(struct BSS** pbss)
 	PTR_FREE(bss);
 }
 
-void bss_free_list(struct list_head* bss_list)
+void bss_free_list(struct dl_list* bss_list)
 {
-	while( !list_empty(bss_list)) {
-		struct BSS* bss = list_first_entry(bss_list, typeof(*bss), node);
+	while( !dl_list_empty(bss_list)) {
+		struct BSS* bss = dl_list_first(bss_list, typeof(*bss), node);
 		if (!bss) {
 			break;
 		}
 
 		XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
-		list_del(&bss->node);
+		dl_list_del(&bss->node);
 		XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
 		bss_free(&bss);
 	}

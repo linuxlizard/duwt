@@ -28,22 +28,22 @@ TEST:=test_ie test_bss test_bytebuf test_ie_he
 
 all:scan-event-ev scan-dump $(TEST)
 
-libiw.a: iw.o iw-scan.o bytebuf.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o list_debug.o bug.o ie_print.o
+libiw.a: iw.o iw-scan.o bytebuf.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o bug.o ie_print.o
 	$(AR) rcs $@ $^
 
-scan-event: scan-event.o hdump.o iw-scan.o nlnames.o log.o list_debug.o bug.o
+scan-event: scan-event.o hdump.o iw-scan.o nlnames.o log.o bug.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 scan-event.o: scan-event.c
 	$(CC) $(CFLAGS) -c scan-event.c -o scan-event.o 
 
-scan-event-ev: scan-event-ev.o $(CORE_O) iw-scan.o nlnames.o bytebuf.o ie.o ie_he.o list_debug.o bug.o
+scan-event-ev: scan-event-ev.o $(CORE_O) iw-scan.o nlnames.o bytebuf.o ie.o ie_he.o bug.o
 	$(CC) $(LDFLAGS) -lev -o $@ $^
 
 scan-event-ev.o: scan-event-ev.c iw-scan.h bytebuf.h $(CORE_H)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o list_debug.o bug.o ie_print.o bss_json.o
+scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o bug.o ie_print.o bss_json.o
 	$(CC) $(LDFLAGS) $(ICU_LDFLAGS) -o $@ $^
 
 scan-dump-lib: scan-dump.o 
@@ -69,7 +69,6 @@ iw.o:iw.c iw.h $(CORE_H)
 bss.o:bss.c bss.h $(CORE_H)
 xassert.o:xassert.c xassert.h $(CORE_H)
 iw-scan.o:iw-scan.c iw-scan.h bytebuf.h $(CORE_H)
-list_debug.o:list_debug.c list.h bug.h $(CORE_H)
 bug.o:bug.c bug.h $(CORE_H)
 util.o:util.c $(CORE_H)
 bss_json.o:bss_json.c bss_json.h $(CORE_H)
@@ -91,7 +90,7 @@ test_ie_he.o:test_ie_he.c ie.h ie_he.h ie_print.h $(CORE_H)
 test_bytebuf:test_bytebuf.o bytebuf.o xassert.o hdump.o log.o
 test_bytebuf.o:test_bytebuf.c bytebuf.h xassert.h log.h
 
-test_bss:test_bss.o bss.o ie.o ie_he.o iw.o list_debug.o nlnames.o bug.o $(CORE_O)
+test_bss:test_bss.o bss.o ie.o ie_he.o iw.o nlnames.o bug.o $(CORE_O)
 test_bss.o:test_bss.c $(CORE_H)
 
 VALGRIND_OPTS=--error-exitcode=1 --leak-check=yes --exit-on-first-error=yes

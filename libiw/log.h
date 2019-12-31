@@ -7,7 +7,15 @@
 #define LOG_LEVEL_DEBUG 4
 #define LOG_LEVEL_PLAID 99
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void logmsg(int level, const char* fmt, ...) __attribute__((format (printf, 2,3)));
+
+#ifdef __cplusplus
+} // end extern "C"
+#endif
 
 #ifdef HAVE_MODULE_LOGLEVEL
 // file level logging level so can change logging levels @ run-time

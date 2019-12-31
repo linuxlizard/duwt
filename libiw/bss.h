@@ -17,7 +17,7 @@ struct capability;
 struct BSS 
 {
 	uint32_t cookie;
-	struct list_head node;
+	struct dl_list node;
 	int ifindex;
 
 	macaddr bssid;
@@ -113,7 +113,7 @@ extern "C" {
 struct BSS* bss_new(void);
 void bss_free(struct BSS** pbss);
 
-void bss_free_list(struct list_head* list);
+void bss_free_list(struct dl_list* list);
 
 // parse NL80211_ATTR_xxx into a struct BSS
 int bss_from_nlattr(struct nlattr* attr[], struct BSS** pbss);

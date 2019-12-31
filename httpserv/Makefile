@@ -2,20 +2,26 @@ CC=gcc
 CFLAGS=-g -Wall -Wpedantic -Wextra 
 LDFLAGS=-lmicrohttpd
 
-PKGS=libnl-3.0 libnl-genl-3.0 
+PKGS=libnl-3.0 libnl-genl-3.0 jansson
 CFLAGS+=$(shell pkg-config --cflags $(PKGS))
 LDFLAGS+=$(shell pkg-config --libs $(PKGS))
 
 CFLAGS+=-I../libiw
 LDFLAGS+=-L../libiw -liw
 
+CPPFLAGS=$(CFLAGS)
+
 all:sitesurvd
 
-sitesurvd:sitesurvd.o
+sitesurvd:sitesurvd.o bss_json.o
 	$(CC) $(LDFLAGS) -o $@ $^ -lev -L../libiw -liw
 
-sitesurvd.o:sitesurvd.c
+#sitesurvd.o:sitesurvd.c
 
+sitesurvd.o:sitesurvd.cc
+
+bss_json.o:../libiw/bss_json.c ../libiw/bss_json.h
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
 	$(RM) *.o sitesurvd

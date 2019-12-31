@@ -59,6 +59,8 @@ int parse_nla_bss(struct nlattr* attr_list, struct BSS* bss)
 	struct nlattr* attr;
 	int err;
 
+	DBG("%s\n", __func__);
+
 	if (nla_parse_nested(bss_attr, NL80211_BSS_MAX,
 			     attr_list,
 			     bss_policy)) {
