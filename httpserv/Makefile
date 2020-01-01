@@ -14,7 +14,7 @@ CPPFLAGS=$(CFLAGS)
 all:sitesurvd
 
 sitesurvd:sitesurvd.o bss_json.o
-	$(CC) $(LDFLAGS) -o $@ $^ -lev -L../libiw -liw
+	$(CC) $(LDFLAGS) -o $@ $^ -L../libiw -liw -lstdc++
 
 #sitesurvd.o:sitesurvd.c
 

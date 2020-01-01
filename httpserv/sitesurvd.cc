@@ -21,9 +21,7 @@
 
 #include <microhttpd.h>
 
-// http://software.schmorp.de/pkg/libev.html
-// Blessed by Bishop Collins
-#include <ev.h>
+#include <algorithm>
 
 #include "core.h"
 #include "iw.h"
@@ -46,57 +44,17 @@ struct parameters {
 #define BUNDLE_COOKIE 0x01448f44
 struct netlink_socket_bundle 
 {
-	ev_io io;
 	uint32_t cookie;
+	const char* name;
+
 	struct nl_cb* cb;
 	struct nl_sock* nl_sock;
+	int sock_fd;
 	int nl80211_id;
 	int cb_err;
+	void* more_args;
 };
 
-#define NETLINK_EV_COOKIE 0xb3106234
-struct netlink_ev
-{
-	ev_io io;
-	uint32_t cookie;
-
-	// scan evevent listener
-	struct nl_cb* cb;
-	struct nl_sock* nl_sock;
-
-	// netlink socket stuff for getting scan results
-	struct netlink_socket_bundle scan_sock;
-};
-
-static void on_scan_event_ev_cb(EV_P_ ev_io* w, int revents)
-{
-	// libev callback on the Scan Event netlink socket 
-	(void)w;
-	(void)revents;
-	struct netlink_ev* n = (struct netlink_ev *)w;
-	struct nl_sock* nl_sock = n->nl_sock;
-
-	DBG("%s\n", __func__);
-	int nl_err = nl_recvmsgs_default(nl_sock);
-	DBG("%s recvmsgs=%d\n", __func__, nl_err);
-}
-
-static void on_scan_result_ev_cb(EV_P_ ev_io* w, int revents)
-{
-	// libev callback on the Get Scan netlink socket 
-	(void)w;
-	(void)revents;
-	struct netlink_socket_bundle* bun = (struct netlink_socket_bundle*)w;
-	XASSERT(bun->cookie == BUNDLE_COOKIE, bun->cookie);
-
-	DBG("%s\n", __func__);
-	bun->cb_err = 1;
-	while (bun->cb_err > 0) {
-		int err = nl_recvmsgs(bun->nl_sock, bun->cb);
-		INFO("nl_recvmsgs err=%d\n", err);
-		DBG("%s recvmsgs=%d\n", __func__, err);
-	}
-}
 
 static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 {
@@ -131,7 +89,7 @@ static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 		goto fail;
 	}
 
-	dl_list_add_tail(&bss->node, &bss_list);
+	dl_list_add_tail(&bss_list, &bss->node);
 
 	DBG("%s success\n", __func__);
 	return NL_OK;
@@ -198,8 +156,8 @@ static int on_scan_event_valid_handler(struct nl_msg *msg, void *arg)
 	// libnl callback for the Scan Event received
 	DBG("%s %p %p\n", __func__, (void *)msg, arg);
 	
-	struct netlink_ev* nlev = (struct netlink_ev*)arg;
-	XASSERT(nlev->cookie == NETLINK_EV_COOKIE, nlev->cookie);
+	struct netlink_socket_bundle* bun = (struct netlink_socket_bundle*)arg;
+	XASSERT(bun->cookie == BUNDLE_COOKIE, bun->cookie);
 
 //	hex_dump("msg", (const unsigned char *)msg, 128);
 
@@ -240,14 +198,17 @@ static int on_scan_event_valid_handler(struct nl_msg *msg, void *arg)
 	// if new scan results,
 	// send the get scan results message
 	if (gnlh->cmd == NL80211_CMD_NEW_SCAN_RESULTS && ifidx != -1) {
+		struct netlink_socket_bundle* scan_sock_bun = (struct netlink_socket_bundle*)bun->more_args;
+		XASSERT(scan_sock_bun->cookie == BUNDLE_COOKIE, scan_sock_bun->cookie);
+
 		struct nl_msg* new_msg = nlmsg_alloc();
 
 		genlmsg_put(new_msg, NL_AUTO_PORT, NL_AUTO_SEQ, 
-							nlev->scan_sock.nl80211_id, 
+							scan_sock_bun->nl80211_id, 
 							0, 
 							NLM_F_DUMP, NL80211_CMD_GET_SCAN, 0);
 		nla_put_u32(new_msg, NL80211_ATTR_IFINDEX, ifidx);
-		int err = nl_send_auto(nlev->scan_sock.nl_sock, new_msg);
+		int err = nl_send_auto(scan_sock_bun->nl_sock, new_msg);
 		if (err) {
 			// TODO
 		}
@@ -465,7 +426,7 @@ int answer_to_connection (void *cls,
 						void **con_cls)
 {
 	// MHD callback
-	printf("%s\n", __func__);
+	printf("%s cls=%p\n", __func__, cls);
 	char page[1024];
 #define msg "<html><body>Found %zu BSSID</body></html>"
 
@@ -526,9 +487,9 @@ static int on_client_connect (void *cls,
 int setup_scan_netlink_socket(struct netlink_socket_bundle* bun)
 {
 	// this is the netlink socket we'll use to get scan results
-
 	memset(bun, 0, sizeof(struct netlink_socket_bundle));
 	bun->cookie = BUNDLE_COOKIE;
+	bun->name = "scanresults";
 
 	bun->cb = nl_cb_alloc(NL_CB_DEFAULT);
 
@@ -544,96 +505,145 @@ int setup_scan_netlink_socket(struct netlink_socket_bundle* bun)
 	}
 
 	bun->nl80211_id = genl_ctrl_resolve(bun->nl_sock, NL80211_GENL_NAME);
+	bun->sock_fd = nl_socket_get_fd(bun->nl_sock);
 
 	return 0;
 }
 
-int setup_scan_event_sock(struct netlink_ev* nlev)
+int setup_scan_event_sock(struct netlink_socket_bundle* bun)
 {
-	nlev->cookie = NETLINK_EV_COOKIE;
+	memset(bun, 0, sizeof(struct netlink_socket_bundle));
+	bun->cookie = BUNDLE_COOKIE;
+	bun->name = "events";
 
 	/* from iw event.c */
 	/* no sequence checking for multicast messages */
-	nlev->cb = nl_cb_alloc(NL_CB_DEFAULT);
-	nl_cb_set(nlev->cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
-	nl_cb_set(nlev->cb, NL_CB_VALID, NL_CB_CUSTOM, on_scan_event_valid_handler, (void*)nlev);
+	bun->cb = nl_cb_alloc(NL_CB_DEFAULT);
+	nl_cb_set(bun->cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
+	nl_cb_set(bun->cb, NL_CB_VALID, NL_CB_CUSTOM, on_scan_event_valid_handler, (void*)bun);
 
-	nlev->nl_sock = nl_socket_alloc_cb(nlev->cb);
-	int err = genl_connect(nlev->nl_sock);
+	bun->nl_sock = nl_socket_alloc_cb(bun->cb);
+	int err = genl_connect(bun->nl_sock);
 	DBG("genl_connect err=%d\n", err);
 	if (err) {
 		// TODO
 	}
 
-//	int nl80211_id = genl_ctrl_resolve(nl_sock, NL80211_GENL_NAME);
-//	DBG("nl80211_id=%d\n", nl80211_id);
-	int mcid = get_multicast_id(nlev->nl_sock, "nl80211", "scan");
-	DBG("mcid=%d\n", mcid);
-	nl_socket_add_membership(nlev->nl_sock, mcid);
+	bun->nl80211_id = genl_ctrl_resolve(bun->nl_sock, NL80211_GENL_NAME);
 
-	err = setup_scan_netlink_socket(&nlev->scan_sock);
-	if (err) {
-		// TODO
-	}
+	int mcid = get_multicast_id(bun->nl_sock, "nl80211", "scan");
+	DBG("mcid=%d\n", mcid);
+	nl_socket_add_membership(bun->nl_sock, mcid);
+
+	bun->sock_fd = nl_socket_get_fd(bun->nl_sock);
+
+	return 0;
+}
+
+static int netlink_read(struct netlink_socket_bundle* bun)
+{
+	DBG("%s on %s\n", __func__, bun->name);
+	do {
+		int err = nl_recvmsgs(bun->nl_sock, bun->cb);
+		DBG("%s err=%d cb_err=%d\n", __func__, err, bun->cb_err);
+		if (err) {
+			// TODO
+		}
+	} while (bun->cb_err > 0);
 
 	return 0;
 }
 
 int main (void)
 {
-	struct ev_loop* loop = EV_DEFAULT;
-	struct MHD_Daemon *daemon;
-
-	DBG("using libev %d %d\n", ev_version_major(), ev_version_minor());
-	DBG("libev recommended=%#x\n", ev_recommended_backends());
+	struct MHD_Daemon *daemon = nullptr;
 
 	DEFINE_DL_LIST(bss_list);
 
-//	daemon = MHD_start_daemon ( MHD_NO_FLAG, PORT, 
-//			on_client_connect, NULL,
-//			&answer_to_connection, NULL, 
-//			MHD_OPTION_END);
-//
-//	fd_set read_fd_set, write_fd_set, except_fd_set;
-//	MHD_socket max_fd;
-//	FD_ZERO(read_fd_set);
-//	FD_ZERO(write_fd_set);
-//	FD_ZERO(except_fd_set);
-//	int ret = MHD_get_fdset (daemon,
-//               &read_fd_set,
-//               &write_fd_set,
-//               &except_fd_set,
-//               &max_fd);
-//	XASSERT(ret==MHD_YES, ret);
+	daemon = MHD_start_daemon ( MHD_NO_FLAG, PORT, 
+			&on_client_connect, NULL,
+			&answer_to_connection, NULL, 
+			MHD_OPTION_END);
+	XASSERT( daemon, 0);
 
-//	ret = MHD_run_from_select(daemon, const fd_set *read_fd_set,
-//								const fd_set *write_fd_set,
-//								const fd_set *except_fd_set);
+	fd_set read_fd_set, write_fd_set, except_fd_set;
+	MHD_socket max_fd=0;
+	FD_ZERO(&read_fd_set);
+	FD_ZERO(&write_fd_set);
+	FD_ZERO(&except_fd_set);
+	int ret = MHD_get_fdset (daemon,
+							&read_fd_set,
+							&write_fd_set,
+							&except_fd_set,
+							&max_fd);
+	XASSERT(ret==MHD_YES, ret);
 
-	struct netlink_ev nl_watcher;
-	int err = setup_scan_event_sock(&nl_watcher);
+	struct netlink_socket_bundle scan_event_watcher;
+	int err = setup_scan_event_sock(&scan_event_watcher);
 	if (err) {
 		// TODO
 	}
 
-	int nl_sock_fd = nl_socket_get_fd(nl_watcher.nl_sock);
-	ev_io_init(&nl_watcher.io, on_scan_event_ev_cb, nl_sock_fd, EV_READ);
-	ev_io_start(loop, &nl_watcher.io);
+	struct netlink_socket_bundle scan_results_watcher;
+	err = setup_scan_netlink_socket(&scan_results_watcher);
+	if (err) {
+		// TODO
+	}
 
-	nl_sock_fd = nl_socket_get_fd(nl_watcher.scan_sock.nl_sock);
-	ev_io_init(&nl_watcher.scan_sock.io, on_scan_result_ev_cb, nl_sock_fd, EV_READ);
-	ev_io_start(loop, &nl_watcher.scan_sock.io);
+	// attach the scan results watcher to the scan event watcher so we can call
+	// GET_SCAN_RESULTS from the watcher's libnl callback
+	scan_event_watcher.more_args = (void*)&scan_results_watcher;
 
-	daemon = MHD_start_daemon (MHD_USE_INTERNAL_POLLING_THREAD, PORT, 
-			on_client_connect, NULL,
-			&answer_to_connection, NULL, 
-			MHD_OPTION_END);
-	if (NULL == daemon) return 1;
+	FD_SET(scan_event_watcher.sock_fd, &read_fd_set);
+	FD_SET(scan_results_watcher.sock_fd, &read_fd_set);
 
-	printf("daemon running...\n");
-//	getchar ();
+	int nfds = max_fd;
+	nfds = std::max(scan_event_watcher.sock_fd, nfds);
+	nfds = std::max(scan_results_watcher.sock_fd, nfds);
+	nfds += 1;
 
-	ev_run(loop, 0);
+	while(1) { 
+		max_fd=0;
+		FD_ZERO(&read_fd_set);
+		FD_ZERO(&write_fd_set);
+		FD_ZERO(&except_fd_set);
+		ret = MHD_get_fdset (daemon,
+								&read_fd_set,
+								&write_fd_set,
+								&except_fd_set,
+								&max_fd);
+		XASSERT(ret==MHD_YES, ret);
+		FD_SET(scan_event_watcher.sock_fd, &read_fd_set);
+		FD_SET(scan_results_watcher.sock_fd, &read_fd_set);
+
+		nfds = max_fd;
+		nfds = std::max(scan_event_watcher.sock_fd, nfds);
+		nfds = std::max(scan_results_watcher.sock_fd, nfds);
+
+		DBG("calling select ndfs=%d\n", nfds);
+		err = select(nfds+1, &read_fd_set, &write_fd_set, &except_fd_set, NULL);
+		DBG("select err=%d\n", err);
+
+		if (err<0) {
+			ERR("select failed err=%d errno=%d \"%s\"\n", err, errno, strerror(errno));
+			break;
+		}
+
+		if (FD_ISSET(scan_event_watcher.sock_fd, &read_fd_set)) {
+			scan_event_watcher.cb_err = 0;
+			err = netlink_read(&scan_event_watcher);
+		}
+
+		if (FD_ISSET(scan_results_watcher.sock_fd, &read_fd_set)) {
+			scan_results_watcher.cb_err = 1;
+			err = netlink_read(&scan_results_watcher);
+		}
+
+		ret = MHD_run_from_select(daemon, &read_fd_set,
+									&write_fd_set,
+									&except_fd_set);
+		XASSERT(ret==MHD_YES, ret);
+	}
 
 	MHD_stop_daemon (daemon);
 	return 0;
