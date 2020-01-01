@@ -452,7 +452,7 @@ struct IE_Extended_Supported_Rates
 	IE_SPECIFIC_FIELDS
 
 	size_t count;
-	struct Supported_Rate rates[];
+	struct Supported_Rate rates[1];
 };
 
 struct IE_Mobility_Domain
