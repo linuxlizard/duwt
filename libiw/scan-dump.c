@@ -527,15 +527,21 @@ static void print_ht_operation(const struct BSS* bss)
 
 static int ssid_to_unicode_str(const struct BSS* bss, UChar ssid[], size_t len )
 {
+	static int hidden_len = 0;
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
 
-	if (!ie) {
-		return -ENOENT;
+	if (hidden_len == 0) {
+		hidden_len = u_strlen(hidden);
 	}
 
-	// return 0 to indicate a hidden SSID
+	if (!ie) {
+		u_strncpy(ssid, hidden, len);
+		return hidden_len;
+	}
+
 	if (ie->len == 0 || ie->buf[0] == 0) {
-		return 0;
+		u_strncpy(ssid, hidden, len);
+		return hidden_len;
 	}
 
 	const struct IE_SSID* sie = IE_CAST(ie, struct IE_SSID);
@@ -651,7 +657,7 @@ static void print_ssid(struct BSS* bss)
 	int ret = ssid_to_unicode_str(bss, ssid, sizeof(ssid));
 	XASSERT(ret>=0, ret);
 
-	if (ret==0) {
+	if (ret==0 || ret==-ENOENT) {
 		u_printf("%32S ", hidden);
 	}
 	else {
