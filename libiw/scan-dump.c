@@ -658,10 +658,10 @@ static void print_ssid(struct BSS* bss)
 	XASSERT(ret>=0, ret);
 
 	if (ret==0 || ret==-ENOENT) {
-		u_printf("%32S ", hidden);
+		u_printf("\tSSID: %S\n", hidden);
 	}
 	else {
-		u_printf("%32S ", ssid);
+		u_printf("\tSSID: %S\n", ssid);
 	}
 }
 
@@ -757,10 +757,30 @@ static void print_short(const struct BSS* bss)
 
 }
 
-static void print_json(const struct BSS* bss)
-{
-	int err= bss_to_json(bss);
+//static void print_json(const struct BSS* bss)
+//{
+//	int err= bss_to_json(bss);
+//}
 
+static void search_for(struct dl_list* list)
+{
+	// tinkering with searching the bss list for a BSS with certain IE fields
+	//
+	struct BSS* bss;
+	dl_list_for_each(bss, list, struct BSS, node) {
+		const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_HT_CAPABILITIES);
+		if (!ie) {
+			continue;
+		}
+
+		const struct IE_HT_Capabilities* sie = IE_CAST(ie, struct IE_HT_Capabilities);
+		printf(MAC_ADD_FMT " %d\n", MAC_ADD_PRN(bss->bssid), sie->_40Mhz_intolerant);
+
+		if (sie->_40Mhz_intolerant) {
+			printf(MAC_ADD_FMT " is being a butt\n", MAC_ADD_PRN(bss->bssid));
+		}
+
+	}
 }
 
 int main(int argc, char* argv[])
@@ -806,6 +826,7 @@ int main(int argc, char* argv[])
 	}
 
 	U_STRING_INIT(hidden, "<hidden>", 8);
+
 	struct BSS* bss;
 	dl_list_for_each(bss, &bss_list, struct BSS, node) {
 		print_bss(bss);
@@ -827,8 +848,8 @@ int main(int argc, char* argv[])
 
 	printf("json list len=%zu\n", json_array_size(jlist));
 
-//	char* s = json_dumps(jlist, JSON_INDENT(1));
-	char* s = json_dumps(jlist, 0);
+	char* s = json_dumps(jlist, JSON_INDENT(1));
+//	char* s = json_dumps(jlist, 0);
 	printf("%s\n", s);
 	PTR_FREE(s);
 	json_array_clear(jlist);
@@ -838,6 +859,19 @@ int main(int argc, char* argv[])
 	dl_list_for_each(bss, &bss_list, struct BSS, node) {
 		print_short(bss);
 	}
+
+#if 0
+	printf("\n\n");
+	dl_list_for_each(bss, &bss_list, struct BSS, node) {
+//		uint64_t bssid = *(uint64_t*)bss->bssid & ~(0xffffULL << 48);
+		uint64_t bssid = BSSID_U64(bss->bssid);
+
+		printf(MAC_ADD_FMT " %#018" PRIx64 "\n", 
+				MAC_ADD_PRN(bss->bssid), bssid);
+	}
+#endif
+
+//	search_for(&bss_list);
 
 leave:
 	bss_free_list(&bss_list);
