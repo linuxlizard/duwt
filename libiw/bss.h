@@ -14,6 +14,9 @@ typedef uint8_t macaddr[ETH_ALEN];
 
 struct capability;
 
+// this seems like a bad idea
+#define BSSID_U64(buf) (*(uint64_t*)(buf) & ~(0xffffULL << 48))
+
 struct BSS 
 {
 	uint32_t cookie;
@@ -21,6 +24,7 @@ struct BSS
 	int ifindex;
 
 	macaddr bssid;
+
 	// bssid in printable string format
 	char bssid_str[24];
 
