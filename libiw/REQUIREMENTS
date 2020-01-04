@@ -14,13 +14,15 @@ ICU - International Components for UnicodeICU - International Components for Uni
 http://site.icu-project.org/
 https://github.com/unicode-org/icu/releases/tag/release-65-1
 (Fedora) dnf install libicu-devel
+(Ubuntu) apt install libicu-dev
 
 GNU libmicrohttpd is a small C library that is supposed to make it easy to run
 an HTTP server as part of another application.
 https://www.gnu.org/software/libmicrohttpd/
 (Fedora) dnf install libmicrohttpd-devel
+(Ubuntu) apt install libmicrohttpd-dev
 
 Jansson is a C library for encoding, decoding and manipulating JSON data. 
 https://jansson.readthedocs.io/en/2.8/index.html
 (Fedora) dnf install jansson-devel
-
+(Ubuntu) apt install libjansson-dev
