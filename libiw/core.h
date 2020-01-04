@@ -16,6 +16,10 @@
 
 #define ARRAY_SIZE(ar) (sizeof(ar)/sizeof(ar[0]))
 
+// e.g., printf("BSSID=" MAC_ADD_FMT "\n", MAC_ADD_PRN(bss->bssid));
+#define MAC_ADD_FMT "%02x:%02x:%02x:%02x:%02x:%02x"
+#define MAC_ADD_PRN(m) m[0], m[1], m[2], m[3], m[4], m[5]
+
 #ifdef __cplusplus
 extern "C" {
 #endif
