@@ -26,7 +26,7 @@ CORE_O:=xassert.o log.o hdump.o util.o
 
 TEST:=test_ie test_bss test_bytebuf test_ie_he
 
-all:scan-event-ev scan-dump $(TEST)
+all:scan-event-ev scan-dump $(TEST) libiw.a
 
 libiw.a: iw.o iw-scan.o bytebuf.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o bug.o ie_print.o
 	$(AR) rcs $@ $^
