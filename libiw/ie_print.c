@@ -28,6 +28,55 @@
 		}\
 	} while(0);
 
+void ie_print_rm_enabled_capabilities(const struct IE_RM_Enabled_Capabilities* sie)
+{
+	char s[128];
+	int ret;
+
+	printf("\tRadio Measurement Capabilities:\n");
+#define STRING_FN rm_enabled_capa_to_str
+#define _struct sie
+	int bit = 0;
+	PRNBOOL(link, bit++);
+	PRNBOOL(neighbor_report, bit++);
+	PRNBOOL(parallel, bit++);
+	PRNBOOL(repeated, bit++);
+	PRNBOOL(beacon_passive , bit++);
+	PRNBOOL(beacon_active , bit++);
+	PRNBOOL(beacon_table , bit++);
+	PRNBOOL(beacon_measurement_conditions, bit++);
+	XASSERT(bit==8, bit);
+
+	PRNBOOL(frame , bit++);
+	PRNBOOL(channel_load, bit++);
+	PRNBOOL(noise_histogram , bit++);
+	PRNBOOL(statistics , bit++);
+	PRNBOOL(lci , bit++);
+	PRNBOOL(lci_azimuth, bit++);
+	PRNBOOL(tx_stream , bit++);
+	PRNBOOL(triggered_tx_stream , bit++);
+	XASSERT(bit==16, bit);
+
+	PRNBOOL(ap_channel , bit++);
+	PRNBOOL(rm_mib , bit++);
+	PRN(operating_channel_max, bit); bit+=3;
+	PRN(nonoperating_channel_max, bit); bit+=3;
+
+	PRN(measurement_pilot_capa, bit); bit+=3;
+	PRNBOOL(measurement_pilot_tx_info_capa , bit++);
+	PRNBOOL(neighbor_report_tsf_offset_capa , bit++);
+	PRNBOOL(rcpi , bit++);
+	PRNBOOL(rsni , bit++);
+	PRNBOOL(bss_avg_access_delay, bit++);
+
+	PRNBOOL(bss_avail_admission_capacity, bit++);
+	PRNBOOL(antenna, bit++);
+	PRNBOOL(ftm_range_report, bit++);
+	PRNBOOL(civic_location, bit++);
+#undef STRING_FN
+#undef _struct
+}
+
 void ie_print_mobility_domain(const struct IE_Mobility_Domain* sie)
 {
 	char s[128];

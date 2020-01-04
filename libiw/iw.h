@@ -47,6 +47,8 @@ int auth_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len);
 int rsn_capabilities_to_str(const struct IE_RSN* ie, char* s, size_t len);
 int rm_enabled_capa_to_str(const struct IE_RM_Enabled_Capabilities* sie, unsigned int idx, char* s, size_t len);
 int mobility_domain_to_str(const struct IE_Mobility_Domain* sie, unsigned int bit, char* s, size_t len);
+int ieee80211_channel_to_frequency(int chan, enum nl80211_band band);
+int ieee80211_frequency_to_channel(int freq);
 
 #ifdef __cplusplus
 } // end extern "C"

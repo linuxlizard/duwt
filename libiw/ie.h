@@ -386,6 +386,7 @@ struct IE_RM_Enabled_Capabilities
 {
 	IE_SPECIFIC_FIELDS
 
+	// 0-7
 	uint8_t link: 1;
 	uint8_t neighbor_report : 1;
 	uint8_t parallel: 1;
@@ -394,6 +395,8 @@ struct IE_RM_Enabled_Capabilities
 	uint8_t beacon_active : 1;
 	uint8_t beacon_table : 1;
 	uint8_t beacon_measurement_conditions: 1;
+
+	// 8-15
 	uint8_t frame : 1;
 	uint8_t channel_load : 1;
 	uint8_t noise_histogram : 1;
@@ -402,16 +405,22 @@ struct IE_RM_Enabled_Capabilities
 	uint8_t lci_azimuth : 1;
 	uint8_t tx_stream : 1;
 	uint8_t triggered_tx_stream : 1;
+
+	// 16-23
 	uint8_t ap_channel : 1;
 	uint8_t rm_mib : 1;
 	uint8_t operating_channel_max : 3;
 	uint8_t nonoperating_channel_max : 3;
+
+	// 24-31
 	uint8_t measurement_pilot_capa : 3;
 	uint8_t measurement_pilot_tx_info_capa : 1;
 	uint8_t neighbor_report_tsf_offset_capa : 1;
 	uint8_t rcpi : 1;
 	uint8_t rsni : 1;
 	uint8_t bss_avg_access_delay : 1;
+
+	// 32-
 	uint8_t bss_avail_admission_capacity : 1;
 	uint8_t antenna : 1;
 	uint8_t ftm_range_report : 1;

@@ -323,22 +323,7 @@ static void print_rm_enabled_capabilities(const struct BSS* bss)
 		return;
 	}
 	const struct IE_RM_Enabled_Capabilities* sie = IE_CAST(ie, struct IE_RM_Enabled_Capabilities);
-	printf("\tRadio Measurement Capabilities:\n");
-	char s[128];
-	int ret;
-	for (size_t i=0 ; ; i++) {
-		// I feel like cheating and not looking at each individual structure field
-		unsigned int byte = i/8;
-		unsigned int bit = i%8;
-		if (ie->buf[byte] & (1<<bit) || i==18 || i==21 || i==24) {
-			ret = rm_enabled_capa_to_str(sie, i, s, sizeof(s));
-			if (ret == -ENOENT) continue;  // no value for this bit
-			if (ret == -EINVAL) break; // end of list
-			XASSERT((size_t)ret < sizeof(s), ret);
-			printf("\t\t * %s\n", s);
-		}
-	}
-
+	ie_print_rm_enabled_capabilities(sie);
 }
 
 static void print_vendor(const struct BSS* bss)
@@ -878,6 +863,7 @@ leave:
 	nl_cb_put(cb);
 	nl_socket_free(nl_sock);
 	nlmsg_free(msg);
+	u_cleanup();
 	return EXIT_SUCCESS;
 }
 
