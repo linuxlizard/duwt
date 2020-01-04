@@ -47,8 +47,14 @@ int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray)
 	struct BSS* bss;
 	dl_list_for_each(bss, bss_list, struct BSS, node) {
 		const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
-		const struct IE_SSID* sie = IE_CAST(ie, struct IE_SSID);
-		jssid = json_stringn(sie->ssid, sie->ssid_len);
+		if (ie) {
+			const struct IE_SSID* sie = IE_CAST(ie, struct IE_SSID);
+			jssid = json_stringn(sie->ssid, sie->ssid_len);
+		}
+		else {
+			jssid = json_string("<hidden>");
+		}
+
 
 		jbssid = json_string(bss->bssid_str);
 
