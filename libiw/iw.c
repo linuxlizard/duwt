@@ -75,16 +75,11 @@ int parse_nla_bss(struct nlattr* attr_list, struct BSS* bss)
 		return -EINVAL;
 	}
 
-	// capture the BSSID, create a new BSS struct for this network
+	// capture the BSSID, fill a new BSS struct for this network
 	uint8_t *ptr = nla_data(bss_attr[NL80211_BSS_BSSID]);
 	memcpy(bss->bssid, ptr, ETH_ALEN);
 	mac_addr_n2a(bss->bssid_str, bss->bssid);
 	INFO("%s found bssid=%s\n", __func__, bss->bssid_str);
-
-	/* 
-	 * From this point on, use 'goto fail' on error so the BSS will be freed
-	 * before return
-	 */
 
 	if ((attr = bss_attr[NL80211_BSS_CAPABILITY])) {
 		bss->capability = nla_get_u16(attr);
@@ -115,9 +110,11 @@ int parse_nla_bss(struct nlattr* attr_list, struct BSS* bss)
 	}
 
 	if ((attr = bss_attr[NL80211_BSS_SEEN_MS_AGO])) {
+		// TODO
 	}
 
 	if ((attr = bss_attr[NL80211_BSS_LAST_SEEN_BOOTTIME])) {
+		// TODO
 	}
 
 	if ((attr = bss_attr[NL80211_BSS_FREQUENCY])) {
