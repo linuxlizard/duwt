@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-g -Wall -Wpedantic -Wextra 
+CFLAGS=-g -Wall -Wpedantic -Wextra -Wshadow -Wcast-qual
 LDFLAGS=-lmicrohttpd
 
 PKGS=libnl-3.0 libnl-genl-3.0 jansson
@@ -9,7 +9,7 @@ LDFLAGS+=$(shell pkg-config --libs $(PKGS))
 CFLAGS+=-I../libiw
 LDFLAGS+=-L../libiw -liw
 
-CPPFLAGS=$(CFLAGS)
+CPPFLAGS=$(CFLAGS) -std=gnu++17
 
 all:sitesurvd
 
