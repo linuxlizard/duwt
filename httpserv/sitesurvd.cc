@@ -302,6 +302,7 @@ MHD_Response* get_api_response(const char* url, BSSMap* bss_map)
 					MHD_RESPMEM_MUST_COPY);
 
 	json_decref(jarray);
+	PTR_FREE(p);
 	return response;
 }
 
