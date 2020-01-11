@@ -5,11 +5,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <inttypes.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 // netlink
 #include <linux/if_ether.h>
@@ -22,11 +25,15 @@
 #include <microhttpd.h>
 #include <jansson.h>
 
+#include <iostream>
+#include <fstream>
 #include <cstddef>
 #include <algorithm>
 #include <utility>
 #include <list>
 #include <unordered_map>
+#include <filesystem>
+#include <vector>
 
 #include "core.h"
 #include "iw.h"
@@ -35,6 +42,7 @@
 #include "hdump.h"
 #include "ie.h"
 #include "bss_json.h"
+#include "mimetypes.h"
 
 #define PORT 8888
 
@@ -43,6 +51,9 @@ using KeyValueList = std::list<KeyValuePair>;
 using MacAddr = std::array<std::byte,6>;
 using BSSMap = std::unordered_map<uint64_t, struct BSS*> ;
 
+namespace fs = std::filesystem;
+
+static mimetypes mt;
 
 #define BUNDLE_COOKIE 0x01448f44
 struct netlink_socket_bundle 
@@ -237,6 +248,122 @@ int capture_keys (void *arg, enum MHD_ValueKind kind,
 	return MHD_YES;
 }
 
+std::vector<char> load_file(fs::path path)
+{
+	// TODO need many, many check for errors
+	std::ifstream infile(path, std::ios::binary);
+
+	std::vector<char> buf ;
+	buf.reserve(fs::file_size(path));
+
+	buf.resize(buf.capacity());
+	infile.read(buf.data(), buf.capacity());
+
+	return buf;
+}
+
+MHD_Response* get_api_response(const char* url, BSSMap* bss_map)
+{
+	// http callback
+	if (strncmp(url, "survey", 6) != 0) {
+		return nullptr;
+	}
+
+	struct MHD_Response* response  { nullptr };
+
+	json_t* jarray = json_array();
+	if (!jarray) {
+		return nullptr;
+	}
+
+	for (auto iter : *bss_map) {
+		json_t* jbss;
+		struct BSS* bss;
+
+		bss = iter.second;
+		XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
+
+		int ret = bss_to_json_summary(bss, &jbss);
+		if (ret < 0) {
+			return nullptr;
+		}
+
+		ret = json_array_append_new(jarray, jbss);
+		// TODO check for error
+	}
+	char* p = json_dumps(jarray, JSON_COMPACT);
+	if (!p) {
+		return nullptr;
+	}
+
+	response = MHD_create_response_from_buffer(
+					strlen(p),
+					p, 
+					MHD_RESPMEM_MUST_COPY);
+
+	json_decref(jarray);
+	return response;
+}
+
+
+MHD_Response* get_file_response(const char* url)
+{
+	// http callback
+	struct MHD_Response *response;
+
+	fs::path root = fs::absolute("build");
+	fs::path path = root;
+	std::string root_str = root.string();
+	path += url;
+
+	std::cout << "path=" << path << "\n";
+	try {
+		path = fs::canonical(path);
+	} 
+	catch (fs::filesystem_error& err) {
+		// https://en.cppreference.com/w/cpp/filesystem/filesystem_error
+		std::cerr << err.what() << "\n";
+		return nullptr;
+	};
+
+	// XXX this looks super stupid and over complicated
+	std::string pp = path.parent_path().string().substr(0,root_str.length());
+
+	// if it's a correct path and it's under our root directory, then we
+	// shall read it
+	if (pp != root_str) {
+		return nullptr;
+	}
+
+	std::vector<char> page = load_file(path);
+
+	response = MHD_create_response_from_buffer(
+					page.size(),
+					page.data(), 
+					MHD_RESPMEM_MUST_COPY);
+	if (!response) {
+		return nullptr;
+	}
+
+	// look for a MIME type
+	std::string extension = path.extension();
+	extension.erase(0,1); // get rid of the "."
+
+	try {
+		std::string content_type = mt.at(extension);
+		std::cout << __func__ << " ext=" << extension << " content_type=" << content_type << "\n";
+
+		int ret = MHD_add_response_header(response, 
+				"Content-Type",
+				content_type.c_str());
+		XASSERT(ret==MHD_YES, ret);
+	} catch (std::out_of_range& err) {
+		// pass
+	}
+
+	return response;
+}
+
 int answer_to_connection (void *arg, 
 						struct MHD_Connection *connection,
 						const char *url,
@@ -252,7 +379,7 @@ int answer_to_connection (void *arg,
 	(void)con_cls;
 	BSSMap* bss_map = (BSSMap*)arg;
 
-	printf ("%s New %s request for %s using version %s\n", __func__, method, url, version);
+	printf ("%s method=%s request for url=%s using version=%s\n", __func__, method, url, version);
 
 	// tinkering with getting stuff from the HTTP connection
 	const union MHD_ConnectionInfo* conn_info = MHD_get_connection_info(connection, MHD_CONNECTION_INFO_CLIENT_ADDRESS);
@@ -269,50 +396,32 @@ int answer_to_connection (void *arg,
 		printf("%s %s=%s\n", __func__, kv.first, kv.second);
 	}
 
-	int ret;
-	char* page = nullptr;
-	size_t page_len = 0;
-
-	if (strncmp(url, "/api/survey", 11) == 0) {
-		json_t* jbss;
-		struct BSS* bss;
-
-		json_t* jarray = json_array();
-
-		for (auto iter : *bss_map) {
-			bss = iter.second;
-			XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
-
-			ret = bss_to_json_summary(bss, &jbss);
-
-			ret = json_array_append_new(jarray, jbss);
-		}
-		page = json_dumps(jarray, JSON_COMPACT);
-		page_len = strlen(page);
-	}
-	else {
-
-#define msg "<html><body>Found %zu BSSID</body></html>"
-		size_t count = bss_map->size();
-
-		page = (char*)malloc(64);
-		page_len = snprintf(page, 64, msg, count);
-	}
-
 	struct MHD_Response *response;
 
-	response = MHD_create_response_from_buffer(
-					page_len,
-					page, 
-					MHD_RESPMEM_MUST_COPY);
-	// TODO check response
+	if (strncmp(url, "/api/", 5) == 0) {
+		response = get_api_response(url+5, bss_map);
+	}
+	else {
+		response = get_file_response(url);
+	}
 
-	ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
+	if (!response) {
+		size_t count = bss_map->size();
+		char p[64];
+		const char* msg = "<html><body>Found %zu BSSID</body></html>\n";
+
+		size_t page_len = snprintf(p, sizeof(p), msg, count);
+
+		response = MHD_create_response_from_buffer(
+						page_len,
+						p, 
+						MHD_RESPMEM_MUST_COPY);
+	}
+
+	int ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
 	// TODO check return
 
 	MHD_destroy_response (response);
-
-	PTR_FREE(page);
 
 	return ret;
 }
@@ -407,6 +516,9 @@ int main (void)
 	struct MHD_Daemon *daemon = nullptr;
 
 	BSSMap bss_map;
+
+	mt = mimetype_parse_default_file();
+
 
 	daemon = MHD_start_daemon ( MHD_NO_FLAG, PORT, 
 			&on_client_connect, NULL,
