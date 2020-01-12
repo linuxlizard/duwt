@@ -1201,9 +1201,14 @@ void ie_list_peek(const char *label, struct IE_List* list)
 
 const struct IE* ie_list_find_id(const struct IE_List* list, IE_ID id)
 {
+	DBG("%s id=%d\n", __func__, id);
+	XASSERT(list, id);
+	XASSERT(list->cookie == IE_LIST_COOKIE, id);
 	// linear search (boo!) for the first instance of an id; note this will not
 	// work when there are duplicates such as vendor id
 	for (size_t i=0 ; i<list->count ; i++) {
+		XASSERT(list->ieptrlist[i] != NULL, i);
+		XASSERT(list->ieptrlist[i]->cookie == IE_COOKIE, i);
 		if (list->ieptrlist[i]->id == id) {
 			return (const struct IE*)list->ieptrlist[i];
 		}
