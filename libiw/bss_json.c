@@ -2,7 +2,7 @@
 
 // https://jansson.readthedocs.io/en/2.12/
 #include <jansson.h>
-#
+
 #include "core.h"
 #include "iw.h"
 #include "ie.h"
@@ -25,6 +25,8 @@ int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 	json_t* jbssid = NULL;
 	json_t* jfreq = NULL;
 	json_t* jdbm = NULL;
+	json_t* jwidth = NULL; // channel width
+	json_t* jmode = NULL; // b/g/n vs a/n/ac etc.
 
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
 	if (ie) {
@@ -56,6 +58,28 @@ int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 		goto fail;
 	}
 
+	// channel width might not be provided so extra checks are required
+	char s[64];
+	int ret = bss_get_chan_width_str(bss, s, sizeof(s));
+	if (ret > 0) {
+		jwidth = json_string(s);
+		if (!jwidth) {
+			ERR("%s chan width failed\n", __func__);
+			err = -ENOMEM;
+			goto fail;
+		}
+	}
+
+	ret = bss_get_mode_str(bss, s, sizeof(s));
+	if (ret > 0) {
+		jmode = json_string(s);
+		if (!jmode) {
+			ERR("%s get_mode failed\n", __func__);
+			err = -ENOMEM;
+			goto fail;
+		}
+	}
+
 	jbss = json_object();
 	if (!jbss) {
 		ERR("%s json_object failed\n", __func__);
@@ -74,6 +98,17 @@ int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 
 	err = json_object_set_new(jbss, "dbm", jdbm);
 	ERRCHECK("new dbm");
+
+	if (jwidth) {
+		err = json_object_set_new(jbss, "chwidth", jwidth);
+		ERRCHECK("new dbm");
+	}
+
+	if (jmode) {
+		err = json_object_set_new(jbss, "mode", jmode);
+		ERRCHECK("new mode");
+	}
+
 
 	PTR_ASSIGN(*p_jbss, jbss);
 
@@ -94,6 +129,12 @@ fail:
 	}
 	if (jdbm) {
 		json_decref(jdbm);
+	}
+	if (jwidth) {
+		json_decref(jwidth);
+	}
+	if (jmode) {
+		json_decref(jmode);
 	}
 
 	return err;

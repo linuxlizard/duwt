@@ -1,6 +1,8 @@
 #ifndef JSON_BSS_H
 #define JSON_BSS_H
 
+#include <jansson.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -51,6 +51,15 @@ struct BSS
 	//	in unspecified units, scaled to 0..100 (u8)"  (via nl80211.h)
 	uint8_t signal_unspec;
 
+ 	// enum nl80211_band - Frequency band
+	enum nl80211_band band;
+
+	// enum nl80211_chan_width - channel width definitions
+	// "These values are used with the %NL80211_ATTR_CHANNEL_WIDTH
+	// attribute."  (via nl80211.h)
+	enum nl80211_chan_width chan_width;
+	uint32_t center_freq1, center_freq2;
+
 	struct IE_List ie_list;
 };
 
@@ -124,6 +133,9 @@ int bss_from_nlattr(struct nlattr* attr[], struct BSS** pbss);
 
 bool bss_is_vht(const struct BSS* bss);
 bool bss_is_ht(const struct BSS* bss);
+
+int bss_get_chan_width_str(const struct BSS* bss, char* s, size_t len);
+int bss_get_mode_str(const struct BSS* bss, char* s, size_t len);
 
 #ifdef __cplusplus
 } // end extern "C"
