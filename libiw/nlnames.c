@@ -463,3 +463,38 @@ const char * to_string_nl80211_attrs(enum nl80211_attrs val)
 		default: return "unknown";
 	}
 }
+
+const char* to_string_nl80211_chan_width(enum nl80211_chan_width val) 
+{
+	switch(val) 
+	{
+		case NL80211_CHAN_WIDTH_20_NOHT:
+			return "NL80211_CHAN_WIDTH_20_NOHT";
+
+		case NL80211_CHAN_WIDTH_20:
+			return "NL80211_CHAN_WIDTH_20";
+
+		case NL80211_CHAN_WIDTH_40:
+			return "NL80211_CHAN_WIDTH_40";
+
+		case NL80211_CHAN_WIDTH_80:
+			return "NL80211_CHAN_WIDTH_80";
+
+		case NL80211_CHAN_WIDTH_80P80:
+			return "NL80211_CHAN_WIDTH_80P80";
+
+		case NL80211_CHAN_WIDTH_160:
+			return "NL80211_CHAN_WIDTH_160";
+
+		case NL80211_CHAN_WIDTH_5:
+			return "NL80211_CHAN_WIDTH_5";
+
+		case NL80211_CHAN_WIDTH_10:
+			return "NL80211_CHAN_WIDTH_10";
+
+		default: return "unknown/invalid";
+	}
+
+	return "unknown/invalid";
+}
+
