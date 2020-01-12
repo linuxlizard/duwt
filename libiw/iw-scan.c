@@ -286,7 +286,9 @@ int print_sta_handler(struct nl_msg *msg, void *arg)
 		[NL80211_STA_INFO_CHAIN_SIGNAL_AVG] = { .type = NLA_NESTED },
 		[NL80211_STA_INFO_TID_STATS] = { .type = NLA_NESTED },
 		[NL80211_STA_INFO_BSS_PARAM] = { .type = NLA_NESTED },
+#ifdef HAVE_NL80211_STA_INFO_RX_DURATION
 		[NL80211_STA_INFO_RX_DURATION] = { .type = NLA_U64 },
+#endif
 	};
 	char *chain;
 
@@ -384,10 +386,11 @@ int print_sta_handler(struct nl_msg *msg, void *arg)
 		printf("\n\trx bitrate:\t%s", buf);
 	}
 
+#ifdef HAVE_NL80211_STA_INFO_RX_DURATION
 	if (sinfo[NL80211_STA_INFO_RX_DURATION])
 		printf("\n\trx duration:\t%lld us",
 		       (unsigned long long)nla_get_u64(sinfo[NL80211_STA_INFO_RX_DURATION]));
-
+#endif
 	if (sinfo[NL80211_STA_INFO_EXPECTED_THROUGHPUT]) {
 		uint32_t thr;
 

@@ -103,7 +103,9 @@ int ieee80211_channel_to_frequency(int chan, enum nl80211_band band)
 		if (chan < 5)
 			return 56160 + chan * 2160;
 		break;
+#ifdef HAVE_NUM_NL80211_BANDS
 	case NUM_NL80211_BANDS:
+#endif
 	default:
 		;
 	}

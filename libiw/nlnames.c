@@ -120,6 +120,7 @@ const char * to_string_nl80211_commands(enum nl80211_commands val)
 		case NL80211_CMD_TDLS_CHANNEL_SWITCH : return "NL80211_CMD_TDLS_CHANNEL_SWITCH";
 		case NL80211_CMD_TDLS_CANCEL_CHANNEL_SWITCH : return "NL80211_CMD_TDLS_CANCEL_CHANNEL_SWITCH";
 		case NL80211_CMD_WIPHY_REG_CHANGE : return "NL80211_CMD_WIPHY_REG_CHANGE";
+#ifdef NL80211_CMD_ABORT_SCAN
 		case NL80211_CMD_ABORT_SCAN : return "NL80211_CMD_ABORT_SCAN";
 		case NL80211_CMD_START_NAN : return "NL80211_CMD_START_NAN";
 		case NL80211_CMD_STOP_NAN : return "NL80211_CMD_STOP_NAN";
@@ -145,6 +146,7 @@ const char * to_string_nl80211_commands(enum nl80211_commands val)
 		case NL80211_CMD_UPDATE_OWE_INFO : return "NL80211_CMD_UPDATE_OWE_INFO";
 		case NL80211_CMD_PROBE_MESH_LINK : return "NL80211_CMD_PROBE_MESH_LINK";
 #endif
+#endif
 		default: return "unknown";
 	}
 }
@@ -167,11 +169,13 @@ const char * to_string_nl80211_bss(enum nl80211_bss val)
 		case NL80211_BSS_BEACON_TSF : return "NL80211_BSS_BEACON_TSF";
 		case NL80211_BSS_PRESP_DATA : return "NL80211_BSS_PRESP_DATA";
 		case NL80211_BSS_LAST_SEEN_BOOTTIME : return "NL80211_BSS_LAST_SEEN_BOOTTIME";
+#ifdef NL80211_BSS_PAD
 		case NL80211_BSS_PAD : return "NL80211_BSS_PAD";
 		case NL80211_BSS_PARENT_TSF : return "NL80211_BSS_PARENT_TSF";
 		case NL80211_BSS_PARENT_BSSID : return "NL80211_BSS_PARENT_BSSID";
-#ifdef NL80211_BSS_CHAIN_SIGNAL 
+#ifdef NL80211_BSS_CHAIN_SIGNAL
 		case NL80211_BSS_CHAIN_SIGNAL : return "NL80211_BSS_CHAIN_SIGNAL";
+#endif
 #endif
 		default: return "unknown";
 	}
@@ -336,6 +340,7 @@ const char * to_string_nl80211_attrs(enum nl80211_attrs val)
 		case NL80211_ATTR_WDEV : return "NL80211_ATTR_WDEV";
 		case NL80211_ATTR_USER_REG_HINT_TYPE : return "NL80211_ATTR_USER_REG_HINT_TYPE";
 		case NL80211_ATTR_CONN_FAILED_REASON : return "NL80211_ATTR_CONN_FAILED_REASON";
+#ifdef NL80211_ATTR_AUTH_DATA
 		case NL80211_ATTR_AUTH_DATA : return "NL80211_ATTR_AUTH_DATA";
 		case NL80211_ATTR_VHT_CAPABILITY : return "NL80211_ATTR_VHT_CAPABILITY";
 		case NL80211_ATTR_SCAN_FLAGS : return "NL80211_ATTR_SCAN_FLAGS";
@@ -439,7 +444,7 @@ const char * to_string_nl80211_attrs(enum nl80211_attrs val)
 		case NL80211_ATTR_WANT_1X_4WAY_HS : return "NL80211_ATTR_WANT_1X_4WAY_HS";
 		case NL80211_ATTR_PMKR0_NAME : return "NL80211_ATTR_PMKR0_NAME";
 		case NL80211_ATTR_PORT_AUTHORIZED : return "NL80211_ATTR_PORT_AUTHORIZED";
-#ifdef NL80211_ATTR_EXTERNAL_AUTH_ACTION 
+#ifdef NL80211_ATTR_EXTERNAL_AUTH_ACTION
 		case NL80211_ATTR_EXTERNAL_AUTH_ACTION : return "NL80211_ATTR_EXTERNAL_AUTH_ACTION";
 		case NL80211_ATTR_EXTERNAL_AUTH_SUPPORT : return "NL80211_ATTR_EXTERNAL_AUTH_SUPPORT";
 		case NL80211_ATTR_NSS : return "NL80211_ATTR_NSS";
@@ -460,13 +465,14 @@ const char * to_string_nl80211_attrs(enum nl80211_attrs val)
 		case NL80211_ATTR_SAE_PASSWORD : return "NL80211_ATTR_SAE_PASSWORD";
 		case NL80211_ATTR_TWT_RESPONDER : return "NL80211_ATTR_TWT_RESPONDER";
 #endif
+#endif
 		default: return "unknown";
 	}
 }
 
-const char* to_string_nl80211_chan_width(enum nl80211_chan_width val) 
+const char* to_string_nl80211_chan_width(enum nl80211_chan_width val)
 {
-	switch(val) 
+	switch(val)
 	{
 		case NL80211_CHAN_WIDTH_20_NOHT:
 			return "NL80211_CHAN_WIDTH_20_NOHT";

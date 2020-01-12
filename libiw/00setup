@@ -26,7 +26,7 @@ if [ "${ID}" = "fedora" ] ; then
 
 elif [ "${ID}" = "ubuntu" ] ; then
 	echo "Ubuntu"
-	packages="libnl-3-dev libnl-genl-3-dev libicu-dev libmicrohttpd-dev libjansson-dev"
+	packages="build-essential libnl-3-dev libnl-genl-3-dev libicu-dev libmicrohttpd-dev libjansson-dev"
 	echo "Installing ${packages}"
 	sudo apt install ${packages}
 

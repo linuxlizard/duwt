@@ -22,6 +22,9 @@ ICU_CFLAGS += -DU_CHARSET_IS_UTF8=1 $(shell pkg-config --cflags icu-i18n)
 ICU_LDFLAGS += $(shell pkg-config --libs icu-i18n) -licuio
 LDLIBS+=$(ICU_LDFLAGS)
 
+os_version:=$(shell lsb_release -r -s)
+CFLAGS += $(if $(findstring 16.04,$(os_version)),,-DHAVE_NL80211_STA_INFO_RX_DURATION)
+CFLAGS += $(if $(findstring 16.04,$(os_version)),,-DHAVE_NUM_NL80211_BANDS)
 
 CORE_H:=xassert.h log.h core.h hdump.h 
 CORE_O:=xassert.o log.o hdump.o util.o

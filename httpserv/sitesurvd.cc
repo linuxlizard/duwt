@@ -62,7 +62,7 @@
 
 using KeyValuePair = std::pair<const char*,const char*>;
 using KeyValueList = std::list<KeyValuePair>;
-using MacAddr = std::array<std::byte,6>;
+//using MacAddr = std::array<std::byte,6>;
 using BSSMap = std::unordered_map<uint64_t, struct BSS*> ;
 
 static mimetypes mt;
