@@ -22,7 +22,9 @@ int ie_he_capabilities_new(struct IE* ie)
 	// entry per SS (Spatial Stream). Everything forward of PPE seems fixed length
 	// 1 byte exten id
 	// 26 bytes of data, min
-	if (ie->len < 1+26) {
+	// TODO I'm seeing 26 bytes sometimes and it's driving me crazy
+	if (ie->len < 26) {
+		WARN("%s len=%zu expected 26\n", __func__, ie->len);
 		return -EINVAL;
 	}
 
