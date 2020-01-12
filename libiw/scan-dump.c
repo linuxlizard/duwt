@@ -21,8 +21,7 @@
 #include "ie_print.h"
 #include "bss_json.h"
 #include "args.h"
-
-U_STRING_DECL(hidden, "<hidden>", 8);
+#include "ssid.h"
 
 FILE* outfile;
 
@@ -522,44 +521,15 @@ static void print_ht_operation(const struct BSS* bss)
 
 }
 
-static int ssid_to_unicode_str(const struct BSS* bss, UChar ssid[], size_t len )
+static int get_ssid(const struct BSS* bss, UChar u_ssid[], size_t u_ssid_len )
 {
-	static int hidden_len = 0;
-	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
-
-	if (hidden_len == 0) {
-		hidden_len = u_strlen(hidden);
+	const struct IE_SSID* sie = bss_get_ssid(bss);
+	if (!sie) {
+		// returns a copy of hidden SSID u_string
+		return ssid_to_unicode_str(NULL, 0, u_ssid, u_ssid_len);
 	}
 
-	if (!ie) {
-		u_strncpy(ssid, hidden, len);
-		return hidden_len;
-	}
-
-	if (ie->len == 0 || ie->buf[0] == 0) {
-		u_strncpy(ssid, hidden, len);
-		return hidden_len;
-	}
-
-	const struct IE_SSID* sie = IE_CAST(ie, struct IE_SSID);
-
-//	printf("%s\n", sie->ssid);
-
-	// length of output buffer ssid[]
-	int32_t ssid_len = len;
-
-	// http://userguide.icu-project.org/strings
-	// http://userguide.icu-project.org/strings/utf-8
-//	UChar ssid[SSID_MAX_LEN*2];
-	UErrorCode status = U_ZERO_ERROR;
-	u_strFromUTF8(ssid, len, &ssid_len, (const char*)sie->ssid, sie->ssid_len, &status);
-	if ( !U_SUCCESS(status)) {
-		ERR("%s unicode parse fail status=%d\n", __func__, status);
-		return -EINVAL;
-	}
-
-	// TODO check for weird-o SSIDs full of NULLs
-	return ssid_len;
+	return ssid_to_unicode_str(sie->ssid, sie->ssid_len, u_ssid, u_ssid_len);
 }
 
 static void print_country(const struct BSS* bss)
@@ -651,11 +621,11 @@ static void print_mobility_domain(const struct BSS* bss)
 static void print_ssid(struct BSS* bss)
 {
 	UChar ssid[SSID_MAX_LEN*2];
-	int ret = ssid_to_unicode_str(bss, ssid, sizeof(ssid));
+	int ret = get_ssid(bss, ssid, sizeof(ssid));
 	XASSERT(ret>=0, ret);
 
 	if (ret==0 || ret==-ENOENT) {
-		u_printf("\tSSID: %S\n", hidden);
+		u_printf("\tSSID: %S\n", ssid_get_hidden());
 	}
 	else {
 		u_printf("\tSSID: %S\n", ssid);
@@ -710,12 +680,12 @@ static void print_bss_to_csv(struct BSS* bss, bool header)
 	}
 
 	UChar ssid[SSID_MAX_LEN*2];
-	int ret = ssid_to_unicode_str(bss, ssid, sizeof(ssid));
+	int ret = get_ssid(bss, ssid, sizeof(ssid));
 	XASSERT(ret>=0, ret);
 
 	printf("%s, %d, %0.2f, ", bss->bssid_str, bss->frequency, bss->signal_strength_mbm/100.0);
 	if (ret==0) {
-		u_printf("%S ", hidden);
+		u_printf("%S ", ssid_get_hidden());
 	}
 	else {
 		u_printf("%S ", ssid);
@@ -726,12 +696,12 @@ static void print_bss_to_csv(struct BSS* bss, bool header)
 static void print_short(const struct BSS* bss)
 {
 	UChar ssid[SSID_MAX_LEN*2];
-	int ret = ssid_to_unicode_str(bss, ssid, sizeof(ssid));
+	int ret = get_ssid(bss, ssid, sizeof(ssid));
 	XASSERT(ret>=0, ret);
 
 	//  SSID            BSSID              CHAN RATE  S:N   INT CAPS
 	if (ret==0) {
-		u_printf("%32S ", hidden);
+		u_printf("%32S ", ssid_get_hidden());
 	}
 	else {
 		u_printf("%32S ", ssid);
@@ -832,8 +802,6 @@ int main(int argc, char* argv[])
 		err = nl_recvmsgs(nl_sock, cb);
 		INFO("nl_recvmsgs err=%d\n", err);
 	}
-
-	U_STRING_INIT(hidden, "<hidden>", 8);
 
 	struct BSS* bss;
 	dl_list_for_each(bss, &bss_list, struct BSS, node) {
