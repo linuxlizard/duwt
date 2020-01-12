@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# Install packages required for duwt. Have tested under Fedora and Ubuntu.
+# Requires /etc/os-release
+# davep 20200112
+
+set -eu
+
+if [ ! -f /etc/os-release ] ; then
+	echo "/etc/os-release is missing so I don't know what system we are so I can't install packages."
+	exit 1
+fi
+
+. /etc/os-release
+
+if [ -z "$ID" ] ; then
+	echo "/etc/os-release is missing ID so I don't know how to install packages."
+	exit 1
+fi
+
+if [ "${ID}" = "fedora" ] ; then
+	echo "Fedora"
+	packages="libnl3-devel libicu-devel libmicrohttpd-devel jansson-devel"
+	echo "Installing ${packages}"
+	sudo dnf install ${packages}
+
+elif [ "${ID}" = "ubuntu" ] ; then
+	echo "Ubuntu"
+	packages="libnl-3-dev libnl-genl-3-dev libicu-dev libmicrohttpd-dev libjansson-dev"
+	echo "Installing ${packages}"
+	sudo apt install ${packages}
+
+else
+	echo "Unknown system ID=${ID}. I don't know how to install packages here."
+	exit 1
+fi
+
