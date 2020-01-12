@@ -26,8 +26,8 @@ os_version:=$(shell lsb_release -r -s)
 CFLAGS += $(if $(findstring 16.04,$(os_version)),,-DHAVE_NL80211_STA_INFO_RX_DURATION)
 CFLAGS += $(if $(findstring 16.04,$(os_version)),,-DHAVE_NUM_NL80211_BANDS)
 
-CORE_H:=xassert.h log.h core.h hdump.h 
-CORE_O:=xassert.o log.o hdump.o util.o
+CORE_H:=xassert.h log.h core.h hdump.h ssid.h
+CORE_O:=xassert.o log.o hdump.o util.o ssid.o
 
 TEST:=test_ie test_bss test_bytebuf test_ie_he test_decode
 
