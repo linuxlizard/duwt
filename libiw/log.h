@@ -11,6 +11,8 @@
 extern "C" {
 #endif
 
+void log_set_level(int level);
+
 void logmsg(int level, const char* fmt, ...) __attribute__((format (printf, 2,3)));
 
 #ifdef __cplusplus

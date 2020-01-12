@@ -20,6 +20,7 @@
 #include "hdump.h"
 #include "ie_print.h"
 #include "bss_json.h"
+#include "args.h"
 
 U_STRING_DECL(hidden, "<hidden>", 8);
 
@@ -781,12 +782,20 @@ static void search_for(struct dl_list* list)
 
 int main(int argc, char* argv[])
 {
-	if (argc != 2) {
+	struct args args;
+
+	int err = args_parse(argc, argv, &args);
+
+	if (args.debug > 0) {
+		log_set_level(LOG_LEVEL_DEBUG);
+	}
+
+	if (args.argc != 1) {
 		fprintf(stderr, "usage: %s ifname\n", argv[0]);
 		exit(1);
 	}
 
-	const char* ifname = argv[1];
+	const char* ifname = args.argv[0];
 
 	// for later test/debug, save the attributes to a file
 //	outfile = fopen("out.dat","wb");
@@ -801,7 +810,7 @@ int main(int argc, char* argv[])
 	nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, &cb_err);
 
 	struct nl_sock* nl_sock = nl_socket_alloc_cb(cb);
-	int err = genl_connect(nl_sock);
+	err = genl_connect(nl_sock);
 
 	int nl80211_id = genl_ctrl_resolve(nl_sock, NL80211_GENL_NAME);
 

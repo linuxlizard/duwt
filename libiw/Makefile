@@ -21,14 +21,14 @@ ICU_CFLAGS += -DU_CHARSET_IS_UTF8=1 $(shell pkg-config --cflags icu-i18n)
 ICU_LDFLAGS += $(shell pkg-config --libs icu-i18n) -licuio
 
 
-CORE_H:=xassert.h log.h core.h hdump.h
+CORE_H:=xassert.h log.h core.h hdump.h 
 CORE_O:=xassert.o log.o hdump.o util.o
 
 TEST:=test_ie test_bss test_bytebuf test_ie_he test_decode
 
-all:scan-event-ev scan-dump $(TEST) libiw.a
+all:scan-dump $(TEST) libiw.a
 
-libiw.a: iw.o iw-scan.o bytebuf.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o bug.o ie_print.o
+libiw.a: iw.o iw-scan.o bytebuf.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o bug.o ie_print.o args.o
 	$(AR) rcs $@ $^
 
 scan-event: scan-event.o hdump.o iw-scan.o nlnames.o log.o bug.o
@@ -43,7 +43,7 @@ scan-event-ev: scan-event-ev.o $(CORE_O) iw-scan.o nlnames.o bytebuf.o ie.o ie_h
 scan-event-ev.o: scan-event-ev.c iw-scan.h bytebuf.h $(CORE_H)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o bug.o ie_print.o bss_json.o
+scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o bug.o ie_print.o bss_json.o args.o
 	$(CC) $(LDFLAGS) $(ICU_LDFLAGS) -o $@ $^
 
 scan-dump-lib: scan-dump.o 
@@ -93,8 +93,8 @@ test_bytebuf.o:test_bytebuf.c bytebuf.h xassert.h log.h
 test_bss:test_bss.o bss.o ie.o ie_he.o iw.o nlnames.o bug.o $(CORE_O)
 test_bss.o:test_bss.c $(CORE_H)
 
-test_decode:test_decode.o bss.o ie.o ie_he.o iw.o nlnames.o bug.o bss_json.o $(CORE_O)
-test_decode.o:test_decode.c $(CORE_H)
+test_decode:test_decode.o bss.o ie.o ie_he.o iw.o nlnames.o bug.o bss_json.o args.o $(CORE_O)
+test_decode.o:test_decode.c $(CORE_H) args.h
 
 VALGRIND_OPTS=--error-exitcode=1 --leak-check=yes --exit-on-first-error=yes
 test: test_bytebuf test_ie test_bss test_ie_he test_decode

@@ -43,6 +43,7 @@
 #include "ie.h"
 #include "bss_json.h"
 #include "mimetypes.h"
+#include "args.h"
 
 #define PORT 8888
 
@@ -99,7 +100,7 @@ static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 	struct BSS* new_bss = nullptr;
 	int err = bss_from_nlattr(tb_msg, &new_bss);
 	if (err) {
-		// bss_from_nlattr() will log error
+		ERR("%s bss_from_nlattr failed err=%d\n", __func__, err);
 		goto fail;
 	}
 	else {
@@ -512,8 +513,15 @@ static int netlink_read(struct netlink_socket_bundle* bun)
 	return 0;
 }
 
-int main (void)
+int main (int argc, char* argv[])
 {
+	struct args args;
+
+	int err = args_parse(argc, argv, &args);
+
+	if (args.debug > 0) {
+		log_set_level(LOG_LEVEL_DEBUG);
+	}
 	struct MHD_Daemon *daemon = nullptr;
 
 	BSSMap bss_map;
@@ -528,7 +536,7 @@ int main (void)
 	XASSERT( daemon, 0);
 
 	struct netlink_socket_bundle scan_event_watcher;
-	int err = setup_scan_event_sock(&scan_event_watcher);
+	err = setup_scan_event_sock(&scan_event_watcher);
 	if (err) {
 		// TODO
 	}

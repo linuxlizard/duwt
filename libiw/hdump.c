@@ -7,6 +7,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include "log.h"
 #include "hdump.h"
 
 /**
@@ -51,7 +52,7 @@ void hex_dump( const char *label, const unsigned char *ptr, int size )
             break;
          }
       }
-      printf( "0x%08lx %s %s\n", offset, label, line );
+      DBG( "0x%08lx %s %s\n", offset, label, line );
 //      printf( "%d %p %p %s\n", i, ptr, ptr-i, line );
       offset += 16;
    }

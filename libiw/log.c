@@ -3,11 +3,20 @@
 
 #include "log.h"
 
+static int log_level = LOG_LEVEL_INFO;
+
+void log_set_level(int level)
+{
+	log_level = level;
+}
+
 void logmsg(int level, const char* fmt, ...)
 {
 	va_list arg;
 
-	(void)level;  // TODO
+	if (level > log_level) {
+		return;
+	}
 
 	va_start(arg, fmt);
 	if (level < LOG_LEVEL_INFO) {

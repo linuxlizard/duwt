@@ -13,6 +13,7 @@
 #include <linux/nl80211.h>
 
 #include "core.h"
+#include "args.h"
 #include "iw.h"
 #include "bss.h"
 #include "bss_json.h"
@@ -44,7 +45,7 @@ static int load_file(const char* filename, uint8_t** p_buf, size_t* p_size)
 	struct stat stats;
 	int err =  stat(filename, &stats);
 	if (err<0) {
-		fprintf(stderr, "stat %s failed err=%d %s\n", filename, errno, strerror(errno));
+		fprintf(stderr, "stat file \"%s\" failed err=%d %s\n", filename, errno, strerror(errno));
 		return err;
 	}
 
@@ -56,14 +57,14 @@ static int load_file(const char* filename, uint8_t** p_buf, size_t* p_size)
 	int fd = open(filename, O_RDONLY);
 	if (fd<0) {
 		PTR_FREE(buf);
-		fprintf(stderr, "open %s failed err=%d %s\n", filename, errno, strerror(errno));
+		fprintf(stderr, "open file \"%s\" failed err=%d %s\n", filename, errno, strerror(errno));
 		return -errno;
 	}
 
 	ssize_t count = read(fd, buf, stats.st_size);
 	if (count < 0) {
 		PTR_FREE(buf);
-		fprintf(stderr, "read %s failed err=%d %s\n", filename, errno, strerror(errno));
+		fprintf(stderr, "read file \"%s\" failed err=%d %s\n", filename, errno, strerror(errno));
 		return -errno;
 	}
 	close(fd);
@@ -102,14 +103,21 @@ static void maxan_anvol_verify(const struct BSS* bss)
 int main(int argc, char* argv[])
 {
 	int i;
+	struct args args;
 
-	for (i=1 ; i<argc ; i++) {
+	int err = args_parse(argc, argv, &args);
+
+	if (args.debug > 0) {
+		log_set_level(LOG_LEVEL_DEBUG);
+	}
+
+	for (i=1 ; i<args.argc ; i++) {
 		uint8_t* buf;
 		size_t size;
 
-		int err = load_file(argv[i], &buf, &size);
+		err = load_file(args.argv[i], &buf, &size);
 		if (err < 0) {
-			fprintf(stderr, "failed to load %s; err=%d\n", argv[i], err);
+			fprintf(stderr, "failed to load file \"%s\"; err=%d\n", args.argv[i], err);
 			continue;
 		}
 
