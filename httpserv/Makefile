@@ -16,7 +16,7 @@ LDLIBS+=-lstdc++ -lstdc++fs
 
 CPPFLAGS=$(CFLAGS) -std=gnu++17
 
-all:sitesurvd
+all:sitesurvd test_mimetypes
 
 sitesurvd:sitesurvd.o bss_json.o mimetypes.o
 #	$(CXX) -o $@ $^ $(LDFLAGS) -L../libiw -liw -lstdc++

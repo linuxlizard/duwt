@@ -6,9 +6,12 @@ int main()
 {
 	mimetypes mt = mimetype_parse_default_file();
 
+	for( const auto& n : mt ) {
+		std::cout << n.first << "=" << n.second << "\n";
+	}
+
 	std::string content_type = mt.at("html");
 	std::cout << "html=" << content_type << "\n";
-	printf("ptr=%p\n", (const void*)content_type.c_str());
 
 	try {
 		content_type = mt.at("dave");

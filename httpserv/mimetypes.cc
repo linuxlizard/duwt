@@ -60,16 +60,6 @@ mimetypes mimetype_parse(std::istream& infile)
 
 	}
 
-	for( const auto& n : mt ) {
-		std::cout << n.first << "=" << n.second << "\n";
-	}
-
-	const std::string& foo = mt.at("html");
-	printf("ptr=%p\n", (const void*)foo.c_str());
-
-	const std::string& bar = mt.at("html");
-	printf("ptr=%p\n", (const void*)bar.c_str());
-
 	return mt;
 }
 
