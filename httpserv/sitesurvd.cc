@@ -32,8 +32,21 @@
 #include <utility>
 #include <list>
 #include <unordered_map>
-#include <filesystem>
 #include <vector>
+
+
+// https://en.cppreference.com/w/cpp/feature_test
+#ifdef __has_include
+#  if __has_include(<filesystem>)
+#    include <filesystem>  // gcc8 (Fedora29+)
+     namespace fs = std::filesystem;
+#  elif __has_include(<experimental/filesystem>)
+#    include <experimental/filesystem> // gcc7 (Ubuntu 18.04)
+     namespace fs = std::experimental::filesystem;
+#  endif
+#else
+#error no __has_include
+#endif
 
 #include "core.h"
 #include "iw.h"
@@ -51,8 +64,6 @@ using KeyValuePair = std::pair<const char*,const char*>;
 using KeyValueList = std::list<KeyValuePair>;
 using MacAddr = std::array<std::byte,6>;
 using BSSMap = std::unordered_map<uint64_t, struct BSS*> ;
-
-namespace fs = std::filesystem;
 
 static mimetypes mt;
 

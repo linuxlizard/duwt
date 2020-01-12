@@ -1,20 +1,25 @@
 CC=gcc
+CXX=g++
 CFLAGS=-g -Wall -Wpedantic -Wextra -Wshadow -Wcast-qual
-LDFLAGS=-lmicrohttpd
+LDFLAGS=-g
+LDLIBS=-lmicrohttpd
 
 PKGS=libnl-3.0 libnl-genl-3.0 jansson
 CFLAGS+=$(shell pkg-config --cflags $(PKGS))
-LDFLAGS+=$(shell pkg-config --libs $(PKGS))
+LDLIBS+=$(shell pkg-config --libs $(PKGS))
 
 CFLAGS+=-I../libiw
-LDFLAGS+=-L../libiw -liw
+LDFLAGS+=-L../libiw 
+LDLIBS+=-liw
+
+LDLIBS+=-lstdc++ -lstdc++fs
 
 CPPFLAGS=$(CFLAGS) -std=gnu++17
 
 all:sitesurvd
 
 sitesurvd:sitesurvd.o bss_json.o mimetypes.o
-	$(CXX) -o $@ $^ $(LDFLAGS) -L../libiw -liw -lstdc++
+#	$(CXX) -o $@ $^ $(LDFLAGS) -L../libiw -liw -lstdc++
 
 #sitesurvd.o:sitesurvd.c
 
@@ -24,7 +29,7 @@ bss_json.o:../libiw/bss_json.c ../libiw/bss_json.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 test_mimetypes: test_mimetypes.o mimetypes.o
-	$(CXX) $(LDFLAGS) -o $@ $^  -lstdc++
+#	$(CXX) $(LDFLAGS) -o $@ $^
 
 mimetypes.o:mimetypes.cc mimetypes.h
 

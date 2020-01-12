@@ -81,6 +81,8 @@ static int load_file(const char* filename, uint8_t** p_buf, size_t* p_size)
 
 static void maxan_anvol_verify(const struct BSS* bss)
 {
+	INFO("%s\n", __func__);
+
 	XASSERT(bss->band == NL80211_BAND_5GHZ, bss->band);
 	XASSERT(bss->frequency ==5765, bss->frequency );
 	XASSERT(bss->signal_strength_mbm == -3000, bss->signal_strength_mbm);
@@ -111,7 +113,12 @@ int main(int argc, char* argv[])
 		log_set_level(LOG_LEVEL_DEBUG);
 	}
 
-	for (i=1 ; i<args.argc ; i++) {
+	DBG("%s this is a debug message\n", __func__);
+	INFO("%s this is an info message\n", __func__);
+	WARN("%s this is a warning message\n", __func__);
+	ERR("%s this is an error message\n", __func__);
+
+	for (i=0 ; i<args.argc ; i++) {
 		uint8_t* buf;
 		size_t size;
 

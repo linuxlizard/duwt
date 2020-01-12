@@ -14,11 +14,13 @@ CFLAGS:=-g -Wall -Wpedantic -Wextra $(shell pkg-config --cflags $(PKGS))
 # shamelessly copied extra warnings from m*lib https://github.com/P-p-H-d/mlib
 CFLAGS+=-Wshadow -Wpointer-arith -Wcast-qual -Wstrict-prototypes -Wmissing-prototypes -Wswitch-default -Wswitch-enum -Wcast-align -Wbad-function-cast -Wstrict-overflow=5 -Winline -Wundef -Wnested-externs -Wshadow -Wunreachable-code -Wlogical-op -Wstrict-aliasing=2 -Wredundant-decls -Wold-style-definition -Wno-unused-function
 
-LDFLAGS:=-g $(shell pkg-config --libs $(PKGS))
+LDFLAGS:=-g 
+LDLIBS:=$(shell pkg-config --libs $(PKGS))
 
 # http://userguide.icu-project.org/strings/utf-8
 ICU_CFLAGS += -DU_CHARSET_IS_UTF8=1 $(shell pkg-config --cflags icu-i18n)
 ICU_LDFLAGS += $(shell pkg-config --libs icu-i18n) -licuio
+LDLIBS+=$(ICU_LDFLAGS)
 
 
 CORE_H:=xassert.h log.h core.h hdump.h 
@@ -44,7 +46,7 @@ scan-event-ev.o: scan-event-ev.c iw-scan.h bytebuf.h $(CORE_H)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 scan-dump: scan-dump.o iw.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o bug.o ie_print.o bss_json.o args.o
-	$(CC) $(LDFLAGS) $(ICU_LDFLAGS) -o $@ $^
+#	$(CC) $(LDFLAGS) $(ICU_LDFLAGS) -o $@ $^
 
 scan-dump-lib: scan-dump.o 
 	$(CC) $(LDFLAGS) $(ICU_LDFLAGS) -o $@ $^ -L../libiw -liw 

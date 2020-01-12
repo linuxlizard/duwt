@@ -92,9 +92,9 @@ int bss_from_nlattr(struct nlattr* attr_list[], struct BSS** pbss)
 	else if (bss->frequency < 5900) {
 		bss->band = NL80211_BAND_5GHZ;
 	}
-	else if (bss->frequency < 8000) {
-		bss->band = NL80211_BAND_6GHZ;
-	}
+//	else if (bss->frequency < 8000) {
+//		bss->band = NL80211_BAND_6GHZ;
+//	}
 
 	PTR_ASSIGN(*pbss, bss);
 	DBG("%s success\n", __func__);

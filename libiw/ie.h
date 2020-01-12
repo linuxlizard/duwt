@@ -155,10 +155,15 @@ struct IE_SSID
 	// (terminal blink) or bash/shell code into SSIDs and catch scanners.  
 	// https://www.xkcd.com/327/
 	//
+#if __GNUC__ > 7
 	// attribute nonstring ref:
 	// https://gcc.gnu.org/onlinedocs/gcc/Common-Variable-Attributes.html#Common-Variable-Attributes
 	// 
 	char* ssid  __attribute__ ((nonstring));
+#else
+	// here be dragons
+	char* ssid;
+#endif
 	size_t ssid_len;
 
 	// http://userguide.icu-project.org/strings
