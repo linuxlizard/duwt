@@ -24,19 +24,17 @@ int args_parse(int argc, char* argv[], struct args* args)
 				break;
 
 			case 'h':
+				// TODO
 				break;
 
 			default:
 				fprintf(stderr, "unhandled option '%c'\n", (char)ret);
 				return -EINVAL;
 		}
-
-		for (int i=optind ; i<argc ; i++) {
-			args->argv[args->argc++] = argv[i];
-			printf("%s i=%d argv[i]=%s\n", __func__, i, argv[i]);
-		}
-
-
+	}
+	for (int i=optind ; i<argc ; i++) {
+		args->argv[args->argc++] = argv[i];
+		printf("%s i=%d argv[i]=%s\n", __func__, i, argv[i]);
 	}
 
 	return 0;
