@@ -15,21 +15,11 @@
 #include "core.h"
 #include "iw.h"
 #include "bss.h"
+#include "bss_json.h"
 
 static int decode(struct nlattr* attr, size_t attrlen, struct BSS** p_bss)
 {
 	struct BSS* bss = NULL;
-
-	INFO("%s\n", __func__);
-//	peek_nl_msg(msg);
-//
-//	INFO("%s max_size=%zu proto=%d\n", __func__,
-//			nlmsg_get_max_size(msg), 
-//			nlmsg_get_proto(msg));
-//
-//	struct nlmsghdr *hdr = nlmsg_hdr(msg);
-//
-//	struct genlmsghdr* gnlh = (struct genlmsghdr*)nlmsg_data(hdr);
 
 	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
 	nla_parse(tb_msg, NL80211_ATTR_MAX, attr, attrlen, NULL);
@@ -44,10 +34,9 @@ static int decode(struct nlattr* attr, size_t attrlen, struct BSS** p_bss)
 
 	PTR_ASSIGN(*p_bss, bss);
 
-	DBG("%s success\n", __func__);
-	return NL_OK;
+	return 0;
 fail:
-	return NL_SKIP;
+	return -1;
 }
 
 static int load_file(const char* filename, uint8_t** p_buf, size_t* p_size)
@@ -89,6 +78,27 @@ static int load_file(const char* filename, uint8_t** p_buf, size_t* p_size)
 	return 0;
 }
 
+static void maxan_anvol_verify(const struct BSS* bss)
+{
+	XASSERT(bss->band == NL80211_BAND_5GHZ, bss->band);
+	XASSERT(bss->frequency ==5765, bss->frequency );
+	XASSERT(bss->signal_strength_mbm == -3000, bss->signal_strength_mbm);
+
+	const struct IE* const ht_ie = ie_list_find_id(&bss->ie_list, IE_HT_CAPABILITIES);
+	const struct IE* const vht_ie = ie_list_find_id(&bss->ie_list, IE_VHT_CAPABILITIES);
+	const struct IE* const he_ie = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES );
+
+	XASSERT(ht_ie, 0);
+	XASSERT(vht_ie, 0);
+	XASSERT(!he_ie, 0);
+
+	char s[64];
+	int ret = bss_get_mode_str(bss, s, sizeof(s));
+	XASSERT(ret > 0, ret);
+
+}
+
+
 int main(int argc, char* argv[])
 {
 	int i;
@@ -107,9 +117,22 @@ int main(int argc, char* argv[])
 
 		struct BSS* bss;
 
-		decode(attr, size, &bss);
+		err = decode(attr, size, &bss);
+		XASSERT(err==0, err);
+
+		maxan_anvol_verify(bss);
 
 		PTR_FREE(buf);
+
+		json_t* jbss = NULL;
+		err = bss_to_json_summary(bss, &jbss);
+		XASSERT(err==0, err);
+		char* s = json_dumps(jbss, JSON_INDENT(1));
+		printf("%s\n", s);
+		PTR_FREE(s);
+		json_decref(jbss);
+
+		bss_free(&bss);
 	}
 
 	return 0;

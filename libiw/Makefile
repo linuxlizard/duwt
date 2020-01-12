@@ -93,11 +93,12 @@ test_bytebuf.o:test_bytebuf.c bytebuf.h xassert.h log.h
 test_bss:test_bss.o bss.o ie.o ie_he.o iw.o nlnames.o bug.o $(CORE_O)
 test_bss.o:test_bss.c $(CORE_H)
 
-test_decode:test_decode.o bss.o ie.o ie_he.o iw.o nlnames.o bug.o $(CORE_O)
+test_decode:test_decode.o bss.o ie.o ie_he.o iw.o nlnames.o bug.o bss_json.o $(CORE_O)
 test_decode.o:test_decode.c $(CORE_H)
 
 VALGRIND_OPTS=--error-exitcode=1 --leak-check=yes --exit-on-first-error=yes
-test: test_bytebuf test_ie test_bss test_ie_he
+test: test_bytebuf test_ie test_bss test_ie_he test_decode
+	valgrind  $(VALGRIND_OPTS) ./test_decode maxan_anvol.dat
 	valgrind  $(VALGRIND_OPTS) ./test_bytebuf
 	valgrind $(VALGRIND_OPTS)  ./test_ie
 	valgrind $(VALGRIND_OPTS)  ./test_ie_he
