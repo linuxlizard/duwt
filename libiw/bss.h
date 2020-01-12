@@ -131,6 +131,8 @@ void bss_free_list(struct dl_list* list);
 // parse NL80211_ATTR_xxx into a struct BSS
 int bss_from_nlattr(struct nlattr* attr[], struct BSS** pbss);
 
+const struct IE_SSID* bss_get_ssid(const struct BSS* bss);
+
 bool bss_is_vht(const struct BSS* bss);
 bool bss_is_ht(const struct BSS* bss);
 

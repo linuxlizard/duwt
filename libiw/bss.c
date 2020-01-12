@@ -215,3 +215,14 @@ int bss_get_chan_width_str(const struct BSS* bss, char* s, size_t len)
 	return 0;
 }
 
+const struct IE_SSID* bss_get_ssid(const struct BSS* bss)
+{
+	// TODO maybe cache this IE in the struct BSS itself?
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
+	if (!ie) {
+		return NULL;
+	}
+
+	return IE_CAST(ie, struct IE_SSID);
+}
+
