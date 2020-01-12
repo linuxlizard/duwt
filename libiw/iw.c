@@ -44,6 +44,7 @@ static void peek_nla_bss(struct nlattr* bss_msg[static NL80211_BSS_MAX], size_t 
 
 int parse_nla_ies(struct nlattr* ies, struct IE_List* ie_list)
 {
+	DBG("%s\n", __func__);
 	int err = decode_ie_buf( nla_data(ies), nla_len(ies), ie_list);
 	if (err) {
 		ERR("%s IE buffer decode failed err=%d\n", __func__, err);
@@ -119,6 +120,11 @@ int parse_nla_bss(struct nlattr* attr_list, struct BSS* bss)
 
 	if ((attr = bss_attr[NL80211_BSS_FREQUENCY])) {
 		bss->frequency = nla_get_u32(attr);
+	}
+
+	if ((attr = bss_attr[NL80211_BSS_CHAN_WIDTH])) {
+		// I'm finding this coming back as zero so it's not actually useful.
+		bss->chan_width = nla_get_u32(attr);
 	}
 
 	ie_list_peek(__func__, &bss->ie_list);
