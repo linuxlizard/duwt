@@ -24,7 +24,7 @@ ICU_LDFLAGS += $(shell pkg-config --libs icu-i18n) -licuio
 CORE_H:=xassert.h log.h core.h hdump.h
 CORE_O:=xassert.o log.o hdump.o util.o
 
-TEST:=test_ie test_bss test_bytebuf test_ie_he
+TEST:=test_ie test_bss test_bytebuf test_ie_he test_decode
 
 all:scan-event-ev scan-dump $(TEST) libiw.a
 
@@ -92,6 +92,9 @@ test_bytebuf.o:test_bytebuf.c bytebuf.h xassert.h log.h
 
 test_bss:test_bss.o bss.o ie.o ie_he.o iw.o nlnames.o bug.o $(CORE_O)
 test_bss.o:test_bss.c $(CORE_H)
+
+test_decode:test_decode.o bss.o ie.o ie_he.o iw.o nlnames.o bug.o $(CORE_O)
+test_decode.o:test_decode.c $(CORE_H)
 
 VALGRIND_OPTS=--error-exitcode=1 --leak-check=yes --exit-on-first-error=yes
 test: test_bytebuf test_ie test_bss test_ie_he

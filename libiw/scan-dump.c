@@ -23,6 +23,8 @@
 
 U_STRING_DECL(hidden, "<hidden>", 8);
 
+FILE* outfile;
+
 static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err, void *arg)
 {
 	ERR("%s\n", __func__);
@@ -62,8 +64,17 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 
 	INFO("%s\n", __func__);
 
+//	nl_msg_dump(msg, stdout);
+
 	struct nlmsghdr *hdr = nlmsg_hdr(msg);
+
 	struct genlmsghdr* gnlh = (struct genlmsghdr*)nlmsg_data(hdr);
+
+	// for later test/debug, save the attributes to a file
+	if (outfile) {
+		size_t len = genlmsg_attrlen(gnlh,0);
+		fwrite((void*)genlmsg_attrdata(gnlh,0), len, 1, outfile);
+	}
 
 	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
 	nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
@@ -777,6 +788,9 @@ int main(int argc, char* argv[])
 
 	const char* ifname = argv[1];
 
+	// for later test/debug, save the attributes to a file
+//	outfile = fopen("out.dat","wb");
+
 	DEFINE_DL_LIST(bss_list);
 	struct nl_cb* cb = nl_cb_alloc(NL_CB_DEFAULT);
 
@@ -864,6 +878,11 @@ leave:
 	nl_socket_free(nl_sock);
 	nlmsg_free(msg);
 	u_cleanup();
+
+	if (outfile) {
+		fclose(outfile);
+	}
+
 	return EXIT_SUCCESS;
 }
 
