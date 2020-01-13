@@ -129,15 +129,22 @@ int bss_guess_chan_width(struct BSS* bss)
 	}
 
 	if (vht_ie) {
-		const struct IE_HT_Capabilities* vht_capa = IE_CAST(vht_ie, struct IE_HT_Capabilities);
+		const struct IE_VHT_Capabilities* vht_capa = IE_CAST(vht_ie, struct IE_VHT_Capabilities);
 		switch (vht_capa->supported_channel_width) {
 			case IE_VHT_CHANNEL_WIDTH_NEITHER_160_NOR_80P80 :
 				bss->chan_width = NL80211_CHAN_WIDTH_80;
 				break;
+
+			// FIXME how are 160 and 80+80 related?  Can I have 160 without supporting 80+80?
 			case IE_VHT_CHANNEL_WIDTH_160 :
+				bss->chan_width = NL80211_CHAN_WIDTH_160;
 				break;
+
 			case IE_VHT_CHANNEL_WIDTH_160_AND_80P80 :
+				// FIXME does 80+80 also imply 160 ?
+				bss->chan_width = NL80211_CHAN_WIDTH_80P80;
 				break;
+
 			default:
 				break;
 		}
