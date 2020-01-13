@@ -133,6 +133,7 @@ int bss_from_nlattr(struct nlattr* attr[], struct BSS** pbss);
 
 const struct IE_SSID* bss_get_ssid(const struct BSS* bss);
 
+int bss_guess_chan_width(struct BSS* bss);
 bool bss_is_vht(const struct BSS* bss);
 bool bss_is_ht(const struct BSS* bss);
 

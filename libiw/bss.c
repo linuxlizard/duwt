@@ -86,16 +86,6 @@ int bss_from_nlattr(struct nlattr* attr_list[], struct BSS** pbss)
 		bss->ifindex = nla_get_u32(attr);
 	}
 
-	if (bss->frequency < 3000) {
-		bss->band = NL80211_BAND_2GHZ;
-	}
-	else if (bss->frequency < 5900) {
-		bss->band = NL80211_BAND_5GHZ;
-	}
-//	else if (bss->frequency < 8000) {
-//		bss->band = NL80211_BAND_6GHZ;
-//	}
-
 	PTR_ASSIGN(*pbss, bss);
 	DBG("%s success\n", __func__);
 	return 0;
@@ -115,6 +105,70 @@ bool bss_is_vht(const struct BSS* bss)
 bool bss_is_ht(const struct BSS* bss)
 {
 	return ie_list_find_id(&bss->ie_list, IE_HT_CAPABILITIES) != NULL;
+}
+
+int bss_guess_chan_width(struct BSS* bss)
+{
+	const struct IE* const ht_ie = ie_list_find_id(&bss->ie_list, IE_HT_CAPABILITIES);
+	const struct IE* const vht_ie = ie_list_find_id(&bss->ie_list, IE_VHT_CAPABILITIES);
+	const struct IE* const he_ie = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES );
+
+	// ¯\_(ツ)_/¯
+	bss->chan_width = NL80211_CHAN_WIDTH_20;
+
+	if (ht_ie) {
+		const struct IE_HT_Capabilities* ht_capa = IE_CAST(ht_ie, struct IE_HT_Capabilities);
+		if (ht_capa->supported_channel_width) {
+			// 20+40 supported
+			bss->chan_width = NL80211_CHAN_WIDTH_40;
+		}
+		else {
+			// 20 Mhz only
+			bss->chan_width = NL80211_CHAN_WIDTH_20;
+		}
+	}
+
+	if (vht_ie) {
+		const struct IE_HT_Capabilities* vht_capa = IE_CAST(vht_ie, struct IE_HT_Capabilities);
+		switch (vht_capa->supported_channel_width) {
+			case IE_VHT_CHANNEL_WIDTH_NEITHER_160_NOR_80P80 :
+				bss->chan_width = NL80211_CHAN_WIDTH_80;
+				break;
+			case IE_VHT_CHANNEL_WIDTH_160 :
+				break;
+			case IE_VHT_CHANNEL_WIDTH_160_AND_80P80 :
+				break;
+			default:
+				break;
+		}
+	}
+
+	if (he_ie) {
+		const struct IE_HE_Capabilities* he_capa = IE_CAST(he_ie, struct IE_HE_Capabilities);
+		const struct IE_HE_PHY* he_phy = he_capa->phy;
+
+		if (bss->band == NL80211_BAND_2GHZ) {
+			if (he_phy->ch40mhz_channel_2_4ghz) {
+				bss->chan_width = NL80211_CHAN_WIDTH_40;
+			}
+		}
+		else if (bss->band == NL80211_BAND_5GHZ) {
+			if (he_phy->ch160_mhz_5ghz) {
+				bss->chan_width = NL80211_CHAN_WIDTH_160;
+			}
+			else if (he_phy->ch160_80_plus_80_mhz_5ghz) {
+				bss->chan_width = NL80211_CHAN_WIDTH_80P80;
+			}
+			else if (he_phy->ch40_and_80_mhz_5ghz) {
+				bss->chan_width = NL80211_CHAN_WIDTH_80;
+			}
+		}
+		else {
+			WARN("%s %s unknown band=%d\n", __func__, bss->bssid_str, bss->band);
+		}
+	}
+
+	return 0;
 }
 
 int bss_get_mode_str(const struct BSS* bss, char* s, size_t len)
@@ -182,37 +236,22 @@ int bss_get_chan_width_str(const struct BSS* bss, char* s, size_t len)
 		return -EINVAL;
 	}
 
-	switch(bss->chan_width) 
-	{
-		case NL80211_CHAN_WIDTH_20_NOHT:
-			return snprintf(s,len,"20_NOHT");
+	static const char* width_str[] = {
+		"20-NOHT",
+		"20",
+		"20/40",
+		"20/40/80",
+		"20/40/80/80+80",
+		"20/40/80/160",   // TODO does 160 also imply 80+80 ?
+		"5",
+		"10",
+	};
 
-		case NL80211_CHAN_WIDTH_20:
-			return snprintf(s,len,"20");
-
-		case NL80211_CHAN_WIDTH_40:
-			return snprintf(s,len,"40");
-
-		case NL80211_CHAN_WIDTH_80:
-			return snprintf(s,len,"80");
-
-		case NL80211_CHAN_WIDTH_80P80:
-			return snprintf(s,len,"80+80");
-
-		case NL80211_CHAN_WIDTH_160:
-			return snprintf(s,len,"160");
-
-		case NL80211_CHAN_WIDTH_5:
-			return snprintf(s,len,"5");
-
-		case NL80211_CHAN_WIDTH_10:
-			return snprintf(s,len,"10");
-
-		default:
-			return snprintf(s,len,"invalid=%d", bss->chan_width); 
+	if (bss->chan_width > ARRAY_SIZE(width_str)) {
+		return snprintf(s,len,"invalid=%d", bss->chan_width); 
 	}
 
-	return 0;
+	return snprintf(s, len, "%s", width_str[(unsigned int)bss->chan_width]);
 }
 
 const struct IE_SSID* bss_get_ssid(const struct BSS* bss)
