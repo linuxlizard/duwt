@@ -1,4 +1,3 @@
-#include <iostream>
 #include <fstream>
 #include <unordered_map>
 #include <vector>
@@ -33,15 +32,12 @@ mimetypes mimetype_parse(std::istream& infile)
 		if (line.length() == 0 || line[0] == '#') {
 			// ignore blank lines
 			// ignore comment lines
-//			std::cout << "drop blank//comment line\n";
 			continue;
 		}
 
-		std::cout << line_counter << " len=" << line.length() << " line=\"" << line << "\"\n";
-
 		auto pos = line.find_first_of(whitespace);
 		if (pos == std::string::npos) {
-			std::cout << "no extension for file type=" << line ;
+//			std::cout << "no extension for file type=" << line ;
 			continue;
 		}
 
@@ -49,15 +45,10 @@ mimetypes mimetype_parse(std::istream& infile)
 		std::istringstream iss {line};
 		std::vector<std::string> fields {std::istream_iterator<std::string>{iss},
 				                                 std::istream_iterator<std::string>()};
-//		for (auto s: results) {
-//			std::cout << s << "\n";
-//		}
 
 		for (auto idx = fields.size()-1 ; idx > 0 ; --idx) {
-			std::cout << "idx=" << idx << " field=" << fields[idx] << "\n";
 			mt[fields[idx]] = fields[0];
 		}
-
 	}
 
 	return mt;
