@@ -146,6 +146,10 @@ static void verify_bss(const struct BSS* bss)
 	else if (u_strcmp(u_ssid, u_e300) == 0) {
 		verify_e300(bss);
 	}
+
+	char s[64];
+	ret = bss_get_chan_width_str(bss, s, sizeof(s));
+	INFO("%s %s width=%s\n", __func__, bss->bssid_str, s);
 }
 
 int main(int argc, char* argv[])

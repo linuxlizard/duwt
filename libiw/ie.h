@@ -617,6 +617,11 @@ struct IE_VHT_Capabilities
 	uint8_t extended_nss_bw_support : 2;
 };
 
+// values of VHT supported channel width
+#define IE_VHT_CHANNEL_WIDTH_NEITHER_160_NOR_80P80 0
+#define IE_VHT_CHANNEL_WIDTH_160 1
+#define IE_VHT_CHANNEL_WIDTH_160_AND_80P80 2
+
 struct IE_VHT_Operation
 {
 	IE_SPECIFIC_FIELDS

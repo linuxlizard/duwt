@@ -86,14 +86,6 @@ int parse_nla_bss(struct nlattr* attr_list, struct BSS* bss)
 		bss->capability = nla_get_u16(attr);
 	}
 
-	if ((attr = bss_attr[NL80211_BSS_INFORMATION_ELEMENTS])) {
-		// attr is actually an array here (nested nla)
-		err = parse_nla_ies(attr, &bss->ie_list);
-		if (err) {
-			goto fail;
-		}
-	}
-
 	if ((attr = bss_attr[NL80211_BSS_TSF])) {
 		bss->tsf = nla_get_u64(attr);
 	}
@@ -120,11 +112,36 @@ int parse_nla_bss(struct nlattr* attr_list, struct BSS* bss)
 
 	if ((attr = bss_attr[NL80211_BSS_FREQUENCY])) {
 		bss->frequency = nla_get_u32(attr);
+
+		if (bss->frequency < 3000) {
+			bss->band = NL80211_BAND_2GHZ;
+		}
+		else if (bss->frequency < 5900) {
+			bss->band = NL80211_BAND_5GHZ;
+		}
+	//	else if (bss->frequency < 8000) {
+	//		bss->band = NL80211_BAND_6GHZ;
+	//	}
+
+	}
+
+	// need IEs before BSS_CHAN_WIDTH because we have to guess chan_width from
+	// the IE contents
+	if ((attr = bss_attr[NL80211_BSS_INFORMATION_ELEMENTS])) {
+		// attr is actually an array here (nested nla)
+		err = parse_nla_ies(attr, &bss->ie_list);
+		if (err) {
+			goto fail;
+		}
 	}
 
 	if ((attr = bss_attr[NL80211_BSS_CHAN_WIDTH])) {
 		// I'm finding this coming back as zero so it's not actually useful.
 		bss->chan_width = nla_get_u32(attr);
+		// so lets try to gess it based on IE contents
+		if (bss->chan_width == 0) {
+			bss_guess_chan_width(bss);
+		}
 	}
 
 	ie_list_peek(__func__, &bss->ie_list);
