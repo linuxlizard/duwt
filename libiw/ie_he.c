@@ -16,7 +16,7 @@
 
 int ie_he_capabilities_new(struct IE* ie)
 {
-	INFO("%s\n", __func__);
+	DBG("%s\n", __func__);
 
 	// I don't know officially how big this IE is (PPE is variable length, one
 	// entry per SS (Spatial Stream). Everything forward of PPE seems fixed length
@@ -50,13 +50,13 @@ int ie_he_capabilities_new(struct IE* ie)
 
 void ie_he_capabilities_free(struct IE* ie)
 {
-	INFO("%s\n", __func__);
+	DBG("%s\n", __func__);
 	DESTRUCT(struct IE_HE_Capabilities)
 }
 
 int ie_he_operation_new(struct IE* ie)
 {
-	INFO("%s\n", __func__);
+	DBG("%s\n", __func__);
 
 	// 1 byte for the extension ID
 	// 6 bytes for the payload
@@ -78,7 +78,7 @@ int ie_he_operation_new(struct IE* ie)
 
 void ie_he_operation_free(struct IE* ie)
 {
-	INFO("%s\n", __func__);
+	DBG("%s\n", __func__);
 	DESTRUCT(struct IE_HE_Operation);
 }
 
