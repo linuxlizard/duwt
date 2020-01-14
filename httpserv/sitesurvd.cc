@@ -226,7 +226,7 @@ static int on_scan_event_valid_handler(struct nl_msg *msg, void *arg)
 
 	// if new scan results,
 	// send the get scan results message
-	if (gnlh->cmd == NL80211_CMD_NEW_SCAN_RESULTS && ifidx != -1) {
+	if ( (gnlh->cmd == NL80211_CMD_NEW_SCAN_RESULTS || gnlh->cmd == NL80211_CMD_SCHED_SCAN_RESULTS) && ifidx != -1) {
 		struct netlink_socket_bundle* scan_sock_bun = (struct netlink_socket_bundle*)bun->more_args;
 		XASSERT(scan_sock_bun->cookie == BUNDLE_COOKIE, scan_sock_bun->cookie);
 
