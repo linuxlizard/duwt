@@ -584,7 +584,7 @@ int main (int argc, char* argv[])
 		nfds = std::max(scan_event_watcher.sock_fd, nfds);
 		nfds = std::max(scan_results_watcher.sock_fd, nfds);
 
-		DBG("calling select ndfs=%d\n", nfds);
+		DBG("calling select nfds=%d\n", nfds);
 		err = select(nfds+1, &read_fd_set, &write_fd_set, &except_fd_set, NULL);
 		DBG("select err=%d\n", err);
 
