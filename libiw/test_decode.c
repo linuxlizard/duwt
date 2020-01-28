@@ -116,11 +116,13 @@ static void verify_e300(const struct BSS* bss)
 
 	const struct IE* const ht_ie = ie_list_find_id(&bss->ie_list, IE_HT_CAPABILITIES);
 	const struct IE* const vht_ie = ie_list_find_id(&bss->ie_list, IE_VHT_CAPABILITIES);
-	const struct IE* const he_ie = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES );
+	const struct IE* const he_ie_capa = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES );
+	const struct IE* const he_ie_op = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_OPERATION);
 
 	XASSERT(ht_ie, 0);
 	XASSERT(vht_ie, 0);
-	XASSERT(he_ie, 0);
+	XASSERT(he_ie_capa, 0);
+	XASSERT(he_ie_op, 0);
 
 	char s[64];
 	int ret = bss_get_mode_str(bss, s, sizeof(s));
@@ -152,6 +154,63 @@ static void verify_bss(const struct BSS* bss)
 	INFO("%s %s width=%s\n", __func__, bss->bssid_str, s);
 }
 
+static void test_encode(uint8_t* buf, size_t buf_len)
+{
+	DBG("%s\n", __func__);
+
+	// can I rebuild an nl_msg containing buf as a payload?
+	struct nl_msg* msg = nlmsg_alloc();
+
+	int nl80211_id = 0;
+
+
+	void* p = genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, 
+						nl80211_id, 
+						0, 
+						NLM_F_DUMP, NL80211_CMD_NEW_SCAN_RESULTS, 0);
+	(void)p;
+
+
+	struct nlattr* attr = (struct nlattr*)buf;
+	size_t attrlen = buf_len;
+	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
+	int err = nla_parse(tb_msg, NL80211_ATTR_MAX, attr, attrlen, NULL);
+	XASSERT(err==0, err);
+
+	for (size_t i=0 ; i<NL80211_ATTR_MAX ; i++ ) {
+		if (tb_msg[i]) {
+			err = nla_put(msg, 
+							nla_type(tb_msg[i]), 
+							nla_len(tb_msg[i]), 
+							(void *)nla_data(tb_msg[i]));
+			XASSERT(err==0, err);
+		}
+	}
+//	int err = nla_put(msg, 0, buf_len, buf);
+//	XASSERT(err==0, err);
+
+	// now let's try taking it apart again
+	struct nlmsghdr *hdr = nlmsg_hdr(msg);
+	struct genlmsghdr* gnlh = (struct genlmsghdr*)nlmsg_data(hdr);
+
+	size_t len = genlmsg_attrlen(gnlh,0);
+	attr = genlmsg_attrdata(gnlh,0);
+
+	DBG("%s buflen=%zu buf=%p len=%zu attr=%p\n", __func__, 
+			buf_len, (void*)buf,
+			len, (void*)attr);
+//	hex_dump(__func__, (unsigned char*)attr, len);
+
+//	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
+	err = nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+		  genlmsg_attrlen(gnlh, 0), NULL);
+	XASSERT(err==0, err);
+
+	peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
+	XASSERT(tb_msg[NL80211_ATTR_BSS], NL80211_ATTR_BSS);
+}
+
+
 int main(int argc, char* argv[])
 {
 	int i;
@@ -180,6 +239,9 @@ int main(int argc, char* argv[])
 			fprintf(stderr, "failed to load file \"%s\"; err=%d\n", args.argv[i], err);
 			continue;
 		}
+
+		// work in progress
+		test_encode(buf, size);
 
 		struct nlattr* attr = (struct nlattr*)buf;
 

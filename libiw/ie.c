@@ -900,13 +900,14 @@ static int ie_extension_new(struct IE* ie)
 
 	uint8_t ext_id = ie->buf[0];
 
-	INFO("%s eid=%d\n", __func__, ext_id);
+	INFO("%s eid=%d len=%zu\n", __func__, ext_id, ie->len);
 
 	if (ie_ext_classes[ext_id].constructor) {
 		return ie_ext_classes[ext_id].constructor(ie);
 	}
 	else {
-		WARN("%s unparsed IE extension ID=%d\n", __func__, ext_id);
+		WARN("%s unparsed IE extension ID=%d len=%zu\n", 
+				__func__, ext_id, ie->len);
 	}
 	return 0;
 }

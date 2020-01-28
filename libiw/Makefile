@@ -29,7 +29,7 @@ CFLAGS += $(if $(findstring 16.04,$(os_version)),,-DHAVE_NUM_NL80211_BANDS)
 CORE_H:=xassert.h log.h core.h hdump.h ssid.h
 CORE_O:=xassert.o log.o hdump.o util.o ssid.o
 
-TEST:=test_ie test_bss test_bytebuf test_ie_he test_decode
+TEST:=test_ie test_bss test_bytebuf test_ie_he test_decode test_nlnames
 
 all:scan-dump $(TEST) libiw.a
 
@@ -100,6 +100,9 @@ test_bss.o:test_bss.c $(CORE_H)
 
 test_decode:test_decode.o bss.o ie.o ie_he.o iw.o nlnames.o bug.o bss_json.o args.o $(CORE_O)
 test_decode.o:test_decode.c $(CORE_H) args.h
+
+test_nlnames:test_nlnames.o nlnames.o $(CORE_O) util.o ie.o ie_he.o
+test_nlnames.o:test_nlnames.c $(CORE_H) nlnames.h
 
 VALGRIND_OPTS=--error-exitcode=1 --leak-check=yes --exit-on-first-error=yes
 test: test_bytebuf test_ie test_bss test_ie_he test_decode
