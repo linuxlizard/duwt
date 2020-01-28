@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 
 #include "mimetypes.h"
 
@@ -19,5 +20,16 @@ int main()
 		std::cerr << err.what() << "\n";
 	}
 
+	std::string nofile { "this-file-doesnt-exist" };
+	mt = mimetype_parse_file(nofile);
+	std::cout << "size=" << mt.size() << "\n";
+
+	std::ifstream infile{nofile};
+	infile.exceptions(std::ifstream::failbit);
+	std::cout << "is_open=" << infile.is_open() << 
+		" good=" << infile.good() << 
+		" bad="<< infile.bad() << 
+		" fail=" << infile.fail() << 
+		"\n";
 }
 
