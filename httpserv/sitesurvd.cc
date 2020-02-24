@@ -256,6 +256,10 @@ int capture_keys (void *arg, enum MHD_ValueKind kind,
 		KeyValueList* kv_list = static_cast<KeyValueList*>(arg);
 		kv_list->emplace_back(key, value);
 	}
+	else if (kind == MHD_HEADER_KIND) {
+		KeyValueList* kv_list = static_cast<KeyValueList*>(arg);
+		kv_list->emplace_back(key, value);
+	}
 
 	return MHD_YES;
 }
@@ -400,19 +404,34 @@ int answer_to_connection (void *arg,
 	printf("client=%s\n", s);
 
 	// get the HTTP header args
-	MHD_get_connection_values (connection, MHD_HEADER_KIND, &capture_keys, NULL);
+	KeyValueList headers;
+	std::string origin;
+	MHD_get_connection_values (connection, MHD_HEADER_KIND, &capture_keys, &headers);
+	for (auto& kv : headers) {
+		printf("%s header %s=%s\n", __func__, kv.first, kv.second);
+		if ( !strncmp(kv.first, "Origin", 6) && strnlen(kv.second,64) < 64) {
+			origin = kv.second;
+		}
+	}
 
 	// get the URL arguments
 	KeyValueList args;
 	MHD_get_connection_values (connection, MHD_GET_ARGUMENT_KIND, &capture_keys, &args);
 	for (auto& kv : args) {
-		printf("%s %s=%s\n", __func__, kv.first, kv.second);
+		printf("%s arg %s=%s\n", __func__, kv.first, kv.second);
 	}
 
 	struct MHD_Response *response;
 
 	if (strncmp(url, "/api/", 5) == 0) {
 		response = get_api_response(url+5, bss_map);
+		// CORS
+		if (origin.length()) {
+			int ret = MHD_add_response_header(response, 
+					"Access-Control-Allow-Origin",
+					origin.c_str());
+			XASSERT(ret==MHD_YES, ret);
+		}
 	}
 	else {
 		response = get_file_response(url);
