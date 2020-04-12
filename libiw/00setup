@@ -18,6 +18,8 @@ if [ -z "$ID" ] ; then
 	exit 1
 fi
 
+DEBIAN_ISH="build-essential libnl-3-dev libnl-genl-3-dev libicu-dev libmicrohttpd-dev libjansson-dev"
+
 if [ "${ID}" = "fedora" ] ; then
 	echo "Fedora"
 	packages="libnl3-devel libicu-devel libmicrohttpd-devel jansson-devel"
@@ -26,7 +28,13 @@ if [ "${ID}" = "fedora" ] ; then
 
 elif [ "${ID}" = "ubuntu" ] ; then
 	echo "Ubuntu"
-	packages="build-essential libnl-3-dev libnl-genl-3-dev libicu-dev libmicrohttpd-dev libjansson-dev"
+	packages=${DEBIAN_ISH}
+	echo "Installing ${packages}"
+	sudo apt install ${packages}
+
+elif [ "${ID}" = "raspbian" ] ; then
+	echo "Raspberry Pi"
+	packages=${DEBIAN_ISH}
 	echo "Installing ${packages}"
 	sudo apt install ${packages}
 
