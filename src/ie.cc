@@ -1041,6 +1041,9 @@ void IE_RSN::decode_rsn_ie(const char *defcipher, const char *defauth, int is_os
 	const uint8_t* data = bytes.data();
 	ssize_t len = bytes.size();
 
+	(void)defcipher;
+	(void)defauth;
+
 	if (!is_osen) {
 		version = data[0] + (data[1] << 8);
 //		decode.push_back(fmt::format("Version: {:d}", version));
