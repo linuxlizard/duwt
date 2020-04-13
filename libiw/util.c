@@ -80,6 +80,14 @@ const char *country_env_str(enum Environment environment)
 }
 
 // iw util.c
+//
+//
+// http://www.techplayon.com/802-11ax-6ghz-spectrum-wi-fi/
+//    U-NII-5: 5925-6425 MHz
+//    U-NII-6: 6425-6525 MHz
+//    U-NII-7: 6525-6875 MHz
+//    U-NII-8: 6875-7125 MHz
+//
 int ieee80211_channel_to_frequency(int chan, enum nl80211_band band)
 {
 	/* see 802.11 17.3.8.3.2 and Annex J
@@ -98,6 +106,9 @@ int ieee80211_channel_to_frequency(int chan, enum nl80211_band band)
 			return 4000 + chan * 5;
 		else
 			return 5000 + chan * 5;
+		break;
+	case NL80211_BAND_6GHZ:
+		// TODO
 		break;
 	case NL80211_BAND_60GHZ:
 		if (chan < 5)

@@ -58,7 +58,8 @@
 #include "mimetypes.h"
 #include "args.h"
 
-#define PORT 8888
+#define PORT 8081
+//#define PORT 8888
 
 using KeyValuePair = std::pair<const char*,const char*>;
 using KeyValueList = std::list<KeyValuePair>;
@@ -278,13 +279,8 @@ std::vector<char> load_file(fs::path path)
 	return buf;
 }
 
-MHD_Response* get_api_response(const char* url, BSSMap* bss_map)
+static MHD_Response* get_survey_response(const BSSMap* bss_map)
 {
-	// http callback
-	if (strncmp(url, "survey", 6) != 0) {
-		return nullptr;
-	}
-
 	struct MHD_Response* response  { nullptr };
 
 	json_t* jarray = json_array();
@@ -301,6 +297,7 @@ MHD_Response* get_api_response(const char* url, BSSMap* bss_map)
 
 		int ret = bss_to_json_summary(bss, &jbss);
 		if (ret < 0) {
+			json_decref(jarray);
 			return nullptr;
 		}
 
@@ -309,6 +306,54 @@ MHD_Response* get_api_response(const char* url, BSSMap* bss_map)
 	}
 	char* p = json_dumps(jarray, JSON_COMPACT);
 	if (!p) {
+		json_decref(jarray);
+		return nullptr;
+	}
+
+	response = MHD_create_response_from_buffer(
+					strlen(p),
+					p, 
+					MHD_RESPMEM_MUST_COPY);
+	if (!response) {
+		json_decref(jarray);
+		PTR_FREE(p);
+		return response;
+	}
+
+	int ret = MHD_add_response_header(response, 
+			"Content-Type", "application/json"
+			);
+	if (ret != MHD_YES) {
+		ERR("%s add response failed ret=%d\n", __func__, ret);
+		MHD_destroy_response(response);
+		response = nullptr;
+	}
+
+	json_decref(jarray);
+	PTR_FREE(p);
+	return response;
+}
+
+static MHD_Response* get_bssid_response(const BSSMap* bss_map)
+{
+	struct MHD_Response* response  { nullptr };
+
+	json_t* jbss = json_array();
+	if (!jbss) {
+		return nullptr;
+	}
+
+	struct BSS* bss = nullptr;
+	int ret = bss_to_json(bss, &jbss);
+	if (!ret) {
+		json_decref(jbss);
+		return nullptr;
+	}
+
+
+	char* p = json_dumps(jbss, JSON_COMPACT);
+	if (!p) {
+		json_decref(jbss);
 		return nullptr;
 	}
 
@@ -317,9 +362,31 @@ MHD_Response* get_api_response(const char* url, BSSMap* bss_map)
 					p, 
 					MHD_RESPMEM_MUST_COPY);
 
-	json_decref(jarray);
+	ret = MHD_add_response_header(response, 
+			"Content-Type", "application/json"
+			);
+	if (ret != MHD_YES) {
+		ERR("%s add response failed ret=%d\n", __func__, ret);
+		MHD_destroy_response(response);
+		response = nullptr;
+	}
+
+	json_decref(jbss);
 	PTR_FREE(p);
 	return response;
+}
+
+MHD_Response* get_api_response(const char* url, const BSSMap* bss_map)
+{
+	// MHD callback
+	if (strncmp(url, "survey", 6) == 0) {
+		return get_survey_response(bss_map);
+	}
+	if (strncmp(url, "bssid", 4) == 0) {
+		return get_bssid_response(bss_map);
+	}
+
+	return nullptr;
 }
 
 
@@ -373,7 +440,11 @@ MHD_Response* get_file_response(const char* url)
 		int ret = MHD_add_response_header(response, 
 				"Content-Type",
 				content_type.c_str());
-		XASSERT(ret==MHD_YES, ret);
+		if (ret != MHD_YES) {
+			ERR("%s add response failed ret=%d\n", __func__, ret);
+			MHD_destroy_response(response);
+			response = nullptr;
+		}
 	} catch (std::out_of_range& err) {
 		// pass
 	}
@@ -423,6 +494,8 @@ int answer_to_connection (void *arg,
 
 	struct MHD_Response *response;
 
+	size_t url_len = strlen(url);
+
 	if (strncmp(url, "/api/", 5) == 0) {
 		response = get_api_response(url+5, bss_map);
 		// CORS
@@ -437,6 +510,7 @@ int answer_to_connection (void *arg,
 		response = get_file_response(url);
 	}
 
+	// if all else fails, return a simple default page
 	if (!response) {
 		size_t count = bss_map->size();
 		char p[64];
@@ -448,6 +522,7 @@ int answer_to_connection (void *arg,
 						page_len,
 						p, 
 						MHD_RESPMEM_MUST_COPY);
+		// TODO check for error
 	}
 
 	int ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
