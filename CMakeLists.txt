@@ -4,10 +4,10 @@
 # 	cmake ..
 #
 # Debian packages install (possibly incomplete)
-# apt install build-essential pkg-config cmake libnl-3-dev libnl-genl-3-dev
+# apt install build-essential pkg-config cmake libnl-3-dev libnl-genl-3-dev libpoco-dev
 
-# Fedora packages install
-# TODO
+# Fedora packages install TODO
+# 
 
 # hint: command line invocation
 # cmake -DCMAKE_BUILD_TYPE=Debug ..  <-- default
@@ -19,6 +19,7 @@ project(duwt)
 
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 enable_testing()
 
@@ -36,6 +37,12 @@ set(MY_DEBUG_OPTIONS -Wall -Wextra -Wnon-virtual-dtor -pedantic )
 # TODO fmtlib has warnings with -Wshadow
 #set(MY_DEBUG_OPTIONS -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -Wold-style-cast)
 
+find_package(Poco REQUIRED COMPONENTS Foundation JSON Net)
+message("found ${Poco_CONFIG} version=${Poco_VERSION} ${Poco_LIBRARIES}" )
+
+add_executable(test_logging src/test_logging.cc)
+target_link_libraries(test_logging PUBLIC Poco::Foundation)
+
 add_library(duwt STATIC src/ie.cc src/bss.cc src/cfg80211.cc src/iw.cc src/logging.cc src/jsoncpp.cc src/oui.cc)
 #target_compile_features(duwt PUBLIC cxx_std_17)
 target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS})
@@ -46,10 +53,9 @@ target_compile_options(duwt PUBLIC $<$<CONFIG:DEBUG>:${MY_DEBUG_OPTIONS}>)
 add_executable(scandump scandump/main.cc)
 #target_compile_features(scandump PUBLIC cxx_std_17)
 target_link_libraries(scandump duwt)
-target_link_libraries(scandump fmt)
 target_link_libraries(scandump ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
+target_link_libraries(scandump fmt)
 #target_link_options(scandump PUBLIC ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
-
 
 add_executable(scanevent scanevent/main.cc)
 #target_compile_features(scanevent PUBLIC cxx_std_17)
@@ -69,8 +75,3 @@ find_library(MHTTPD microhttpd)
 message("find_library microhttpd found=${MHTTPD}")
 #pkg_check_modules(libmicrohttpd QUIET libmicrohttpd)
 message("pkg-config libmicrohttpd found=${libmicrohttpd_FOUND} ${libmicrohttpd_INCLUDE_DIRS} ${libmicrohttpd_LDFLAGS}" )
-add_executable(galileo EXCLUDE_FROM_ALL galileo/main.cc)
-target_link_libraries(galileo duwt)
-target_link_libraries(galileo fmt)
-target_link_libraries(galileo ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
-target_link_libraries(galileo microhttpd)
