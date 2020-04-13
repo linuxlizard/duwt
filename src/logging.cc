@@ -1,4 +1,5 @@
 #include <memory>
+#include <cassert> // XXX workaround for spdlog pattern_formatter 
 
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/basic_file_sink.h" // support for basic file logging

@@ -3,6 +3,8 @@
 
 // https://github.com/gabime/spdlog
 
+#include <cassert> // XXX workaround for spdlog pattern_formatter 
+
 #include "spdlog/spdlog.h"
 #include "spdlog/sinks/stdout_sinks.h"
 
