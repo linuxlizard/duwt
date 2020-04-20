@@ -7,7 +7,7 @@
 # 	http://userguide.icu-project.org/
 # 	https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/index.html
 
-CC=gcc
+CC?=gcc
 PKGS=libnl-3.0 libnl-genl-3.0 jansson
 #PKGS=libnl-3.0 libnl-genl-3.0 libevent_core libevent libevent_extra
 CFLAGS:=-g -Wall -Wpedantic -Wextra $(shell pkg-config --cflags $(PKGS))
@@ -26,12 +26,21 @@ os_version:=$(shell lsb_release -r -s)
 CFLAGS += $(if $(findstring 16.04,$(os_version)),,-DHAVE_NL80211_STA_INFO_RX_DURATION)
 CFLAGS += $(if $(findstring 16.04,$(os_version)),,-DHAVE_NUM_NL80211_BANDS)
 
-CORE_H:=xassert.h log.h core.h hdump.h ssid.h
+CORE_H:=config.h xassert.h log.h core.h hdump.h ssid.h
 CORE_O:=xassert.o log.o hdump.o util.o ssid.o
 
 TEST:=test_ie test_bss test_bytebuf test_ie_he test_decode test_nlnames
 
 all:scan-dump $(TEST) libiw.a
+
+# nl80211.h gets new symbols but there isn't a way to compile-time check for them
+# so we have to kludge in a "configure" script
+config.h:
+	@if [ ! -f /usr/include/linux/nl80211.h ] ; \
+	then\
+		echo Error: missing nl80211.h so unable to build config.h;\
+		exit 1;\
+	fi
 
 libiw.a: iw.o iw-scan.o bytebuf.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o bug.o ie_print.o args.o
 	$(AR) rcs $@ $^
@@ -106,6 +115,7 @@ test_nlnames.o:test_nlnames.c $(CORE_H) nlnames.h
 
 VALGRIND_OPTS=--error-exitcode=1 --leak-check=yes --exit-on-first-error=yes
 
+.PHONY:test
 test: test_bytebuf test_ie test_bss test_ie_he test_decode
 	valgrind  $(VALGRIND_OPTS) ./test_decode maxan_anvol.dat
 	valgrind  $(VALGRIND_OPTS) ./test_bytebuf
@@ -113,5 +123,6 @@ test: test_bytebuf test_ie test_bss test_ie_he test_decode
 	valgrind $(VALGRIND_OPTS)  ./test_ie_he
 	valgrind $(VALGRIND_OPTS)  ./test_bss
 
+.PHONY:clean
 clean:
-	$(RM) *.o *.a scan-event scan-event-ev test_bss test_bytebuf test_ie test_xassert scan-dump
+	$(RM) *.o *.a scan-event scan-event-ev test_bss test_bytebuf test_ie test_xassert scan-dump config.h
