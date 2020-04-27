@@ -1,0 +1,11 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#cmakedefine HAVE_NL80211_STA_INFO_RX_DURATION
+#cmakedefine HAVE_NL80211_BSS_PAD
+#cmakedefine HAVE_NUM_NL80211_BANDS
+#cmakedefine HAVE_NL80211_BAND_6GHZ
+#cmakedefine HAVE_NL80211_BSS_CHAIN_SIGNAL
+
+#endif
+

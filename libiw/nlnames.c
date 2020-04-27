@@ -170,14 +170,14 @@ const char * to_string_nl80211_bss(enum nl80211_bss val)
 		case NL80211_BSS_BEACON_TSF : return "NL80211_BSS_BEACON_TSF";
 		case NL80211_BSS_PRESP_DATA : return "NL80211_BSS_PRESP_DATA";
 		case NL80211_BSS_LAST_SEEN_BOOTTIME : return "NL80211_BSS_LAST_SEEN_BOOTTIME";
-//#ifdef NL80211_BSS_PAD
+#ifdef HAVE_NL80211_BSS_PAD
 		case NL80211_BSS_PAD : return "NL80211_BSS_PAD";
 		case NL80211_BSS_PARENT_TSF : return "NL80211_BSS_PARENT_TSF";
 		case NL80211_BSS_PARENT_BSSID : return "NL80211_BSS_PARENT_BSSID";
-//#ifdef NL80211_BSS_CHAIN_SIGNAL
+#endif
+#ifdef HAVE_NL80211_BSS_CHAIN_SIGNAL
 		case NL80211_BSS_CHAIN_SIGNAL : return "NL80211_BSS_CHAIN_SIGNAL";
-//#endif
-//#endif
+#endif
 		default: return "unknown";
 	}
 }

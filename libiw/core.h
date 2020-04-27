@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <errno.h>
 
+#include "config.h"
 #include "xassert.h"
 #include "hdump.h"
 #include "log.h"

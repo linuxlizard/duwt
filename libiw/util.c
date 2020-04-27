@@ -107,9 +107,11 @@ int ieee80211_channel_to_frequency(int chan, enum nl80211_band band)
 		else
 			return 5000 + chan * 5;
 		break;
+#ifdef HAVE_NL80211_BAND_6GHZ
 	case NL80211_BAND_6GHZ:
 		// TODO
 		break;
+#endif
 	case NL80211_BAND_60GHZ:
 		if (chan < 5)
 			return 56160 + chan * 2160;

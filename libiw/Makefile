@@ -22,9 +22,9 @@ ICU_CFLAGS += -DU_CHARSET_IS_UTF8=1 $(shell pkg-config --cflags icu-i18n)
 ICU_LDFLAGS += $(shell pkg-config --libs icu-i18n) -licuio
 LDLIBS+=$(ICU_LDFLAGS)
 
-os_version:=$(shell lsb_release -r -s)
-CFLAGS += $(if $(findstring 16.04,$(os_version)),,-DHAVE_NL80211_STA_INFO_RX_DURATION)
-CFLAGS += $(if $(findstring 16.04,$(os_version)),,-DHAVE_NUM_NL80211_BANDS)
+#os_version:=$(shell lsb_release -r -s)
+#CFLAGS += $(if $(findstring 16.04,$(os_version)),,-DHAVE_NL80211_STA_INFO_RX_DURATION)
+#CFLAGS += $(if $(findstring 16.04,$(os_version)),,-DHAVE_NUM_NL80211_BANDS)
 
 CORE_H:=config.h xassert.h log.h core.h hdump.h ssid.h
 CORE_O:=xassert.o log.o hdump.o util.o ssid.o
@@ -32,15 +32,6 @@ CORE_O:=xassert.o log.o hdump.o util.o ssid.o
 TEST:=test_ie test_bss test_bytebuf test_ie_he test_decode test_nlnames
 
 all:scan-dump $(TEST) libiw.a
-
-# nl80211.h gets new symbols but there isn't a way to compile-time check for them
-# so we have to kludge in a "configure" script
-config.h:
-	@if [ ! -f /usr/include/linux/nl80211.h ] ; \
-	then\
-		echo Error: missing nl80211.h so unable to build config.h;\
-		exit 1;\
-	fi
 
 libiw.a: iw.o iw-scan.o bytebuf.o $(CORE_O) nlnames.o ie.o ie_he.o bss.o bug.o ie_print.o args.o
 	$(AR) rcs $@ $^
@@ -125,4 +116,4 @@ test: test_bytebuf test_ie test_bss test_ie_he test_decode
 
 .PHONY:clean
 clean:
-	$(RM) *.o *.a scan-event scan-event-ev test_bss test_bytebuf test_ie test_xassert scan-dump config.h
+	$(RM) *.o *.a scan-event scan-event-ev test_bss test_bytebuf test_ie test_xassert scan-dump 
