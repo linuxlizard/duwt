@@ -51,10 +51,6 @@ public:
 		: std::runtime_error(message) {}
 };
 
-// using global OUI instance
-std::string get_org_name(uint32_t oui);
-std::string get_org_name(uint8_t* oui);
-
 } // end namespace ieeeoui
 
 #endif

@@ -111,14 +111,3 @@ std::string OUI::get_org_name(uint8_t* oui)
 	n = (oui[0]<<16) | (oui[1]<<8) | oui[2];
 	return get_org_name(n);
 }
-
-std::string ieeeoui::get_org_name(uint32_t oui)
-{
-	return std::string {"Foo"};
-}
-
-std::string ieeeoui::get_org_name(uint8_t* oui)
-{
-	return get_org_name((oui[0]<<16) | (oui[1]<<8) | oui[2]);
-}
-
