@@ -35,12 +35,50 @@ pkg_check_modules(libnl REQUIRED libnl-3.0)
 pkg_check_modules(libnl_genl REQUIRED libnl-genl-3.0)
 
 add_library(iw STATIC iw.c iw-scan.c bytebuf.c xassert.c log.c hdump.c
-		util.c ssid.c nlnames.c ie.c ie_he.c bss.c bug.c ie_print.c args.c)
+		util.c ssid.c nlnames.c ie.c ie_he.c bss.c bug.c ie_print.c args.c
+		bss_json.c)
 
 target_include_directories(iw PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
 
-add_executable(test_ie test_ie.c)
-target_include_directories(test_ie PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
-target_link_libraries(test_ie iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
+# XXX tinkering with cpprestsdk and CMake
+find_package(cpprestsdk REQUIRED)
+if(${cpprestsdk_FOUND})
+#	get_target_properties(prop cpprestsdk::cpprest
+	message("Found cpprestsdk")
+	message("found ${cpprestsdk_CONFIG} version=${cpprestsdk_VERSION} lib=${cpprestsdk_LIBRARIES} inc=${cpprestsdk_INCLUDE_DIRS} ldflags=${cpprestsdk_LDFLAGS}" )
+endif()
+
+# scan-dump uses ICU 
+# 	http://site.icu-project.org/
+# 	http://userguide.icu-project.org/
+# 	https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/index.html
+pkg_check_modules(icu REQUIRED icu-i18n)
+message("icu found=${icu_FOUND} include=${icu_INCLUDE_DIRS} ldflags=${icu_LDFLAGS}" )
+
+# I'm also using the jansson JSON library
+pkg_check_modules(jansson REQUIRED jansson)
+message("jansson found=${jansson_FOUND} include=${jansson_INCLUDE_DIRS} ldflags=${jansson_LDFLAGS}" )
+
+add_executable(scan-dump scan-dump.c)
+target_include_directories(scan-dump PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
+target_link_libraries(scan-dump iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
+target_link_libraries(scan-dump ${icu_LDFLAGS} icuio)
+target_link_libraries(scan-dump jansson)
+target_link_libraries(scan-dump ${cpprestsdk_LDFLAGS})
+
+foreach(test IN ITEMS test_ie test_bss test_decode test_bytebuf test_ie_he test_nlnames)
+	message("test=${test}")
+	add_executable(${test} ${test}.c)
+	target_include_directories(${test} PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
+	target_link_libraries(${test} iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
+	target_link_libraries(${test}  ${icu_LDFLAGS} icuio)
+	target_link_libraries(${test} jansson)
+endforeach()
 
 add_test(NAME test_ie COMMAND test_ie)
+add_test(NAME test_bss COMMAND test_bss)
+add_test(NAME test_decode COMMAND test_decode)
+add_test(NAME test_bytebuf COMMAND test_bytebuf)
+add_test(NAME test_ie_he COMMAND test_ie_he)
+add_test(NAME test_nlnames COMMAND test_nlnames)
+

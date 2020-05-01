@@ -116,4 +116,4 @@ test: test_bytebuf test_ie test_bss test_ie_he test_decode
 
 .PHONY:clean
 clean:
-	$(RM) *.o *.a scan-event scan-event-ev test_bss test_bytebuf test_ie test_xassert scan-dump 
+	$(RM) *.o *.a scan-event scan-event-ev scan-dump $(TEST) 

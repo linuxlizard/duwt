@@ -1,3 +1,4 @@
+#include <iostream>
 #include <fstream>
 #include <unordered_map>
 #include <vector>
@@ -28,6 +29,9 @@ mimetypes mimetype_parse(std::istream& infile)
 
 	std::size_t line_counter {0};
 	while( std::getline(infile,line) ) {
+		if (infile.eof()) {
+			break;
+		}
 		line_counter++;
 		if (line.length() == 0 || line[0] == '#') {
 			// ignore blank lines
@@ -57,6 +61,9 @@ mimetypes mimetype_parse(std::istream& infile)
 mimetypes mimetype_parse_file(const fs::path& path)
 {
 	std::ifstream infile{path};
+	std::cout << "path=" << path << " exceptions=" << infile.exceptions() << "\n";
+//	infile.exceptions(std::ios_base::badbit | std::ios_base::failbit);
+	std::cout << "path=" << path << " exceptions=" << infile.exceptions() << "\n";
 	return mimetype_parse(infile);
 }
 

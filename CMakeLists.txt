@@ -71,12 +71,7 @@ add_executable(test_oui src/test_oui.cc src/oui.cc)
 target_include_directories(test_oui PUBLIC include)
 add_test(NAME test_oui COMMAND test_oui)
 
-# add microhttpd for the server side but let it be optional for now
-find_package(microhttpd QUIET)
-message("find_package microhttpd found=${microhttpd_FOUND}")
-find_library(MHTTPD microhttpd)
-message("find_library microhttpd found=${MHTTPD}")
-#pkg_check_modules(libmicrohttpd QUIET libmicrohttpd)
-message("pkg-config libmicrohttpd found=${libmicrohttpd_FOUND} ${libmicrohttpd_INCLUDE_DIRS} ${libmicrohttpd_LDFLAGS}" )
-
 add_subdirectory(libiw)
+add_subdirectory(httpserv)
+#add_dependencies(httpserv libiw)
+
