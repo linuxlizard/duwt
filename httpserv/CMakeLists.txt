@@ -33,11 +33,13 @@ pkg_check_modules(libnl_genl REQUIRED libnl-genl-3.0)
 add_executable(sitesurvd sitesurvd.cc mimetypes.cc)
 target_link_libraries(sitesurvd ${MHTTPD} ${jansson_LDFLAGS})
 target_link_libraries(sitesurvd iw)
+target_link_libraries(sitesurvd stdc++fs)
 target_include_directories(sitesurvd PUBLIC ${libnl_INCLUDE_DIRS})
 target_include_directories(sitesurvd PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../libiw)
 target_link_libraries(sitesurvd ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 
 add_executable(test_mimetypes test_mimetypes.cc mimetypes.cc)
+target_link_libraries(test_mimetypes stdc++fs)
 
 add_test(NAME test_mimetypes COMMAND test_mimetypes)
 
