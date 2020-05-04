@@ -3,16 +3,9 @@
 
 #include <string>
 #include <unordered_map>
+#include <exception>
 
-#ifdef __has_include
-#  if __has_include(<filesystem>)
-#    include <filesystem>  // gcc8 (Fedora29+)
-#  elif __has_include(<experimental/filesystem>)
-#    include <experimental/filesystem> // gcc7 (Ubuntu 18.04)
-#  endif
-#else
-#error no __has_include
-#endif
+#include "fs.h"
 
 // key: extension
 // value: mime-type 
@@ -20,7 +13,25 @@
 using mimetypes = std::unordered_map<std::string, std::string>;
 
 mimetypes mimetype_parse(std::istream& infile);
+mimetypes mimetype_parse_file(const fs::path& path);
 mimetypes mimetype_parse_file(const std::string& infilename);
 mimetypes mimetype_parse_default_file(void);
+
+class InvalidMimetypesFile : public std::runtime_error
+{
+	public:
+		InvalidMimetypesFile(const std::string& what, int errno=0 ) : 
+			std::runtime_error(what) { _errno = errno; }
+//			std::runtime_error(what), _errno(errno) { }
+		InvalidMimetypesFile(const char* what, int errno=0 ) :
+//			std::runtime_error(what), _errno(errno) { }
+			std::runtime_error(what) { _errno = errno; }
+
+		int code(void) const {return _errno;};
+
+	private:
+		int _errno;
+};
+
 
 #endif

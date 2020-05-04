@@ -3,26 +3,189 @@
 #include <unordered_map>
 #include <vector>
 #include <iterator>
-//#include <boost/algorithm/string.hpp>
-
-// https://en.cppreference.com/w/cpp/feature_test
-#ifdef __has_include
-#  if __has_include(<filesystem>)
-#    include <filesystem>  // gcc8 (Fedora29+)
-     namespace fs = std::filesystem;
-#  elif __has_include(<experimental/filesystem>)
-#    include <experimental/filesystem> // gcc7 (Ubuntu 18.04)
-     namespace fs = std::experimental::filesystem;
-#  endif
-#else
-#error no __has_include
-#endif
 
 #include "mimetypes.h"
+#include "fs.h"
+
+enum class State
+{
+	START = 1,
+	LINE_COMMENT,
+	TYPE,
+	SEEK_EXTENSION,
+	EXTENSION,
+	ERROR
+};
+
+static const std::array<const char*,7> state_names {
+	"",
+	"START", 
+	"LINE_COMMENT",
+	"TYPE",
+	"SEEK_EXTENSION",
+	"EXTENSION",
+	"ERROR"
+};
+
+static const char LF = 0x0a;
+static const char CR = 0x0d;
+static const char SP = ' ';
+static const char HT = '\t';
+
+static State eat_eol(std::istream& infile)
+{
+	char c = infile.get();
+	if (infile.eof() || c != LF) {
+		return State::ERROR;
+	}
+	return State::START;
+}
+
+static State eat_line(std::istream& infile)
+{
+	// read chars until end of line
+	while ( !infile.eof() ) {
+		char c = infile.get();
+
+		if (c==LF) {
+			break;
+		}
+		else if (c==CR) {
+			// handle CRLF
+			return eat_eol(infile);
+		}
+	}
+
+	return State::START;
+}
+
+static void dbg_cout_file(std::istream& infile)
+{
+	std::cout << "is_open=" << "?" << 
+		" good=" << infile.good() << 
+		" bad="<< infile.bad() << 
+		" fail=" << infile.fail() << 
+		" eof=" << infile.eof() << 
+		"\n";
+}
+
+mimetypes mimetype_parse(std::istream& infile)
+{
+	if (infile.fail()) {
+		throw InvalidMimetypesFile("file open failed");
+	}
+
+	mimetypes mt {};
+	State state { State::START };
+
+	std::string type;
+	std::string ext;
+
+	type.reserve(128);
+	ext.reserve(64);
+
+	while (true) {
+//		dbg_cout_file(infile);
+		char c = infile.get();
+		if (infile.eof()) {
+			break;
+		}
+
+		dbg_cout_file(infile);
+
+		if (infile.fail()) {
+			throw std::runtime_error("file fail bit set");
+		}
+
+		std::cout << "state=" << state_names[static_cast<int>(state)] << " c=" << c << "\n";
+		switch (state) {
+			case State::START:
+				if (c=='#') {
+					state = eat_line(infile);
+				}
+				else if (c==CR) {
+					state = eat_eol(infile);
+				}
+				else if (c==LF || c==SP || c==HT) {
+				}
+				else {
+					std::cout << "State::TYPE start\n";
+					type.erase();
+					type.push_back(c);
+					state = State::TYPE;
+				}
+				break;
+
+			case State::TYPE:
+				if (c==CR) {
+					// end of type
+					state = eat_eol(infile);
+				}
+				else if (c==LF) {
+					// end of type
+					state = State::START;
+				}
+				else if (c==LF || c==SP || c==HT) {
+					// end of type
+					state = State::SEEK_EXTENSION;
+				}
+				else {
+					ext.erase();
+					type.push_back(c);
+				}
+				break;
+
+			case State::SEEK_EXTENSION:
+				if (c==CR) {
+					// end of line
+					state = eat_eol(infile);
+				}
+				else if (c==LF) {
+					// end of line
+					state = State::START;
+				}
+				else if (!(c==SP || c==HT)) {
+					ext.erase();
+					ext.push_back(c);
+					state = State::EXTENSION;
+				}
+				break;
+
+			case State::EXTENSION:
+				if (c==CR) {
+					// end of line; save extension
+					mt[ext] = type;
+					state = eat_eol(infile);
+				}
+				else if (c==LF) {
+					// end of line; save extension
+					std::cout << "type=" << type << " ext=" << ext << "\n";
+					mt[ext] = type;
+					state = State::START;
+				}
+				else if (c==SP || c==HT) {
+					// end of this extension
+					mt[ext] = type;
+					state = State::SEEK_EXTENSION;
+				}
+				else {
+					ext.push_back(c);
+				}
+				break;
+
+			case State::ERROR:
+				break;
+		}
+
+	}
+
+	return mt;
+}
+
 
 static const std::string whitespace {" \t"};
 
-mimetypes mimetype_parse(std::istream& infile)
+mimetypes old_mimetype_parse(std::istream& infile)
 {
 	mimetypes mt {};
 	std::string line;
@@ -62,6 +225,7 @@ mimetypes mimetype_parse_file(const fs::path& path)
 {
 	std::ifstream infile{path};
 	std::cout << "path=" << path << " exceptions=" << infile.exceptions() << "\n";
+	infile.exceptions(std::ios_base::badbit);
 //	infile.exceptions(std::ios_base::badbit | std::ios_base::failbit);
 	std::cout << "path=" << path << " exceptions=" << infile.exceptions() << "\n";
 	return mimetype_parse(infile);
