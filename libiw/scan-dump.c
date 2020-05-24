@@ -72,8 +72,15 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 
 	// for later test/debug, save the attributes to a file
 	if (outfile) {
-		size_t len = genlmsg_attrlen(gnlh,0);
+		// 4-byte magic 
+		uint32_t magic = 0x64617665;
+		fwrite((void*)&magic, sizeof(uint32_t), 1, outfile);
+		// 4-byte length
+		uint32_t len = genlmsg_attrlen(gnlh, 0);
+		fwrite((void*)&len, sizeof(uint32_t), 1, outfile);
+		// write the data
 		fwrite((void*)genlmsg_attrdata(gnlh,0), len, 1, outfile);
+//		hex_dump(__func__, (void*)genlmsg_attrdata(gnlh,0), len);
 	}
 
 	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
@@ -707,7 +714,57 @@ static void print_short(const struct BSS* bss)
 		u_printf("%32S ", ssid);
 	}
 
-	printf("%18s  %d  %d  %0.2f ", bss->bssid_str, bss->frequency, -1, bss->signal_strength_mbm/100.0);
+	bool is_ht = ie_list_find_id(&bss->ie_list, IE_HT_OPERATION) != NULL;
+	bool is_vht = ie_list_find_id(&bss->ie_list, IE_VHT_OPERATION) != NULL;
+	bool is_he = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES) != NULL;
+	char mode[32] = {};
+
+	if (bss->band == NL80211_BAND_2GHZ) {
+		strcat(mode, "g");
+	}
+	else if (bss->band == NL80211_BAND_5GHZ){
+		strcat(mode, "a");
+	}
+	else {
+		strcat(mode, "!?");
+	}
+
+	if (is_ht) {
+		strcat(mode, "/n");
+	}
+	if (is_vht) {
+		strcat(mode, "/ac");
+	}
+	if (is_he) {
+		strcat(mode, "/ax");
+	}
+
+	char width[32] = {};
+	switch (bss->chan_width) {
+		case NL80211_CHAN_WIDTH_20_NOHT:
+			strcat(width, "20noht");
+			break;
+		case NL80211_CHAN_WIDTH_20:
+			strcat(width, "20");
+			break;
+		case NL80211_CHAN_WIDTH_40:
+			strcat(width, "40");
+			break;
+		case NL80211_CHAN_WIDTH_80:
+			strcat(width, "80");
+			break;
+		case NL80211_CHAN_WIDTH_80P80:
+			strcat(width, "80+80");
+			break;
+		case NL80211_CHAN_WIDTH_160:
+			strcat(width, "160");
+			break;
+		default:
+			strcat(width, "??");
+			break;
+	}
+
+	printf("%18s  %d %4s %10s  %0.2f ", bss->bssid_str, bss->frequency, width, mode, bss->signal_strength_mbm/100.0);
 //	for( size_t i=0 ; i<bss->ie_list.count ; i++) {
 //		printf("%3d ", bss->ie_list.ieptrlist[i]->id);
 //	}
@@ -768,7 +825,12 @@ int main(int argc, char* argv[])
 	const char* ifname = args.argv[0];
 
 	// for later test/debug, save the attributes to a file
-//	outfile = fopen("out.dat","wb");
+//	outfile = fopen("scan-dump.dat","wb");
+	if (outfile) {
+		// write a simple header so I can remember what file this silly file
+		// format is.  Header terminated by \n
+		fprintf(outfile,"scan-dump\n");
+	}
 
 	DEFINE_DL_LIST(bss_list);
 	struct nl_cb* cb = nl_cb_alloc(NL_CB_DEFAULT);

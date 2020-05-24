@@ -23,65 +23,123 @@
 U_STRING_DECL(u_maxan_anvol, "Maxan Anvol", 11);
 U_STRING_DECL(u_e300, "E300-7e2-5g", 11);
 
-static int decode(struct nlattr* attr, size_t attrlen, struct BSS** p_bss)
+static int decode(uint8_t* buf, ssize_t buflen, struct dl_list* bss_list)
 {
 	struct BSS* bss = NULL;
+	struct nlattr* attr=NULL;
+	int attrlen;
 
-	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
-	nla_parse(tb_msg, NL80211_ATTR_MAX, attr, attrlen, NULL);
+//	hex_dump(__func__, (unsigned char*)buf, 1024);
 
-	peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
+	uint8_t* endbuf = buf + buflen;
+	while( buflen > 0) {
+		// my silly little file format has a uint32_t in host endian order
+		// stamped before each genlmsg 
+		XASSERT (*(uint32_t*)buf == 0x64617665, *(uint32_t*)buf);
+		buf += sizeof(uint32_t);
 
-	int err=0;
-	err = bss_from_nlattr(tb_msg, &bss);
-	if (err) {
-		goto fail;
+		// data length
+		uint32_t len = *(uint32_t*)buf;
+		hex_dump(__func__, buf, len);
+		printf("blob len=%zu remain=%zu\n", len, buflen);
+		buf += sizeof(uint32_t);
+		XASSERT(buf < endbuf, (endbuf-buf));
+
+		attrlen = (int)len;
+		attr = (struct nlattr*)buf;
+		buf += len;
+		buflen -= len + 8;
+		ERR("%s buf=%p end=%p buflen=%zd\n", __func__, buf, endbuf, buflen);
+
+		struct nlattr* nla;
+		int rem;
+		nla_for_each_attr(nla, attr, attrlen, rem) {
+			printf("type=%d len=%d rem=%d\n", nla_type(nla), nla_len(nla), rem);
+		}
+
+		struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
+		int err = nla_parse(tb_msg, NL80211_ATTR_MAX, attr, attrlen, NULL);
+		XASSERT(err==0, err);
+
+		peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
+
+		err = bss_from_nlattr(tb_msg, &bss);
+		if (err) {
+			goto fail;
+		}
+
+		dl_list_add_tail(bss_list, &bss->node);
 	}
-
-	PTR_ASSIGN(*p_bss, bss);
 
 	return 0;
 fail:
 	return -1;
 }
 
-static int load_file(const char* filename, uint8_t** p_buf, size_t* p_size)
+static int load_scan_dump_file(const char* filename, uint8_t** p_buf, size_t* p_size)
 {
 	struct stat stats;
+	uint8_t *buf = NULL;
+
 	int err =  stat(filename, &stats);
 	if (err<0) {
+		// preserve errno
+		err = errno;
 		fprintf(stderr, "stat file \"%s\" failed err=%d %s\n", filename, errno, strerror(errno));
 		return err;
 	}
 
-	uint8_t* buf = malloc(stats.st_size);
-	if (!buf) {
-		return -ENOMEM;
-	}
-
 	int fd = open(filename, O_RDONLY);
 	if (fd<0) {
-		PTR_FREE(buf);
+		err = errno;
 		fprintf(stderr, "open file \"%s\" failed err=%d %s\n", filename, errno, strerror(errno));
-		return -errno;
+		return -err;
 	}
 
-	ssize_t count = read(fd, buf, stats.st_size);
+	// skip my header which is free-form bytes up until a \n (0x0a)
+	ssize_t count, header_size=0;
+	unsigned char c;
+	do {
+		count = read(fd, &c, 1);
+		if (count < 0) {
+			err = errno;
+			goto fail;
+		}
+		header_size++;
+	} while (c != 0x0a);
+
+	size_t data_size = stats.st_size - header_size;
+	buf = malloc(data_size);
+	if (!buf) {
+		err = -ENOMEM;
+		goto fail;
+	}
+
+	// read rest of file
+	count = read(fd, buf, data_size);
 	if (count < 0) {
-		PTR_FREE(buf);
+		err = errno;
 		fprintf(stderr, "read file \"%s\" failed err=%d %s\n", filename, errno, strerror(errno));
-		return -errno;
+		goto fail;
 	}
-	close(fd);
 
-	if (count != stats.st_size) {
-		PTR_FREE(buf);
-		return -EIO;
+	if (count+header_size != stats.st_size) {
+		err = EINVAL;
+		goto fail;
 	}
 
 	PTR_ASSIGN(*p_buf, buf);
-	*p_size = stats.st_size;
+	*p_size = count;
+	close(fd);
+	DBG("header_size=%zu count=%zu\n", header_size, count);
 	return 0;
+
+fail:
+	close(fd);
+	if (buf) {
+		PTR_FREE(buf);
+	}
+	return -err;
 }
 
 static void verify_maxan_anvol(const struct BSS* bss)
@@ -142,12 +200,14 @@ static void verify_bss(const struct BSS* bss)
 	int ret = ssid_to_unicode_str(ssid_ie->ssid, ssid_ie->ssid_len, u_ssid, sizeof(u_ssid));
 	XASSERT(ret>=0, ret);
 
+#if 0
 	if (u_strcmp(u_ssid, u_maxan_anvol) == 0) {
 		verify_maxan_anvol(bss);
 	}
 	else if (u_strcmp(u_ssid, u_e300) == 0) {
 		verify_e300(bss);
 	}
+#endif
 
 	char s[64];
 	ret = bss_get_chan_width_str(bss, s, sizeof(s));
@@ -163,13 +223,11 @@ static void test_encode(uint8_t* buf, size_t buf_len)
 
 	int nl80211_id = 0;
 
-
 	void* p = genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, 
 						nl80211_id, 
 						0, 
 						NLM_F_DUMP, NL80211_CMD_NEW_SCAN_RESULTS, 0);
 	(void)p;
-
 
 	struct nlattr* attr = (struct nlattr*)buf;
 	size_t attrlen = buf_len;
@@ -199,7 +257,7 @@ static void test_encode(uint8_t* buf, size_t buf_len)
 	DBG("%s buflen=%zu buf=%p len=%zu attr=%p\n", __func__, 
 			buf_len, (void*)buf,
 			len, (void*)attr);
-//	hex_dump(__func__, (unsigned char*)attr, len);
+	hex_dump(__func__, (unsigned char*)attr, len);
 
 //	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
 	err = nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
@@ -230,39 +288,40 @@ int main(int argc, char* argv[])
 	U_STRING_INIT(u_maxan_anvol, "Maxan Anvol", 11);
 	U_STRING_INIT(u_e300, "E300-7e2-5g", 11);
 
+	DEFINE_DL_LIST(bss_list);
+
 	for (i=0 ; i<args.argc ; i++) {
 		uint8_t* buf;
 		size_t size;
 
-		err = load_file(args.argv[i], &buf, &size);
+		err = load_scan_dump_file(args.argv[i], &buf, &size);
 		if (err < 0) {
 			fprintf(stderr, "failed to load file \"%s\"; err=%d\n", args.argv[i], err);
 			continue;
 		}
 
 		// work in progress
-		test_encode(buf, size);
+//		test_encode(buf, size);
 
-		struct nlattr* attr = (struct nlattr*)buf;
-
-		struct BSS* bss;
-
-		err = decode(attr, size, &bss);
+		err = decode(buf, size, &bss_list);
 		XASSERT(err==0, err);
-
-		verify_bss(bss);
 
 		PTR_FREE(buf);
 
-		json_t* jbss = NULL;
-		err = bss_to_json_summary(bss, &jbss);
-		XASSERT(err==0, err);
-		char* s = json_dumps(jbss, JSON_INDENT(1));
-		printf("%s\n", s);
-		PTR_FREE(s);
-		json_decref(jbss);
+		struct BSS* bss;
+		dl_list_for_each(bss, &bss_list, struct BSS, node) {
+			verify_bss(bss);
 
-		bss_free(&bss);
+			json_t* jbss = NULL;
+			err = bss_to_json_summary(bss, &jbss);
+			XASSERT(err==0, err);
+			char* s = json_dumps(jbss, JSON_INDENT(1));
+			printf("%s\n", s);
+			PTR_FREE(s);
+			json_decref(jbss);
+		}
+
+		bss_free_list(&bss_list);
 	}
 
 	return 0;
