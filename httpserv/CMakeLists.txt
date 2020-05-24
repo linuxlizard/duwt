@@ -43,3 +43,14 @@ target_link_libraries(test_mimetypes stdc++fs)
 
 add_test(NAME test_mimetypes COMMAND test_mimetypes)
 
+# optional (for now) package Poco
+find_package(Poco QUIET COMPONENTS Foundation JSON Net Util)
+message("poco found=${Poco_FOUND}")
+if(${Poco_FOUND})
+	message("found ${Poco_CONFIG} version=${Poco_VERSION} ${Poco_LIBRARIES}" )
+	add_executable(test_logging test_logging.cc)
+	target_link_libraries(test_logging PUBLIC Poco::Foundation)
+endif()
+
+add_executable(poco-httpd poco-httpd.cc)
+target_link_libraries(poco-httpd PUBLIC Poco::Foundation Poco::Net Poco::Util)

@@ -37,15 +37,6 @@ set(MY_DEBUG_OPTIONS -Wall -Wextra -Wnon-virtual-dtor -pedantic )
 # TODO fmtlib has warnings with -Wshadow
 #set(MY_DEBUG_OPTIONS -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -Wold-style-cast)
 
-# optional (for now) package Poco
-find_package(Poco QUIET COMPONENTS Foundation JSON Net)
-message("poco found=${Poco_FOUND}")
-if(${Poco_FOUND})
-	message("found ${Poco_CONFIG} version=${Poco_VERSION} ${Poco_LIBRARIES}" )
-	add_executable(test_logging src/test_logging.cc)
-	target_link_libraries(test_logging PUBLIC Poco::Foundation)
-endif()
-
 add_library(duwt STATIC src/ie.cc src/bss.cc src/cfg80211.cc src/iw.cc src/logging.cc src/jsoncpp.cc src/oui.cc)
 #target_compile_features(duwt PUBLIC cxx_std_17)
 target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS})
