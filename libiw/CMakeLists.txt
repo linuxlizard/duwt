@@ -40,14 +40,6 @@ add_library(iw STATIC iw.c iw-scan.c bytebuf.c xassert.c log.c hdump.c
 
 target_include_directories(iw PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
 
-# XXX tinkering with cpprestsdk and CMake
-find_package(cpprestsdk REQUIRED)
-if(${cpprestsdk_FOUND})
-#	get_target_properties(prop cpprestsdk::cpprest
-	message("Found cpprestsdk")
-	message("found ${cpprestsdk_CONFIG} version=${cpprestsdk_VERSION} lib=${cpprestsdk_LIBRARIES} inc=${cpprestsdk_INCLUDE_DIRS} ldflags=${cpprestsdk_LDFLAGS}" )
-endif()
-
 # scan-dump uses ICU 
 # 	http://site.icu-project.org/
 # 	http://userguide.icu-project.org/
