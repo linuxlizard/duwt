@@ -1,5 +1,6 @@
 #include <linux/nl80211.h>
 
+#include "config.h"
 #include "nlnames.h"
 
 
