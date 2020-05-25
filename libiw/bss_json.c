@@ -140,15 +140,6 @@ fail:
 	return err;
 }
 
-int bss_to_json(const struct BSS* bss, json_t** p_jbss)
-{
-	int err = 0;
-
-	err = bss_to_json_summary(bss, p_jbss);
-
-	return err;
-}
-
 int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray)
 {
 	int err = 0;
