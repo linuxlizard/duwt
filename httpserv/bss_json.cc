@@ -3,7 +3,7 @@
 #include <sstream>
 #include <vector>
 #include <memory>
-#include <functional>
+#include <iomanip>
 
 #include <linux/netlink.h>
 #include <netlink/attr.h>
@@ -110,6 +110,42 @@ Poco::JSON::Object ie_to_json(const struct IE* ie)
 	Poco::JSON::Object obj;
 
 	obj.set("id", static_cast<int>(ie->id));
+	obj.set("len", ie->len);
+
+	std::ostringstream ostr;
+//	ostr.str(bytes);
+	ostr.setf(std::ios_base::hex);
+	for (int i=0 ; i<ie->len ; i++) {
+		ostr << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ie->buf[i]);
+	}
+	logger.debug("ostr=%s", ostr.str());
+	obj.set("bytes", ostr.str());
+
+	// TODO
+#if 0
+	switch (ie->id) {
+		case IE_SUPPORTED_RATES:
+			break;
+		case IE_DSSS_PARAMETER_SET:
+			break;
+		case IE_TIM:
+			break;
+		case IE_COUNTRY:
+			break;
+		case IE_HT_CAPABILITIES:
+			break;
+		case IE_RSN:
+			break;
+		case IE_HT_OPERATION:
+			break;
+		case IE_VHT_CAPABILITIES:
+			break;
+		case IE_VHT_OPERATION:
+			break;
+		default:
+			break;
+	}
+#endif
 
 	return obj;
 }
