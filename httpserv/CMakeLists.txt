@@ -54,3 +54,10 @@ endif()
 
 add_executable(poco-httpd poco-httpd.cc)
 target_link_libraries(poco-httpd PUBLIC Poco::Foundation Poco::Net Poco::Util)
+
+add_executable(bss_json bss_json.cc)
+target_include_directories(bss_json PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../libiw)
+target_include_directories(bss_json PUBLIC ${libnl_INCLUDE_DIRS})
+target_link_libraries(bss_json Poco::Foundation Poco::JSON)
+target_link_libraries(bss_json ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
+target_link_libraries(bss_json iw)
