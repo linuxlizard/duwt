@@ -22,6 +22,7 @@
 #include "bss_json.h"
 #include "args.h"
 #include "ssid.h"
+#include "nlnames.h"
 
 FILE* outfile;
 
@@ -717,54 +718,14 @@ static void print_short(const struct BSS* bss)
 	bool is_ht = ie_list_find_id(&bss->ie_list, IE_HT_OPERATION) != NULL;
 	bool is_vht = ie_list_find_id(&bss->ie_list, IE_VHT_OPERATION) != NULL;
 	bool is_he = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES) != NULL;
+
 	char mode[32] = {};
-
-	if (bss->band == NL80211_BAND_2GHZ) {
-		strcat(mode, "g");
-	}
-	else if (bss->band == NL80211_BAND_5GHZ){
-		strcat(mode, "a");
-	}
-	else {
-		strcat(mode, "!?");
-	}
-
-	if (is_ht) {
-		strcat(mode, "/n");
-	}
-	if (is_vht) {
-		strcat(mode, "/ac");
-	}
-	if (is_he) {
-		strcat(mode, "/ax");
-	}
+	bss_get_mode_str(bss, mode, 32);
 
 	char width[32] = {};
-	switch (bss->chan_width) {
-		case NL80211_CHAN_WIDTH_20_NOHT:
-			strcat(width, "20noht");
-			break;
-		case NL80211_CHAN_WIDTH_20:
-			strcat(width, "20");
-			break;
-		case NL80211_CHAN_WIDTH_40:
-			strcat(width, "40");
-			break;
-		case NL80211_CHAN_WIDTH_80:
-			strcat(width, "80");
-			break;
-		case NL80211_CHAN_WIDTH_80P80:
-			strcat(width, "80+80");
-			break;
-		case NL80211_CHAN_WIDTH_160:
-			strcat(width, "160");
-			break;
-		default:
-			strcat(width, "??");
-			break;
-	}
+	bss_get_chan_width_str(bss, width, 32);
 
-	printf("%18s  %d %4s %10s  %0.2f ", bss->bssid_str, bss->frequency, width, mode, bss->signal_strength_mbm/100.0);
+	printf("%18s  %d %8s %10s  %0.2f ", bss->bssid_str, bss->frequency, width, mode, bss->signal_strength_mbm/100.0);
 //	for( size_t i=0 ; i<bss->ie_list.count ; i++) {
 //		printf("%3d ", bss->ie_list.ieptrlist[i]->id);
 //	}
