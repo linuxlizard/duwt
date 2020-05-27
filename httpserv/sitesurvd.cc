@@ -23,7 +23,6 @@
 #include <netlink/genl/ctrl.h>
 
 #include <microhttpd.h>
-#include <jansson.h>
 
 #include <iostream>
 #include <fstream>
@@ -283,40 +282,24 @@ static MHD_Response* get_survey_response(const BSSMap* bss_map)
 {
 	struct MHD_Response* response  { nullptr };
 
-	json_t* jarray = json_array();
-	if (!jarray) {
-		return nullptr;
-	}
+	Json::Value jarray(Json::arrayValue);
 
 	for (auto iter : *bss_map) {
-		json_t* jbss;
-		struct BSS* bss;
-
-		bss = iter.second;
+		struct BSS* bss = iter.second;
 		XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
-
-		int ret = bss_to_json_summary(bss, &jbss);
-		if (ret < 0) {
-			json_decref(jarray);
-			return nullptr;
-		}
-
-		ret = json_array_append_new(jarray, jbss);
-		// TODO check for error
+		jarray.append(bss_to_json(bss));
 	}
-	char* p = json_dumps(jarray, JSON_COMPACT);
-	if (!p) {
-		json_decref(jarray);
-		return nullptr;
-	}
+
+	Json::StreamWriterBuilder builder;
+	builder["indentation"] = "";
+	builder["emitUTF8"] = true;
+	const std::string json_file = Json::writeString(builder, jarray);
 
 	response = MHD_create_response_from_buffer(
-					strlen(p),
-					p, 
+					json_file.length(),
+					(void *)json_file.c_str(), 
 					MHD_RESPMEM_MUST_COPY);
 	if (!response) {
-		json_decref(jarray);
-		PTR_FREE(p);
 		return response;
 	}
 
@@ -329,22 +312,22 @@ static MHD_Response* get_survey_response(const BSSMap* bss_map)
 		response = nullptr;
 	}
 
-	json_decref(jarray);
-	PTR_FREE(p);
 	return response;
 }
 
 static MHD_Response* get_bssid_response(const BSSMap* bss_map)
 {
 	struct MHD_Response* response  { nullptr };
+#if i
 
 	json_t* jbss = json_array();
 	if (!jbss) {
 		return nullptr;
 	}
 
+	// TODO get full bss dump as json
 	struct BSS* bss = nullptr;
-	int ret = bss_to_json(bss, &jbss);
+	int ret = bss_to_json_summary(bss, &jbss);
 	if (!ret) {
 		json_decref(jbss);
 		return nullptr;
@@ -373,6 +356,7 @@ static MHD_Response* get_bssid_response(const BSSMap* bss_map)
 
 	json_decref(jbss);
 	PTR_FREE(p);
+#endif
 	return response;
 }
 
@@ -618,7 +602,7 @@ static int netlink_read(struct netlink_socket_bundle* bun)
 	return 0;
 }
 
-int main (int argc, char* argv[])
+int main(int argc, char* argv[])
 {
 	struct args args;
 
@@ -707,4 +691,5 @@ int main (int argc, char* argv[])
 	MHD_stop_daemon (daemon);
 	return 0;
 }
+
 

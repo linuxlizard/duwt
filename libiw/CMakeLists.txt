@@ -5,11 +5,11 @@ enable_language(C)
 
 # XXX tinkering
 get_property(c_features GLOBAL PROPERTY CMAKE_C_KNOWN_FEATURES)
-message("features=${c_features}")
+#message("features=${c_features}")
 
 # XXX tinkering
 get_property(cxx_features GLOBAL PROPERTY CMAKE_CXX_KNOWN_FEATURES)
-message("features=${cxx_features}")
+#message("features=${cxx_features}")
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE,EXE)
 

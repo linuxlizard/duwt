@@ -61,12 +61,12 @@ static State eat_line(std::istream& infile)
 
 static void dbg_cout_file(std::istream& infile)
 {
-	std::cout << "is_open=" << "?" << 
-		" good=" << infile.good() << 
-		" bad="<< infile.bad() << 
-		" fail=" << infile.fail() << 
-		" eof=" << infile.eof() << 
-		"\n";
+//	std::cout << "is_open=" << "?" << 
+//		" good=" << infile.good() << 
+//		" bad="<< infile.bad() << 
+//		" fail=" << infile.fail() << 
+//		" eof=" << infile.eof() << 
+//		"\n";
 }
 
 mimetypes mimetype_parse(std::istream& infile)
@@ -97,7 +97,7 @@ mimetypes mimetype_parse(std::istream& infile)
 			throw std::runtime_error("file fail bit set");
 		}
 
-		std::cout << "state=" << state_names[static_cast<int>(state)] << " c=" << c << "\n";
+//		std::cout << "state=" << state_names[static_cast<int>(state)] << " c=" << c << "\n";
 		switch (state) {
 			case State::START:
 				if (c=='#') {
@@ -109,7 +109,7 @@ mimetypes mimetype_parse(std::istream& infile)
 				else if (c==LF || c==SP || c==HT) {
 				}
 				else {
-					std::cout << "State::TYPE start\n";
+//					std::cout << "State::TYPE start\n";
 					type.erase();
 					type.push_back(c);
 					state = State::TYPE;
@@ -159,7 +159,7 @@ mimetypes mimetype_parse(std::istream& infile)
 				}
 				else if (c==LF) {
 					// end of line; save extension
-					std::cout << "type=" << type << " ext=" << ext << "\n";
+//					std::cout << "type=" << type << " ext=" << ext << "\n";
 					mt[ext] = type;
 					state = State::START;
 				}
