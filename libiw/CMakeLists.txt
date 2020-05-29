@@ -36,7 +36,7 @@ pkg_check_modules(libnl_genl REQUIRED libnl-genl-3.0)
 
 add_library(iw STATIC iw.c iw-scan.c bytebuf.c xassert.c log.c hdump.c
 		util.c ssid.c nlnames.c ie.c ie_he.c bss.c bug.c ie_print.c args.c
-		bss_json.c)
+		bss_json.c str.c)
 
 target_include_directories(iw PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
 
@@ -58,7 +58,7 @@ target_link_libraries(scan-dump ${icu_LDFLAGS} icuio)
 target_link_libraries(scan-dump jansson)
 target_link_libraries(scan-dump ${cpprestsdk_LDFLAGS})
 
-foreach(test IN ITEMS test_ie test_bss test_decode test_bytebuf test_ie_he test_nlnames)
+foreach(test IN ITEMS test_ie test_bss test_decode test_bytebuf test_ie_he test_nlnames test_str)
 	message("test=${test}")
 	add_executable(${test} ${test}.c)
 	target_include_directories(${test} PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
@@ -73,4 +73,5 @@ add_test(NAME test_decode COMMAND test_decode)
 add_test(NAME test_bytebuf COMMAND test_bytebuf)
 add_test(NAME test_ie_he COMMAND test_ie_he)
 add_test(NAME test_nlnames COMMAND test_nlnames)
+add_test(NAME test_str COMMAND test_str)
 

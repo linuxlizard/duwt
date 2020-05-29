@@ -23,6 +23,7 @@
 #include "args.h"
 #include "ssid.h"
 #include "nlnames.h"
+#include "str.h"
 
 FILE* outfile;
 
@@ -388,11 +389,31 @@ static void print_bss_load(const struct BSS* bss)
 	printf("\t\t * available admission capacity: %d [*32us]\n", sie->available_capacity);
 }
 
+static void print_ap_channel_report(const struct BSS* bss)
+{
+	const struct IE* ie_list[64];
+
+	ssize_t ret = ie_list_get_all(&bss->ie_list, IE_AP_CHANNEL_REPORT, ie_list, sizeof(ie_list));
+	XASSERT(ret >= 0, ret);
+
+	for( ssize_t i=0 ; i<ret ; i++ ) {
+		const struct IE* ie = ie_list[i];
+		const struct IE_AP_Channel_Report* sie = IE_CAST(ie, const struct IE_AP_Channel_Report);
+		printf("\tAP Channel Report:\n");
+		printf("\t\tClass: %d\n", sie->operating_class);
+		char msg[256];
+		if (str_join_uint8(msg, sizeof(msg), sie->channel_list, sie->count) > 0) {
+			printf("\t\tChannels: %s\n", msg);
+		}
+
+	}
+}
+
 // iw util.c print_ht_mcs_index()
 static void print_ht_mcs_index(const struct HT_MCS_Set* mcs)
 {
 	// TODO
-	hex_dump("mcs", mcs->mcs_bits, 10);
+	hex_dump("TODO mcs", mcs->mcs_bits, 10);
 }
 
 // iw util.c print_ht_mcs()
@@ -664,6 +685,7 @@ static void print_bss(struct BSS* bss)
 	print_dsss_param(bss);
 	print_country(bss);
 	print_bss_load(bss);
+	print_ap_channel_report(bss);
 	print_tpc_report(bss);
 	print_erp(bss);
 	print_extended_supported_rates(bss);

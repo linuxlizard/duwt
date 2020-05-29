@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -604,6 +605,33 @@ static void ie_extended_supported_rates_free(struct IE* ie)
 	DESTRUCT(struct IE_Extended_Supported_Rates)
 }
 
+static int ie_ap_channel_report_new(struct IE* ie)
+{
+	struct IE_AP_Channel_Report* sie;
+
+	DBG("%s len=%zu\n", __func__, ie->len);
+	sie = calloc(1, sizeof(struct IE_AP_Channel_Report) + (sizeof(uint8_t)*ie->len));
+	if (!sie) {
+		return -ENOMEM;
+	}
+	sie->cookie = IE_SPECIFIC_COOKIE;
+	ie->specific = sie;
+	sie->base = ie;
+
+	sie->operating_class = ie->buf[0];
+	for (size_t i=0 ; i<ie->len; i++ ) {
+		sie->channel_list[i] = ie->buf[i+1];
+	}
+	sie->count = ie->len-1;
+
+	return 0;
+}
+
+static void ie_ap_channel_report_free(struct IE* ie)
+{
+	DESTRUCT(struct IE_AP_Channel_Report);
+}
+
 static int ie_dsss_parameter_set_new(struct IE* ie)
 {
 	if (ie->len != 1) {
@@ -997,6 +1025,11 @@ static const struct ie_class {
 		ie_extended_supported_rates_free,
 	},
 
+	[IE_AP_CHANNEL_REPORT] = {
+		ie_ap_channel_report_new,
+		ie_ap_channel_report_free,
+	},
+
 	[IE_MOBILITY_DOMAIN] = {
 		ie_mobility_domain_new,
 		ie_mobility_domain_free,
@@ -1065,6 +1098,10 @@ int ie_new(uint8_t id, uint8_t len, const uint8_t* buf, struct IE** pie)
 	}
 	else {
 		WARN("%s unparsed IE=%d\n", __func__, id);
+		DBG("%s unparsed IE=%d\n", __func__, id);
+		char msg[32];
+		snprintf(msg, 32, "unparsed id=%d len=%d", id, len);
+		hex_dump(msg, buf, len);
 	}
 
 	PTR_ASSIGN(*pie, ie);

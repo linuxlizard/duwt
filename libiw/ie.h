@@ -57,9 +57,11 @@ typedef enum {
 	IE_HT_CAPABILITIES = 45,
 	IE_RSN = 48,
 	IE_EXTENDED_SUPPORTED_RATES = 50,
+	IE_AP_CHANNEL_REPORT = 51,
 	IE_MOBILITY_DOMAIN = 54,
 	IE_HT_OPERATION = 61,
 	IE_RM_ENABLED_CAPABILITIES = 70,
+	IE_OBSS_SCAN_PARAMs = 74,
 	IE_MESH_ID = 114,
 	IE_EXTENDED_CAPABILITIES = 127,
 	IE_VHT_CAPABILITIES = 191,
@@ -467,6 +469,20 @@ struct IE_Extended_Supported_Rates
 
 	size_t count;
 	struct Supported_Rate rates[1];
+};
+
+struct IE_AP_Channel_Report
+{
+	IE_SPECIFIC_FIELDS
+
+	// "Mupliple AP Channel Report elements are present when reporting channels
+	// in more than one operating class." -- std 80211-2016
+
+	uint8_t operating_class;
+
+	// variable length number of channels
+	size_t count;
+	uint8_t channel_list[1];
 };
 
 struct IE_Mobility_Domain

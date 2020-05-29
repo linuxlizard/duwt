@@ -12,19 +12,14 @@ message("find_library microhttpd found=${MHTTPD}")
 #pkg_check_modules(libmicrohttpd QUIET libmicrohttpd)
 #message("pkg-config libmicrohttpd found=${libmicrohttpd_FOUND} ${libmicrohttpd_INCLUDE_DIRS} ${libmicrohttpd_LDFLAGS}" )
 
-pkg_check_modules(jansson REQUIRED jansson)
-message("jansson found=${jansson_FOUND} include=${jansson_INCLUDE_DIRS} ldflags=${jansson_LDFLAGS}" )
-
 pkg_check_modules(libnl REQUIRED libnl-3.0)
 pkg_check_modules(libnl_genl REQUIRED libnl-genl-3.0)
 
-#pkg_check_modules(jsoncpp REQUIRED jsoncpp)
-#message("jsoncpp found=${jsoncpp_FOUND} include=${jsoncpp_INCLUDE_DIRS} ldflags=${jsoncpp_LDFLAGS}" )
 find_library(JSONCPP jsoncpp)
 message("jsoncpp found=${JSONCPP_FOUND} include=${JSONCPP_INCLUDE_DIRS} ldflags=${JSONCPP_LDFLAGS}" )
 
 add_executable(sitesurvd sitesurvd.cc mimetypes.cc bss_json.cc)
-target_link_libraries(sitesurvd ${MHTTPD} ${jansson_LDFLAGS})
+target_link_libraries(sitesurvd ${MHTTPD})
 target_link_libraries(sitesurvd iw)
 target_link_libraries(sitesurvd stdc++fs)
 target_include_directories(sitesurvd PUBLIC ${libnl_INCLUDE_DIRS})
