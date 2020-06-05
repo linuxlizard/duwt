@@ -3,6 +3,7 @@
 #include <array>
 #include <vector>
 #include <cassert>
+#include <sstream>
 
 //#include <sys/socket.h>
 //#include <linux/if_ether.h>

@@ -37,24 +37,25 @@ set(MY_DEBUG_OPTIONS -Wall -Wextra -Wnon-virtual-dtor -pedantic )
 # TODO fmtlib has warnings with -Wshadow
 #set(MY_DEBUG_OPTIONS -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -Wold-style-cast)
 
-find_library(JSONCPP jsoncpp)
+pkg_check_modules(jsoncpp REQUIRED jsoncpp)
+message("jsoncpp found=${Jsoncpp_FOUND} include=${jsoncpp_INCLUDE_DIRS} ldflags=${jsoncpp_LDFLAGS}" )
 
 add_library(duwt STATIC src/ie.cc src/bss.cc src/cfg80211.cc src/iw.cc src/logging.cc src/oui.cc)
 #target_compile_features(duwt PUBLIC cxx_std_17)
-target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS})
+target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS} ${jsoncpp_INCLUDE_DIRS})
 target_include_directories(duwt PUBLIC fmt/include)
 target_include_directories(duwt PUBLIC include)
 target_compile_options(duwt PUBLIC $<$<CONFIG:DEBUG>:${MY_DEBUG_OPTIONS}>)
 
 add_executable(scandump scandump/main.cc)
 #target_compile_features(scandump PUBLIC cxx_std_17)
-target_link_libraries(scandump duwt ${JSONCPP})
+target_link_libraries(scandump duwt ${jsoncpp_LDFLAGS})
 target_link_libraries(scandump ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 target_link_libraries(scandump fmt)
 
 add_executable(scanevent scanevent/main.cc)
 #target_compile_features(scanevent PUBLIC cxx_std_17)
-target_link_libraries(scanevent duwt ${JSONCPP} fmt)
+target_link_libraries(scanevent duwt ${jsoncpp_LDFLAGS} fmt)
 target_link_libraries(scanevent ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 #target_link_options(scanevent PUBLIC ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 
