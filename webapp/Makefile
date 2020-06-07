@@ -4,7 +4,7 @@ server=../build/public
 
 # using Bootstrap but its CND doens't have the full jquery with AJAX so
 # bringing along my own
-JS=duwt.js jquery-3.5.1.min.js
+JS=duwt.js jquery-3.5.1.min.js jquery-3.5.1.js
 
 # index.html from https://getbootstrap.com/docs/4.5/getting-started/introduction/#starter-template
 # starter.html from AdminLTE https://adminlte.io
