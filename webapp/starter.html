@@ -159,14 +159,6 @@ scratch. This page gets rid of all links and provides the needed markup only.
     <!-- Sidebar -->
     <div class="sidebar">
       <!-- Sidebar user panel (optional) -->
-      <div class="user-panel mt-3 pb-3 mb-3 d-flex">
-        <div class="image">
-          <img src="dist/img/user2-160x160.jpg" class="img-circle elevation-2" alt="User Image">
-        </div>
-        <div class="info">
-          <a href="#" class="d-block">Alexander Pierce</a>
-        </div>
-      </div>
 
       <!-- Sidebar Menu -->
       <nav class="mt-2">
@@ -274,18 +266,21 @@ scratch. This page gets rid of all links and provides the needed markup only.
 
 <!-- REQUIRED SCRIPTS -->
 
-<!-- jQuery -->
-<script src="plugins/jquery/jquery.min.js"></script>
+<!-- jQuery (using un-minified so I can peek around) -->
+<script src="jquery-3.5.1.js"></script>
 <!-- Bootstrap 4 -->
 <script src="plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
 <!-- jsGrid -->
-<script src="plugins/jsgrid/demos/db.js"></script>
 <script src="plugins/jsgrid/jsgrid.min.js"></script>
 
 <!-- AdminLTE App -->
 <script src="dist/js/adminlte.min.js"></script>
 <!-- page script -->
 <script>
+    $(function() {
+            window.survey = []
+            })
+
   $(function () {
     $("#jsGrid1").jsGrid({
         height: "auto",
@@ -294,26 +289,57 @@ scratch. This page gets rid of all links and provides the needed markup only.
         sorting: true,
         paging: true,
         autoload: true,
-        pageSize:   25,
-        pageButtonCount: 5,
-        pageIndex:  1,
+        filtering: true,
  
+        onDataLoaded: function(grid,data) {
+                console.log("onDataLoaded data=",data)
+                },
+
         controller: { 
-            loadData: function(filter) {
+            xxxloadData: function(filter) {
                 console.log("filter=",filter)
                 var q = {url:"/api/survey", type:"GET", dataType:"json"}
                 return $.ajax(q)
             },
 
-            xxxloadData: function(filter) {
+            loadData: function(filter) {
+                console.log("filter=",filter)
+                if (window.survey.length > 0) {
+                    console.log("use cache");
+                    return $.grep(window.survey, network => {
+                                return (!filter.ssid || network.ssid.indexOf(filter.ssid) > -1)
+                                    && (!filter.bssid || network.bssid.indexOf(filter.bssid) > -1);
+                            });
+                }
+
+                var q = {url:"/api/survey", type:"GET", dataType:"json"}
+
+//                return fetch(q.url).then( response => response.json() )
+                return fetch(q.url)
+                    .then(response => { console.log("response",response)
+                                        if (! response.ok || response.headers.get("content-type") != "application/json") {
+                                            throw new TypeError("get survey failed"); 
+                                        }
+                                        return response.json() 
+                                    })
+                    .then(json => { console.log("json=",json)
+                                    console.log("this=",this)
+                                    this.survey = json
+                                    window.survey = json; return json; })
+            },
+
+            xyyloadData: function(filter) {
                 var d = $.Deferred()
                 
                 console.log("filter=",filter)
                 var q = {url:"/api/survey", type:"GET", dataType:"json"}
                 $.ajax(q).done( function(response) {
                         console.log("response=", response)
+                        console.log("filter=",filter)
                         d.resolve(response)
                         })
+                console.log(typeof d.promise())
+                console.log(d.promise())
                 return d.promise()
             },
         },
@@ -332,12 +358,24 @@ scratch. This page gets rid of all links and provides the needed markup only.
 
     $(function() {
         var q = {url:"/api/survey", type:"GET", dataType:"json"}
-        var done = function(json) {
-            console.log(json)
-        }
-        $.ajax(q).done(done)
-        })
+//        var done = function(json) {
+//            console.log(json)
+//        }
+//        $.ajax(q).done(done)
+        window.survey = []
+        fetch(q.url)
+            .then(response => { console.log("response",response)
+                                if (! response.ok || response.headers.get("content-type") != "application/json") {
+                                    throw new TypeError("get survey failed"); 
+                                }
+                                return response.json() 
+                            })
+            .then(survey => window.survey = survey)
+            .catch(e=> console.error("get survey failed e=",e))
+     })
+
 </script>
 </body>
 </html>
-<!--vim: ts=4:sts=4:et -->
+<!-- vim: ts=4:sts=4:et 
+-->
