@@ -20,12 +20,12 @@ mimetypes mimetype_parse_default_file(void);
 class InvalidMimetypesFile : public std::runtime_error
 {
 	public:
-		InvalidMimetypesFile(const std::string& what, int errno=0 ) : 
-			std::runtime_error(what) { _errno = errno; }
+		InvalidMimetypesFile(const std::string& what, int myerrno=0 ) : 
+			std::runtime_error(what) { _errno = myerrno; }
 //			std::runtime_error(what), _errno(errno) { }
-		InvalidMimetypesFile(const char* what, int errno=0 ) :
+		InvalidMimetypesFile(const char* what, int myerrno=0 ) :
 //			std::runtime_error(what), _errno(errno) { }
-			std::runtime_error(what) { _errno = errno; }
+			std::runtime_error(what) { _errno = myerrno; }
 
 		int code(void) const {return _errno;};
 
