@@ -12,8 +12,8 @@ Json::Value ie_to_json(const struct IE* ie)
 	// may the gods of RVO smile upon me
 	Json::Value obj;
 
-	obj["id"] =  static_cast<int>(ie->id);
-	obj["len"] = ie->len;
+	obj["id"] =  static_cast<Json::Value::Int>(ie->id);
+	obj["len"] = static_cast<Json::Value::Int>(ie->len);
 
 	std::ostringstream ostr;
 //	ostr.str(bytes);
@@ -78,7 +78,7 @@ Json::Value bss_to_json(const struct BSS* bss)
 	obj["chwidth"] =  std::string(str);
 	bss_get_mode_str(bss, str, 32);
 	obj["mode"] = std::string(str);
-	obj["TSF"] = bss->tsf;
+	obj["TSF"] = static_cast<Json::Value::UInt64>(bss->tsf);
 
 	Json::Value  ie_array(Json::arrayValue);
 	const struct IE* ie = nullptr;
