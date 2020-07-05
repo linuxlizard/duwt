@@ -294,7 +294,7 @@ std::string ieeeoui::oui_to_string(uint32_t oui)
 	return s.str();
 }
 
-uint32_t ieeeoui::string_to_oui(std::string& s)
+uint32_t ieeeoui::string_to_oui(std::string const& s)
 {
 	return strtoul(s.c_str(), nullptr, 16);
 }

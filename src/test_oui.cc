@@ -2,10 +2,11 @@
 #include <iomanip>
 #include <sstream>
 #include <chrono>
-#include <cassert>
+
+//#define CATCH_CONFIG_RUNNER
+//#include "catch.hpp"
 
 #include "oui.h"
-//#include "catch.hpp"
 
 //TEST_CASE("Extended Systems", "[oui]") {
 //	REQUIRE( ieeeoui::get_org_name(0x00004068) == "EXTENDED SYSTEMS");
@@ -75,7 +76,7 @@ static uint32_t string_to_oui(std::string& s)
 {
 	uint32_t num32=0;
 	for (size_t i=0 ; i<6 ; i++) {
-		uint8_t n = hexlut[ static_cast<int>(s[i]-'0') ];
+		uint8_t n = hexlut.at(static_cast<int>(s[i]-'0'));
 		num32 |= n;
 		num32 <<= 4;
 	}
@@ -83,7 +84,7 @@ static uint32_t string_to_oui(std::string& s)
 	return num32;
 }
 
-static void prove_to_myself_my_code_is_faster(std::string& s)
+void prove_to_myself_my_code_is_faster(std::string& s)
 {
 	uint32_t num32;
 
@@ -106,36 +107,134 @@ static void prove_to_myself_my_code_is_faster(std::string& s)
 	std::clog << "strtoul 0x" << std::setw(6) << std::setfill('0') << std::hex << num32 << "\n";
 }
 
-int main(void)
-{
-	std::string s = ieeeoui::oui_to_string(0x112233);
-	uint32_t num32 = ieeeoui::string_to_oui(s);
-	std::clog << "s=" << s << " num32=" << std::hex << num32 << "\n";
-	assert(num32 == 0x112233);
+TEST_CASE("Conversion", "[conversion]") {
+	REQUIRE(ieeeoui::oui_to_string(0x112233) == "112233");
+	REQUIRE(ieeeoui::string_to_oui(ieeeoui::oui_to_string(0x112233)) == 0x112233);
+	REQUIRE(ieeeoui::oui_to_string(0xABCDEF) == "abcdef");
+	REQUIRE(ieeeoui::string_to_oui(ieeeoui::oui_to_string(0xabcdef)) == 0xabcdef);
+	REQUIRE(ieeeoui::oui_to_string(0xabcdef) == "abcdef");
+	REQUIRE(ieeeoui::string_to_oui(ieeeoui::oui_to_string(0xabcdef)) == 0xabcdef);
+	REQUIRE(ieeeoui::string_to_oui("hello, world") == 0);
+}
 
-	s = ieeeoui::oui_to_string(0xABCDEF);
-	num32 = ieeeoui::string_to_oui(s);
-	std::clog << "s=" << s << " num32=" << num32 << "\n";
-	assert(num32 == 0xabcdef);
-
-	s = ieeeoui::oui_to_string(0xabcdef);
-	num32 = ieeeoui::string_to_oui(s);
-	std::clog << "s=" << s << " num32=" << num32 << "\n";
-	assert(num32 == 0xabcdef);
-
-	try {
-		ieeeoui::OUI_CSV oui {"dave.csv"};
-	}
-	catch (const ieeeoui::OUIException& err) {
+TEST_CASE("CSV File Missing", "[csv][!shouldfail]") {
+	SECTION("non-existent file") {
+		try {
+			ieeeoui::OUI_CSV oui {"dave.csv"};
+		}
+		catch (const ieeeoui::OUIException& err) {
+			// file should not exist so should fail
+			throw;
+		}
 	}
 
-	try { 
+}
+
+TEST_CASE("CSV File Maybe", "[csv][!mayfail]") {
+	SECTION("this CSV file might not exist") {
 		ieeeoui::OUI_CSV oui {"oui.csv"};
-		test(oui);
+		std::string org;
+		uint32_t num32;
+
+		// Extended Systems, my first job
+		num32 = 0x00004068;
+		org = oui.get_org_name(num32);
+		REQUIRE(org == "EXTENDED SYSTEMS");
+		// run it again (should be faster this time now that the pump is primed)
+		org = oui.get_org_name(num32);
+		REQUIRE(org == "EXTENDED SYSTEMS");
+
+		// Marvell, my N-1th job
+		num32 = 0x00005043;
+		org = oui.get_org_name(num32);
+		REQUIRE(org == "MARVELL SEMICONDUCTOR, INC.");
+		org = oui.get_org_name(num32);
+		REQUIRE(org == "MARVELL SEMICONDUCTOR, INC.");
+
+		// another way to format Microsoft
+		// should be a faster lookup now
+		unsigned char ms_oui[3] { 0x00, 0x50, 0xf2 };
+		org = oui.get_org_name(ms_oui);
+		REQUIRE(org == "MICROSOFT CORP.");
 	}
-	catch (const ieeeoui::OUIException& err) {
-		std::cerr << "failed to find oui.csv in current directory\n";
+}
+
+TEST_CASE("CSV Files", "[csv]") {
+	SECTION("this CSV file should exist") {
+		ieeeoui::OUI_CSV oui {"../oui.csv"};
+		std::string org;
+		uint32_t num32;
+
+		// Extended Systems, my first job
+		num32 = 0x00004068;
+		org = oui.get_org_name(num32);
+		REQUIRE(org == "EXTENDED SYSTEMS");
+		// run it again (should be faster this time now that the pump is primed)
+		org = oui.get_org_name(num32);
+		REQUIRE(org == "EXTENDED SYSTEMS");
+
+		// Marvell, my N-1th job
+		num32 = 0x00005043;
+		org = oui.get_org_name(num32);
+		REQUIRE(org == "MARVELL SEMICONDUCTOR, INC.");
+		org = oui.get_org_name(num32);
+		REQUIRE(org == "MARVELL SEMICONDUCTOR, INC.");
+
+		// another way to format Microsoft
+		// should be a faster lookup now
+		unsigned char ms_oui[3] { 0x00, 0x50, 0xf2 };
+		org = oui.get_org_name(ms_oui);
+		REQUIRE(org == "MICROSOFT CORP.");
 	}
+
+}
+
+TEST_CASE("MA Faile", "[ma]") {
+	SECTION("test MA file") {
+		// if this fails, install the hwdata package
+		std::string path = "/usr/share/hwdata/oui.txt";
+		bool found = false;
+		try {
+			ieeeoui::OUI_MA oui { path };
+			found = true;
+
+			// TODO fix this copy-paste code (reach more catch dox)
+			std::string org;
+			uint32_t num32;
+
+			// Extended Systems, my first job
+			num32 = 0x00004068;
+			org = oui.get_org_name(num32);
+			REQUIRE(org == "EXTENDED SYSTEMS");
+			// run it again (should be faster this time now that the pump is primed)
+			org = oui.get_org_name(num32);
+			REQUIRE(org == "EXTENDED SYSTEMS");
+
+			// Marvell, my N-1th job
+			num32 = 0x00005043;
+			org = oui.get_org_name(num32);
+			REQUIRE(org == "MARVELL SEMICONDUCTOR, INC.");
+			org = oui.get_org_name(num32);
+			REQUIRE(org == "MARVELL SEMICONDUCTOR, INC.");
+
+			// another way to format Microsoft
+			// should be a faster lookup now
+			unsigned char ms_oui[3] { 0x00, 0x50, 0xf2 };
+			org = oui.get_org_name(ms_oui);
+			REQUIRE(org == "MICROSOFT CORP.");
+		}
+		catch (const ieeeoui::OUIException& err) {
+			std::cerr << "failed to find " << path << "\n";
+			REQUIRE(found);
+		}
+	}
+
+}
+
+int main(int argc, char* argv[])
+{
+	int result = Catch::Session().run( argc, argv );
+	std::cout << "result=" << result << "\n";
 
 	// try parent directory (for cases where building in a subdir because
 	// cmake)

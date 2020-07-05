@@ -110,7 +110,7 @@ public:
 };
 
 std::string oui_to_string(uint32_t oui);
-uint32_t string_to_oui(std::string& s);
+uint32_t string_to_oui(std::string const& s);
 
 } // end namespace ieeeoui
 
