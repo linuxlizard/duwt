@@ -84,20 +84,6 @@ private:
 		FOUND_ORG,
 	};
 
-	// this works because we know the hex format in the oui.txt uses only
-	// capital letters.
-	static constexpr std::array<uint8_t,32> hexlut = 
-		{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, // '0' through '9'  0x30-0x39
-		  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // ignored, 0x3a-0x3f
-		 10, 11, 12, 13, 14, 15 // 'A' through 'F' 0x40-0x46
-		};
-
-//	static constexpr std::array<int,10> lut =  { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-//	static constexpr int ten = 10;
-
-	// Q&D convert OUI string to integer
-	uint32_t oui_string_to_num(std::string const& oui);
-
 };
 
 class OUIException : public std::runtime_error 
@@ -109,7 +95,7 @@ public:
 		: std::runtime_error(message) {}
 };
 
-std::string oui_to_string(uint32_t oui);
+std::string oui_to_string(uint32_t oui, bool zedx=true);
 uint32_t string_to_oui(std::string const& s);
 
 } // end namespace ieeeoui

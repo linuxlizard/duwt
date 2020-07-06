@@ -2,6 +2,8 @@
 #include <fstream>
 #include <iomanip>
 
+#include <cstring>
+
 #include "oui.h"
 
 // OUI sources:
@@ -22,7 +24,9 @@
 
 using namespace ieeeoui;
 
-//#define DEBUG
+#define DEBUG
+//#define DEBUG_CSV
+//#define DEBUG_MA
 
 OUI::OUI(std::string filename)
 	: infile(filename)
@@ -94,7 +98,7 @@ std::string OUI_CSV::parse_org(std::string const& s)
 	// Have to be very careful because quoted string can contain embedded commas.
 	// State machine FTW.
 
-#ifdef DEBUG
+#ifdef DEBUG_CSV
 	std::clog << "parse_org s=" << s << "\n";
 #endif
 
@@ -129,7 +133,7 @@ std::string OUI_CSV::parse_org(std::string const& s)
 		while (++pos < len && s[pos] != ',') {
 		}
 	}
-#ifdef DEBUG
+#ifdef DEBUG_CSV
 	std::clog << "parse_org found \"" << s.substr(start,pos-start) << "\"\n";
 #endif
 	return s.substr(start,pos-start);
@@ -140,14 +144,14 @@ std::string OUI_CSV::lookup(uint32_t oui)
 	std::string line;
 	size_t counter { 0 };
 
-#ifdef DEBUG
+#ifdef DEBUG_CSV
 	std::clog << "lookup 0x" << std::setw(8) << std::setfill('0') << std::hex << oui << "\n";
 #endif
 	infile.seekg(0, infile.beg);
 
 	while(std::getline(infile, line)) {
 		counter++;
-#ifdef DEBUG
+#ifdef DEBUG_CSV
 		std::clog << std::dec << "counter=" << counter << " len=" << line.length() << "\n";
 #endif
 		if (line.length() < 32) {
@@ -160,7 +164,7 @@ std::string OUI_CSV::lookup(uint32_t oui)
 		}
 
 		uint32_t num = parse_oui(line);
-#ifdef DEBUG
+#ifdef DEBUG_CSV
 		std::clog << "oui=" << std::hex << num << "\n";
 #endif
 		if (num == oui) {
@@ -191,7 +195,7 @@ std::string OUI_MA::parse_org(std::string const& s)
 	State state {State::WHITESPACE};
 
 	for (pos=6 ; pos<len && state != State::FOUND_ORG ; pos++) {
-#ifdef DEBUG
+#ifdef DEBUG_MA
 		std::clog << "parse_org pos=" << pos << " char=" << s[pos] << " state=" << static_cast<int>(state) << "\n";
 #endif
 		switch (state) {
@@ -235,11 +239,14 @@ std::string OUI_MA::lookup(uint32_t oui)
 	std::string line;
 	size_t counter { 0 };
 
-#ifdef DEBUG
+#ifdef DEBUG_MA
 	std::clog << "lookup 0x" << std::setw(8) << std::setfill('0') << std::hex << oui << "\n";
 #endif
 
 	infile.seekg(0, infile.beg);
+	std::string oui_s = oui_to_string(oui, false);
+	const char* oui_ptr = oui_s.data();
+
 	while(std::getline(infile, line)) {
 		counter++;
 
@@ -249,53 +256,42 @@ std::string OUI_MA::lookup(uint32_t oui)
 			continue;
 		}
 
-		uint32_t num32 = oui_string_to_num(line);
-#ifdef DEBUG
-		std::clog << std::dec << "line=" << counter << " oui=" << std::hex << num32 << "\n";
+#ifdef DEBUG_MA
+		std::clog << std::dec << "line=" << counter << " oui=" << oui_s << "\n";
 #endif
-		if (num32 == oui) {
+		if (memcmp(line.data(), oui_ptr, 6) == 0) {
 			return parse_org(line);
 		}
 	}
 
-	throw std::out_of_range(oui_to_string(oui));
+	throw std::out_of_range(oui_s);
 }
 
 
-uint32_t OUI_MA::oui_string_to_num(std::string const& s)
-{
-	uint32_t num32 { 0 };
-
-	// For a simple subset of hex strings. 
-	// Note: assumes capital letters for hex in the OUI
-	try { 
-		for (size_t i=0 ; i<6 ; i++) {
-			uint8_t n = hexlut.at(static_cast<int>(s[i]-'0'));
-			num32 |= n;
-			num32 <<= 4;
-		} 
-	}
-	catch (std::out_of_range& err) {
-		return 0;
-	}
-	num32 >>= 4;
-	return num32;
-}
-
-std::string ieeeoui::oui_to_string(uint32_t oui)
+std::string ieeeoui::oui_to_string(uint32_t oui, bool zedx)
 {
 	// poTAYto poTAHto (did both ways to see how the ostreamstream works)
-//	char oui_str[12] = {};
-//	snprintf(oui_str, 11, "%#08lx", oui);
-//	return std::string { oui_str };
+#if 1
+	char oui_str[12] = {};
+	if (zedx) {
+		snprintf(oui_str, 11, "%#08X", oui);
+	}
+	else {
+		snprintf(oui_str, 11, "%06X", oui);
+	}
 
+	return std::string { oui_str };
+#else
 	std::ostringstream s;
 	s << std::setw(6) << std::setfill('0') << std::hex << oui;
 	return s.str();
+#endif
 }
 
 uint32_t ieeeoui::string_to_oui(std::string const& s)
 {
+	// note no error checking. The strtoul() will return 0 on failure which is
+	// an invalid OUI anyway.
 	return strtoul(s.c_str(), nullptr, 16);
 }
 
