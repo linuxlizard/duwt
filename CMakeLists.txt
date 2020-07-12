@@ -62,9 +62,11 @@ target_link_libraries(scanevent ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 
 add_executable(test_oui src/test_oui.cc)
 target_include_directories(test_oui PUBLIC include)
-target_compile_definitions(test_oui PUBLIC CATCH_CONFIG_RUNNER)
 target_link_libraries(test_oui duwt)
+# precompiled headers added in cmake 3.16
+if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16")
 target_precompile_headers(test_oui PRIVATE include/catch.hpp)
+endif()
 #target_sources(test_oui INTERFACE src/oui.cc)
 add_test(NAME test_oui COMMAND test_oui)
 
