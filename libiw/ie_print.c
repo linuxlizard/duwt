@@ -34,6 +34,8 @@ void ie_print_rm_enabled_capabilities(const struct IE_RM_Enabled_Capabilities* s
 	int ret;
 
 	printf("\tRadio Measurement Capabilities:\n");
+#undef INDENT
+#define INDENT "\t\t"
 #define STRING_FN rm_enabled_capa_to_str
 #define _struct sie
 	int bit = 0;
@@ -86,6 +88,8 @@ void ie_print_mobility_domain(const struct IE_Mobility_Domain* sie)
 	printf("\tMobility domain: \n");
 	printf("\t\tMDID: 0x%02x\n", sie->mdid);
 
+#undef INDENT
+#define INDENT "\t\t\t"
 #define STRING_FN mobility_domain_to_str
 #define _struct sie
 	bit = 0;
