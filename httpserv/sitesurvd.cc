@@ -315,35 +315,46 @@ static MHD_Response* get_survey_response(const BSSMap* bss_map)
 	return response;
 }
 
-static MHD_Response* get_bssid_response(const BSSMap* bss_map)
+static MHD_Response* get_bssid_response(const char* bssid_str, ssize_t bssid_len, const BSSMap* bss_map)
 {
+	std::cout << __func__ << " bssid_str=" << bssid_str << "\n";
+
+	if (!bssid_str || !*bssid_str || bssid_len < 12) {
+		return nullptr;
+	}
+
+	macaddr bssid;
+	int ret = bss_str_to_bss(bssid_str, bssid_len, bssid);
+	if (ret<0 ) {
+		DBG("%s failed parse bssid=%s\n", __func__, bssid_str);
+		return nullptr;
+	}
+
+	struct BSS* bss { nullptr };
+	uint64_t key = BSSID_U64(bssid);
+	try {
+		bss = bss_map->at(key);
+	}
+	catch (std::out_of_range& err) {
+		INFO("%s %s not found\n", __func__, bssid_str);
+		return nullptr;
+	}
+
 	struct MHD_Response* response  { nullptr };
-#if i
+	Json::Value bss_json = bss_to_json(bss);
 
-	json_t* jbss = json_array();
-	if (!jbss) {
-		return nullptr;
-	}
-
-	// TODO get full bss dump as json
-	struct BSS* bss = nullptr;
-	int ret = bss_to_json_summary(bss, &jbss);
-	if (!ret) {
-		json_decref(jbss);
-		return nullptr;
-	}
-
-
-	char* p = json_dumps(jbss, JSON_COMPACT);
-	if (!p) {
-		json_decref(jbss);
-		return nullptr;
-	}
+	Json::StreamWriterBuilder builder;
+	builder["indentation"] = "";
+	builder["emitUTF8"] = true;
+	const std::string json_file = Json::writeString(builder, bss_json);
 
 	response = MHD_create_response_from_buffer(
-					strlen(p),
-					p, 
+					json_file.length(),
+					(void *)json_file.c_str(), 
 					MHD_RESPMEM_MUST_COPY);
+	if (!response) {
+		return response;
+	}
 
 	ret = MHD_add_response_header(response, 
 			"Content-Type", "application/json"
@@ -354,20 +365,25 @@ static MHD_Response* get_bssid_response(const BSSMap* bss_map)
 		response = nullptr;
 	}
 
-	json_decref(jbss);
-	PTR_FREE(p);
-#endif
 	return response;
 }
 
-MHD_Response* get_api_response(const char* url, const BSSMap* bss_map)
+MHD_Response* get_api_response(const char* url, ssize_t url_len, const BSSMap* bss_map)
 {
 	// MHD callback
+
+	if (url_len < 6) {
+		return nullptr;
+	}
+
+	std::cout << __func__ << " url=" << url << "\n";
+
 	if (strncmp(url, "survey", 6) == 0) {
 		return get_survey_response(bss_map);
 	}
-	if (strncmp(url, "bssid", 4) == 0) {
-		return get_bssid_response(bss_map);
+
+	if (strncmp(url, "bssid/", 6) == 0) {
+		return get_bssid_response(url+6, url_len-6, bss_map);
 	}
 
 	return nullptr;
@@ -379,7 +395,7 @@ MHD_Response* get_file_response(const char* url)
 	// http callback
 	struct MHD_Response *response;
 
-	fs::path root = fs::absolute("build");
+	fs::path root = fs::absolute("public");
 	fs::path path = root;
 	std::string root_str = root.string();
 	path += url;
@@ -478,10 +494,11 @@ int answer_to_connection (void *arg,
 
 	struct MHD_Response *response;
 
-	size_t url_len = strlen(url);
+	// note signed size
+	ssize_t url_len = strlen(url);
 
 	if (strncmp(url, "/api/", 5) == 0) {
-		response = get_api_response(url+5, bss_map);
+		response = get_api_response(url+5, url_len-5, bss_map);
 		// CORS
 		if (origin.length()) {
 			int ret = MHD_add_response_header(response, 
@@ -616,7 +633,6 @@ int main(int argc, char* argv[])
 	BSSMap bss_map;
 
 	mt = mimetype_parse_default_file();
-
 
 	daemon = MHD_start_daemon ( MHD_NO_FLAG, PORT, 
 			&on_client_connect, NULL,
