@@ -7,7 +7,7 @@
 #include "mimetypes.h"
 #include "fs.h"
 
-#define DEBUG
+//#define DEBUG
 
 enum class State
 {
