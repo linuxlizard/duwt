@@ -65,6 +65,7 @@ target_include_directories(test_oui PUBLIC include)
 target_link_libraries(test_oui duwt)
 # precompiled headers added in cmake 3.16
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.16")
+target_compile_definitions(test_oui PUBLIC CATCH_CONFIG_MAIN)
 target_precompile_headers(test_oui PRIVATE include/catch.hpp)
 endif()
 #target_sources(test_oui INTERFACE src/oui.cc)
