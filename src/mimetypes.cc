@@ -7,10 +7,11 @@
 #include "mimetypes.h"
 #include "fs.h"
 
+#define DEBUG
+
 enum class State
 {
 	START = 1,
-	LINE_COMMENT,
 	TYPE,
 	SEEK_EXTENSION,
 	EXTENSION,
@@ -20,7 +21,6 @@ enum class State
 static const std::array<const char*,7> state_names {
 	"",
 	"START", 
-	"LINE_COMMENT",
 	"TYPE",
 	"SEEK_EXTENSION",
 	"EXTENSION",
@@ -59,15 +59,17 @@ static State eat_line(std::istream& infile)
 	return State::START;
 }
 
+#ifdef DEBUG
 static void dbg_cout_file(std::istream& infile)
 {
-//	std::cout << "is_open=" << "?" << 
-//		" good=" << infile.good() << 
-//		" bad="<< infile.bad() << 
-//		" fail=" << infile.fail() << 
-//		" eof=" << infile.eof() << 
-//		"\n";
+	std::cout << "is_open=" << "?" << 
+		" good=" << infile.good() << 
+		" bad="<< infile.bad() << 
+		" fail=" << infile.fail() << 
+		" eof=" << infile.eof() << 
+		"\n";
 }
+#endif
 
 mimetypes mimetype_parse(std::istream& infile)
 {
@@ -85,13 +87,15 @@ mimetypes mimetype_parse(std::istream& infile)
 	ext.reserve(64);
 
 	while (true) {
-//		dbg_cout_file(infile);
+#ifdef DEBUG
+		dbg_cout_file(infile);
+#endif
 		char c = infile.get();
 		if (infile.eof()) {
 			break;
 		}
 
-		dbg_cout_file(infile);
+//		dbg_cout_file(infile);
 
 		if (infile.fail()) {
 			throw std::runtime_error("file fail bit set");

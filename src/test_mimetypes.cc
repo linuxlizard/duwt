@@ -14,6 +14,7 @@ class TestFailure : public std::runtime_error
 			std::runtime_error(what) { }
 };
 
+// figuring out how hitting eof works
 // gcc-9.3.0/libstdc++-v3/include/bits/basic_string.tcc
 void test_io(std::string& str, std::istream& infile)
 {
@@ -131,6 +132,7 @@ static void parse_from_string(void)
 	test2();
 	test3();
 	test4();
+	test5();
 }
 
 int main()
