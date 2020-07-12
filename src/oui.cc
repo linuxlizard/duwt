@@ -24,12 +24,13 @@
 
 using namespace ieeeoui;
 
-#define DEBUG
+//#define DEBUG
 //#define DEBUG_CSV
 //#define DEBUG_MA
 
 OUI::OUI(std::string filename)
-	: infile(filename)
+	: filename(filename),
+	  infile(filename)
 {
 	if (!infile) {
 		std::string errmsg { "no such file: " };
@@ -48,6 +49,10 @@ std::string OUI::get_org_name(uint32_t oui)
 		return lut.at(oui);
 	} 
 	catch (std::out_of_range& err) {
+		// seekg() will clear the 'eofbit' but I have to clear 'badbit' 
+		infile.clear();
+		infile.seekg(0);
+
 		// lookup will also throw out_of_range if not found
 		std::string org = lookup(oui);
 
@@ -147,7 +152,6 @@ std::string OUI_CSV::lookup(uint32_t oui)
 #ifdef DEBUG_CSV
 	std::clog << "lookup 0x" << std::setw(8) << std::setfill('0') << std::hex << oui << "\n";
 #endif
-	infile.seekg(0, infile.beg);
 
 	while(std::getline(infile, line)) {
 		counter++;
@@ -175,7 +179,8 @@ std::string OUI_CSV::lookup(uint32_t oui)
 	throw std::out_of_range(oui_to_string(oui));
 }
 
-OUI_MA::OUI_MA(std::string filename) : OUI(filename)
+OUI_MA::OUI_MA(std::string filename) 
+	: OUI(filename)
 {
 	std::string line;
 
@@ -193,6 +198,10 @@ std::string OUI_MA::parse_org(std::string const& s)
 
 	size_t pos, len = s.length();
 	State state {State::WHITESPACE};
+
+#ifdef DEBUG_MA
+	std::clog << "parse_org s=" << s << "\n";
+#endif
 
 	for (pos=6 ; pos<len && state != State::FOUND_ORG ; pos++) {
 #ifdef DEBUG_MA
@@ -243,7 +252,6 @@ std::string OUI_MA::lookup(uint32_t oui)
 	std::clog << "lookup 0x" << std::setw(8) << std::setfill('0') << std::hex << oui << "\n";
 #endif
 
-	infile.seekg(0, infile.beg);
 	std::string oui_s = oui_to_string(oui, false);
 	const char* oui_ptr = oui_s.data();
 
@@ -251,19 +259,22 @@ std::string OUI_MA::lookup(uint32_t oui)
 		counter++;
 
 		// super simple check to look for lines starting with hex HHHHHH<space>
-		if (line.length() < 32 || line[6] != ' ') {
+		if (line[0] == '\t' || line.length() < 6 || line[6] != ' ') {
 			// ignore
 			continue;
 		}
 
 #ifdef DEBUG_MA
-		std::clog << std::dec << "line=" << counter << " oui=" << oui_s << "\n";
+		std::clog << std::dec << "line=" << counter << " line=" << line.substr(0,7) << " oui=" << oui_s << "\n";
 #endif
 		if (memcmp(line.data(), oui_ptr, 6) == 0) {
 			return parse_org(line);
 		}
 	}
 
+#ifdef DEBUG_MA
+	std::clog << "unable to find oui=" << oui_s << " in " << filename << "\n";
+#endif
 	throw std::out_of_range(oui_s);
 }
 
@@ -272,7 +283,7 @@ std::string ieeeoui::oui_to_string(uint32_t oui, bool zedx)
 {
 	// poTAYto poTAHto (did both ways to see how the ostreamstream works)
 #if 1
-	char oui_str[12] = {};
+	char oui_str[12] {};
 	if (zedx) {
 		snprintf(oui_str, 11, "%#08X", oui);
 	}

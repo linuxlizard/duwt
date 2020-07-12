@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <sstream>
 #include <chrono>
+#include <cstddef>
 
 #define CATCH_CONFIG_MAIN
 //#define CATCH_CONFIG_RUNNER
@@ -23,14 +24,12 @@ void test(ieeeoui::OUI& oui)
 	org = oui.get_org_name(num32);
 	INFO("ESI==" << org);
 	REQUIRE(org == "EXTENDED SYSTEMS");
-//	std::cout << ieeeoui::oui_to_string(num32) << " == " << org << "\n";
 
 	// Marvell, my N-1th job
 	num32 = 0x00005043;
 	org = oui.get_org_name(num32);
 	INFO("MRVL==" << org);
 	REQUIRE(org == "MARVELL SEMICONDUCTOR, INC.");
-//	std::cout << ieeeoui::oui_to_string(num32) << " == " << org << "\n";
 
 	// https://stackoverflow.com/questions/22387586/measuring-execution-time-of-a-function-in-c
 	auto start = std::chrono::high_resolution_clock::now();
@@ -64,68 +63,14 @@ void test(ieeeoui::OUI& oui)
 	catch (std::out_of_range& err) {
 		// expected to fail so ignore
 	}
-
-
 	std::cout << org << " duration=" << duration << "\n";
 
-}
 
-// "Premature optimization is the root of all evil." I'm converting a subset of
-// hex to integer so am I faster than strtoul()?  Turns out, yes. But.
-//
-// godbolt.org shows my loop is being unrolled. I'm assuming a subset of hex
-// chars (no lowercase) which also simplifies the conversion.
-//
-// Pulling this code out into a simple tst.cc with main() that reads a value
-// from argv[1], I get:
-//
-// gcc -g -O3 -Wall -Wpedantic -o tst tst.cc -std=c++17 -lstdc++ 
-//
-// % ./tst 004068
-// duration=10
-// lookup 0x004068
-// duration=24372
-// strtoul 0x004068
-//
-static const std::array<uint8_t,32> hexlut = 
-{ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, // '0' through '9'
-  0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // ignored
- 10, 11, 12, 13, 14, 15 // 'A' through 'F'
-};
+//	std::byte qcom_oui[3] { std::byte{0x8c},std::byte{0xfd}, std::byte{0xf0}};
+//	org = oui.get_org_name(qcom_oui);
+	org = oui.get_org_name(0x8cfdf0);
+	INFO("QCOM==" << org );
 
-static uint32_t string_to_oui(std::string& s)
-{
-	uint32_t num32=0;
-	for (size_t i=0 ; i<6 ; i++) {
-		uint8_t n = hexlut.at(static_cast<int>(s[i]-'0'));
-		num32 |= n;
-		num32 <<= 4;
-	}
-	num32 >>= 4;
-	return num32;
-}
-
-void prove_to_myself_my_code_is_faster(std::string& s)
-{
-	uint32_t num32;
-
-	auto start = std::chrono::high_resolution_clock::now();
-	for (int i=0 ; i<100000 ; i++ ) {
-		num32  = string_to_oui(s);
-	}
-	auto end = std::chrono::high_resolution_clock::now();
-	auto duration = std::chrono::duration_cast<std::chrono::microseconds>( end - start ).count();
-	std::cout << "duration=" << duration << "\n";
-	std::clog << "lookup 0x" << std::setw(6) << std::setfill('0') << std::hex << num32 << "\n";
-    
-	start = std::chrono::high_resolution_clock::now();
-	for (int i=0 ; i<100000 ; i++ ) {
-		num32 = strtoul(s.c_str(), nullptr, 16);
-	}
-	end = std::chrono::high_resolution_clock::now();
-	duration = std::chrono::duration_cast<std::chrono::microseconds>( end - start ).count();
-	std::cout << "duration=" << duration << "\n";
-	std::clog << "strtoul 0x" << std::setw(6) << std::setfill('0') << std::hex << num32 << "\n";
 }
 
 TEST_CASE("Conversion", "[conversion]") {

@@ -24,6 +24,7 @@ public:
 	std::string get_org_name(uint8_t* oui);
 
 protected:
+	std::string filename;
 	std::ifstream infile;
 
 	virtual std::string lookup(uint32_t oui) = 0;
