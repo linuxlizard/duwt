@@ -18,7 +18,7 @@ Json::Value ie_to_json(const struct IE* ie)
 	std::ostringstream ostr;
 //	ostr.str(bytes);
 	ostr.setf(std::ios_base::hex);
-	for (int i=0 ; i<ie->len ; i++) {
+	for (size_t i=0 ; i<ie->len ; i++) {
 		ostr << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(ie->buf[i]);
 	}
 	obj["bytes"] = ostr.str();
