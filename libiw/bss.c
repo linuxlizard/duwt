@@ -272,3 +272,39 @@ const struct IE_SSID* bss_get_ssid(const struct BSS* bss)
 	return IE_CAST(ie, struct IE_SSID);
 }
 
+int bss_str_to_bss(const char* bss_str, size_t bssid_str_len, macaddr bssid)
+{
+	unsigned int in = 0;
+	unsigned int out = 0;
+
+#define HEX2BYTE(cin,cout)\
+		if (cin >= '0' && cin <= '9') {\
+			cout = cin-48;\
+		}\
+		else if (cin >= 'a' && cin <= 'f') {\
+			cout = cin-87;\
+		}\
+		else if (cin >= 'A' && cin <= 'F') {\
+			cout = cin-55;\
+		}\
+		else {\
+			return -EINVAL;\
+		}
+
+	uint8_t hi,lo;
+	while (out < ETH_ALEN) {
+		HEX2BYTE(bss_str[in], hi); in++;
+		HEX2BYTE(bss_str[in], lo); in++;
+		bssid[out++] = (hi<<4) | lo;
+		if (bss_str[in] == ':') {
+			in++;
+		}
+	}
+	
+	if (in != bssid_str_len) {
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
