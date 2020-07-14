@@ -425,10 +425,10 @@ static void print_ht_mcs(const struct HT_MCS_Set* mcs)
 
 	if (mcs->tx_mcs_set_defined) {
 		if (mcs->tx_mcs_set_equal) {
-			printf("\t\tHT TX/RX MCS rate indexes supported:");
+			printf("\t\tHT TX/RX MCS rate indexes supported: TODO\n");
 			print_ht_mcs_index(mcs);
 		} else {
-			printf("\t\tHT RX MCS rate indexes supported:");
+			printf("\t\tHT RX MCS rate indexes supported: TODO\n");
 			print_ht_mcs_index(mcs);
 
 			if (mcs->tx_unequal_modulation)
@@ -442,7 +442,7 @@ static void print_ht_mcs(const struct HT_MCS_Set* mcs)
 			printf("\t\tHT TX MCS rate indexes supported may differ\n");
 		}
 	} else {
-		printf("\t\tHT RX MCS rate indexes supported:");
+		printf("\t\tHT RX MCS rate indexes supported: TODO\n");
 		print_ht_mcs_index(mcs);
 		printf("\t\tHT TX MCS rate indexes are undefined\n");
 	}

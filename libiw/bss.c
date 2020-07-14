@@ -109,39 +109,67 @@ bool bss_is_ht(const struct BSS* bss)
 
 int bss_guess_chan_width(struct BSS* bss)
 {
-	const struct IE* const ht_ie = ie_list_find_id(&bss->ie_list, IE_HT_CAPABILITIES);
-	const struct IE* const vht_ie = ie_list_find_id(&bss->ie_list, IE_VHT_CAPABILITIES);
-	const struct IE* const he_ie = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES );
+	const struct IE* const ht_ie = ie_list_find_id(&bss->ie_list, IE_HT_OPERATION);
+	const struct IE* const vht_ie = ie_list_find_id(&bss->ie_list, IE_VHT_OPERATION);
+//	const struct IE* const he_ie = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES );
+
+	const struct IE_HT_Operation* ht_oper = NULL;
+	const struct IE_VHT_Operation* vht_oper = NULL;
+
+	// in order to decide the channel width, using the following:
+	// 80211-2016.pdf Table 11-24 "VHT BSS bandwidth"
 
 	// ¯\_(ツ)_/¯
 	bss->chan_width = NL80211_CHAN_WIDTH_20;
 
 	if (ht_ie) {
-		const struct IE_HT_Capabilities* ht_capa = IE_CAST(ht_ie, struct IE_HT_Capabilities);
-		if (ht_capa->supported_channel_width) {
+		ht_oper = IE_CAST(ht_ie, struct IE_HT_Operation);
+		if (ht_oper->sta_channel_width != 0) {
 			// 20+40 supported
 			bss->chan_width = NL80211_CHAN_WIDTH_40;
-		}
-		else {
-			// 20 Mhz only
-			bss->chan_width = NL80211_CHAN_WIDTH_20;
 		}
 	}
 
 	if (vht_ie) {
-		const struct IE_VHT_Capabilities* vht_capa = IE_CAST(vht_ie, struct IE_VHT_Capabilities);
-		switch (vht_capa->supported_channel_width) {
-			case IE_VHT_CHANNEL_WIDTH_NEITHER_160_NOR_80P80 :
-				bss->chan_width = NL80211_CHAN_WIDTH_80;
+		vht_oper = IE_CAST(vht_ie, struct IE_VHT_Operation);
+		bool ht_40 = ht_oper && ht_oper->sta_channel_width != 0;
+
+		switch (vht_oper->channel_width) {
+			case IE_VHT_OPER_CHANNEL_WIDTH_20_40:
+				if (ht_40) {
+					bss->chan_width = NL80211_CHAN_WIDTH_40;
+				}
 				break;
 
-			// FIXME how are 160 and 80+80 related?  Can I have 160 without supporting 80+80?
-			case IE_VHT_CHANNEL_WIDTH_160 :
+			case IE_VHT_OPER_CHANNEL_WIDTH_80_160_80P80:
+				if (ht_40) {
+					if (vht_oper->channel_center_freq_segment_1 == 0) {
+						bss->chan_width = NL80211_CHAN_WIDTH_80;
+					}
+					else {
+						int ccfs_delta = vht_oper->channel_center_freq_segment_0 - 
+										vht_oper->channel_center_freq_segment_1;
+						if (ccfs_delta < 0) {
+							ccfs_delta = -ccfs_delta;
+						}
+						if (ccfs_delta == 8) {
+							bss->chan_width = NL80211_CHAN_WIDTH_160;
+						}
+						else {
+							bss->chan_width = NL80211_CHAN_WIDTH_80P80;
+						}
+
+					}
+				}
+				break;
+
+			case IE_VHT_OPER_CHANNEL_WIDTH_160 :
+				// deprecated according to 80211-2016.pdf
 				bss->chan_width = NL80211_CHAN_WIDTH_160;
 				break;
 
-			case IE_VHT_CHANNEL_WIDTH_160_AND_80P80 :
-				// FIXME does 80+80 also imply 160 ?
+			case IE_VHT_OPER_CHANNEL_WIDTH_80P80 :
+				// deprecated according to 80211-2016.pdf
 				bss->chan_width = NL80211_CHAN_WIDTH_80P80;
 				break;
 
@@ -150,6 +178,8 @@ int bss_guess_chan_width(struct BSS* bss)
 		}
 	}
 
+#if 0
+	// davep 20200714: TODO need to revisit HE
 	if (he_ie) {
 		const struct IE_HE_Capabilities* he_capa = IE_CAST(he_ie, struct IE_HE_Capabilities);
 		const struct IE_HE_PHY* he_phy = he_capa->phy;
@@ -174,7 +204,7 @@ int bss_guess_chan_width(struct BSS* bss)
 			WARN("%s %s unknown band=%d\n", __func__, bss->bssid_str, bss->band);
 		}
 	}
-
+#endif
 	return 0;
 }
 
@@ -249,7 +279,7 @@ int bss_get_chan_width_str(const struct BSS* bss, char* s, size_t len)
 		"20/40",
 		"20/40/80",
 		"20/40/80/80+80",
-		"20/40/80/160",   // TODO does 160 also imply 80+80 ?
+		"20/40/80/160",   // note: 160 does not imply 80+80 
 		"5",
 		"10",
 	};

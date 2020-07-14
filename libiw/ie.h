@@ -633,10 +633,10 @@ struct IE_VHT_Capabilities
 	uint8_t extended_nss_bw_support : 2;
 };
 
-// values of VHT supported channel width
-#define IE_VHT_CHANNEL_WIDTH_NEITHER_160_NOR_80P80 0
-#define IE_VHT_CHANNEL_WIDTH_160 1
-#define IE_VHT_CHANNEL_WIDTH_160_AND_80P80 2
+// values of VHT Capabilities supported channel width
+#define IE_VHT_CAPA_CHANNEL_WIDTH_NEITHER_160_NOR_80P80 0
+#define IE_VHT_CAPA_CHANNEL_WIDTH_160 1
+#define IE_VHT_CAPA_CHANNEL_WIDTH_160_AND_80P80 2
 
 struct IE_VHT_Operation
 {
@@ -647,6 +647,12 @@ struct IE_VHT_Operation
 	uint8_t channel_center_freq_segment_1;
 	uint16_t mcs_and_nss_set;
 };
+
+// values of VHT Operation channel_width
+#define IE_VHT_OPER_CHANNEL_WIDTH_20_40 0
+#define IE_VHT_OPER_CHANNEL_WIDTH_80_160_80P80 1
+#define IE_VHT_OPER_CHANNEL_WIDTH_160 2  // deprecated
+#define IE_VHT_OPER_CHANNEL_WIDTH_80P80 3  // deprecated
 
 struct IE_TX_Power_Envelope
 {
