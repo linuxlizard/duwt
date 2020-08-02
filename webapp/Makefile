@@ -2,9 +2,9 @@
 
 server=../build/public
 
-# using Bootstrap but its CND doens't have the full jquery with AJAX so
+# using Bootstrap but its CDN doens't have the full jquery with AJAX so
 # bringing along my own
-JS=duwt.js jquery-3.5.1.min.js jquery-3.5.1.js
+JS=duwt.js jquery-3.5.1.min.js jquery-3.5.1.js sample.js
 
 # index.html from https://getbootstrap.com/docs/4.5/getting-started/introduction/#starter-template
 # starter.html from AdminLTE https://adminlte.io
@@ -17,7 +17,7 @@ js: $(foreach src,$(JS),$(server)/$(src))
 html: $(foreach src,$(HTML),$(server)/$(src))
 
 $(server)/%: %
-	@cp $< $@
+	@cp -v $< $@
 
 clean:
 	$(RM) $(server)/*
