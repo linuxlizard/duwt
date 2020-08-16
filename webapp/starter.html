@@ -18,7 +18,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
   <!-- jsGrid http://js-grid.com/docs/ -->
   <link rel="stylesheet" href="plugins/jsgrid/jsgrid.min.css">
   <link rel="stylesheet" href="plugins/jsgrid/jsgrid-theme.min.css">
-
+  
   <!-- Google Font: Source Sans Pro -->
   <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
 </head>
@@ -141,19 +141,36 @@ scratch. This page gets rid of all links and provides the needed markup only.
 
     <!-- Main content -->
     <div class="content">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Networks</h3>
-        </div>
-        <!-- /.card-header -->
-        <div class="card-body">
-          <div id="jsGrid1"></div>
-        </div>
-        <!-- /.card-body -->
-      </div>
-      <!-- /.card -->
-    </div>
-    <!-- /.content -->
+    <div class="container-fluid">
+        <div class="row">
+        <div class="col-12">
+        <div class="card card-primary card-outline">
+            <div class="card-header">
+                <h3 class="card-title">Networks</h3>
+            </div> <!-- /.card-header -->
+            <div class="card-body">
+                <div id="jsGrid1"></div>
+            </div> <!-- /.card-body -->
+        </div> <!-- /.card -->
+        </div> <!-- /col-12 -->
+        </div> <!-- /.row -->
+
+        <div class="row">
+        <div class="col-12">
+        <div class="card card-primary card-outline">
+            <div class="card-header">
+                <h3 class="card-title">Radio Channels</h3>
+            </div> <!-- /.card-header -->
+            <div class="card-body">
+                <div id="line-chart" style="height: 600px">
+                </div>
+            </div> <!-- /.card-body -->
+        </div> <!-- /.card -->
+        </div> <!-- /col-12 -->
+        </div> <!-- /.row -->
+
+    </div> <!-- /.container-fluid -->
+    </div> <!-- /.content -->
   </div>
   <!-- /.content-wrapper -->
 
@@ -188,13 +205,40 @@ scratch. This page gets rid of all links and provides the needed markup only.
 <!-- jsGrid -->
 <script src="plugins/jsgrid/jsgrid.min.js"></script>
 
+    <!-- FLOT CHARTS -->
+    <script src="plugins/flot/jquery.flot.js"></script>
+    <!-- FLOT RESIZE PLUGIN - allows the chart to redraw when the window is resized -->
+    <script src="plugins/flot-old/jquery.flot.resize.min.js"></script>
+    <!-- FLOT PIE PLUGIN - also used to draw donut charts -->
+    <script src="plugins/flot-old/jquery.flot.pie.min.js"></script>
+
 <!-- AdminLTE App -->
 <script src="dist/js/adminlte.min.js"></script>
+
 <!-- page script -->
 <script>
     $(function() {
             window.survey = []
             })
+
+    function ieee80211_frequency_to_channel(freq)
+    {
+        // math from iw util.c 
+        // https://git.kernel.org/pub/scm/linux/kernel/git/jberg/iw.git
+        /* see 802.11-2007 17.3.8.3.2 and Annex J */
+        if (freq == 2484)
+            return 14;
+        else if (freq < 2484)
+            return (freq - 2407) / 5;
+        else if (freq >= 4910 && freq <= 4980)
+            return (freq - 4000) / 5;
+        else if (freq <= 45000) /* DMG band lower limit */
+            return (freq - 5000) / 5;
+        else if (freq >= 58320 && freq <= 64800)
+            return (freq - 56160) / 2160;
+        else
+            return 0;
+    }
 
   $(function () {
     $("#jsGrid1").jsGrid({
@@ -258,6 +302,68 @@ scratch. This page gets rid of all links and provides the needed markup only.
 
     $(document).ready(function() {
         console.log("ready!"); 
+
+        // AdminLTE-3.0.5/pages/charts/flot.html
+        /*
+         * LINE CHART
+         * ----------
+         */
+        //LINE randomly generated data
+
+        let data = []
+        let ssids = []
+        for (const network of window.survey) {
+            if (network.freq < 3000) {
+                let channel = ieee80211_frequency_to_channel(network.freq);
+                data.push([
+                        [channel-2,0],
+                        [channel-1,100 + network.dbm],
+                        [channel+1,100 + network.dbm],
+                        [channel+2,0]]);
+                console.log("data=",data[data.length-1]);
+                ssids.push(network.ssid);
+            }
+        }
+
+        var plot = $.plot('#line-chart', data, {
+          grid  : {
+            hoverable  : true,
+            borderColor: '#f3f3f3',
+            borderWidth: 1,
+            tickColor  : '#f3f3f3'
+          },
+            series: {
+                shadowSize: 0,
+                lines : { show: true, fill:true },
+                points : { show: false}
+            },
+            lines : {
+                fill : false,
+                color: ['#3c8dbc', '#f56954']
+            },
+
+            xaxis : {
+                min:-1, max:13, autoScale:"mone",
+                ticks: [[1,'1 (2412)'], [2,'2 (2417)'], [3,'3 (2422)'], [4,'4 (2427)'], [5,'5 (2432)'], [6,'6 (2437)'], [7,'7 (2442)'], [8,'8 (2447)'], [9,'9 (2452)'], [10,'10 (2457)'], [11,'11 (2462)']]
+            },
+            yaxis: {
+                min:0, max:100, autoScale:"none",
+                ticks: [[0,'-99'], [25,'-75'], [50,'-50'], [75,'-25'], [100,'0']],
+            }
+        })
+        /* END LINE CHART */
+
+        window.plot = plot;
+
+        let chart = $("#line-chart");
+        let idx = 0;
+        for (const d of data) {
+            let o = plot.pointOffset({x:d[1][0],y:d[1][1]});
+            // TODO holy FUCK need to make sure ssid is safely escaped
+            chart.append("<div style='position:absolute;left:" + (o.left + 4) + "px;top:" + (o.top-20) + "px;color:#666'>" + ssids[idx] + "</div>");
+            idx++;
+        }
+
     });
 
     $(function() {
@@ -269,6 +375,7 @@ scratch. This page gets rid of all links and provides the needed markup only.
         headers.css("text-transform", "uppercase");
 
      });
+
 
 </script>
 </body>
