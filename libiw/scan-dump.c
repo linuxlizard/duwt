@@ -24,8 +24,11 @@
 #include "ssid.h"
 #include "nlnames.h"
 #include "str.h"
+#include "scan-dump.h"
 
 FILE* outfile;
+
+int debug=0;
 
 static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err, void *arg)
 {
@@ -59,14 +62,31 @@ static int ack_handler(struct nl_msg *msg, void *arg)
 }
 
 
+static int parse_nlattr(struct nlattr* attr, size_t attr_len, struct nlattr** tb_msg, struct BSS** p_bss)
+{
+	nla_parse(tb_msg, NL80211_ATTR_MAX, attr, attr_len, NULL);
+
+	peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
+
+	int err = bss_from_nlattr(tb_msg, p_bss);
+	if (err) {
+		*p_bss = NULL;
+		return err;
+	}
+
+	return 0;
+}
+
 static int valid_handler(struct nl_msg *msg, void *arg)
 {
-	struct dl_list* bss_list = (struct dl_list*)arg;
 	struct BSS* bss = NULL;
+	struct dl_list* bss_list = (struct dl_list*)arg;
 
 	INFO("%s\n", __func__);
 
-//	nl_msg_dump(msg, stdout);
+	if (debug>2) { 
+		nl_msg_dump(msg, stdout);
+	}
 
 	struct nlmsghdr *hdr = nlmsg_hdr(msg);
 
@@ -75,27 +95,21 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 	// for later test/debug, save the attributes to a file
 	if (outfile) {
 		// 4-byte magic 
-		uint32_t magic = 0x64617665;
+		uint32_t magic = SCAN_DUMP_COOKIE;
 		fwrite((void*)&magic, sizeof(uint32_t), 1, outfile);
 		// 4-byte length
 		uint32_t len = genlmsg_attrlen(gnlh, 0);
 		fwrite((void*)&len, sizeof(uint32_t), 1, outfile);
 		// write the data
 		fwrite((void*)genlmsg_attrdata(gnlh,0), len, 1, outfile);
-//		hex_dump(__func__, (void*)genlmsg_attrdata(gnlh,0), len);
+		if (debug > 2) {
+			hex_dump(__func__, (void*)genlmsg_attrdata(gnlh,0), len);
+		}
 	}
 
 	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
-	nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
-		  genlmsg_attrlen(gnlh, 0), NULL);
-
-	peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
-
-	int err=0;
-	err = bss_from_nlattr(tb_msg, &bss);
-	if (err) {
-		goto fail;
-	}
+	int ret = parse_nlattr(genlmsg_attrdata(gnlh,0), genlmsg_attrlen(gnlh,0), tb_msg, &bss);
+	// TODO check error
 
 	dl_list_add_tail(bss_list, &bss->node);
 
@@ -764,6 +778,98 @@ static void print_short(const struct BSS* bss)
 
 }
 
+static int parse_dumpfile(const char* dump_filename)
+{
+	FILE* infile;
+	int err = 0;
+
+	infile = fopen(dump_filename, "rb");
+	if (!infile) {
+		return errno;
+	}
+
+	// read until \n (the header)
+	while (!feof(infile)) {
+		uint8_t c;
+		int ret;
+
+		ret = fread(&c, sizeof(uint8_t), 1, infile);
+		if (c=='\n') {
+			break;
+		}
+	}
+	if (feof(infile)) {
+		return -EINVAL;
+	}
+
+	DEFINE_DL_LIST(bss_list);
+
+	const int max_size = 4096;
+	struct BSS* bss=NULL;
+	while (true) { 
+		int ret;
+		uint32_t size, cookie;
+		uint8_t buf[max_size];
+
+		ret = fread((char *)&cookie, sizeof(uint32_t), 1, infile);
+		if (ret != 1) {
+			if (feof(infile)) {
+				// normal end of file. no more data!
+				break;
+			}
+
+			fprintf(stderr,"%s premature end of file reading cookie; read=%d expected=%d\n", __func__, ret, 1);
+			err = -EINVAL;
+			goto leave;
+		}
+
+		ret = fread((char *)&size, sizeof(uint32_t), 1, infile);
+		if (ret != 1) {
+			fprintf(stderr,"%s premature end of file reading size; read=%d expected=%d\n", __func__, ret, 1);
+			err = -EINVAL;
+			goto leave;
+		}
+
+		printf("%1$s cookie=%2$#"PRIx32" size=%3$#"PRIx32" (%3$#"PRIu32")\n", __func__, cookie, size);
+
+		if (cookie != SCAN_DUMP_COOKIE) {
+			fprintf(stderr, "%s invalid cookie=%#"PRIx32"; not a valid scan-dump file\n", 
+					dump_filename, cookie);
+			err = -EINVAL;
+			goto leave;
+		}
+		if (size > max_size) { 
+			fprintf(stderr,"%s size=%#"PRIu32" (%#"PRIu32") too big\n", __func__, size);
+			err = -E2BIG;
+			goto leave;
+		}
+
+		ret = fread((char *)buf, sizeof(uint8_t), size, infile);
+		if (ret != size) {
+			fprintf(stderr,"%s premature end of file reading buffer; read=%d expected=%d\n", __func__, ret, size);
+			err = -EINVAL;
+			goto leave;
+		}
+
+		int attrlen = (int) size;
+		struct nlattr* attr = (struct nlattr*)buf;
+		struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
+
+		// inject data into the normal netlink callback path
+		ret = parse_nlattr(attr, attrlen, tb_msg, &bss);
+
+		dl_list_add_tail(&bss_list, &bss->node);
+	}
+
+	dl_list_for_each(bss, &bss_list, struct BSS, node) {
+		print_short(bss);
+	}
+leave:
+	bss_free_list(&bss_list);
+	fclose(infile);
+	return err;
+}
+
 //static void print_json(const struct BSS* bss)
 //{
 //	int err= bss_to_json(bss);
@@ -795,24 +901,46 @@ int main(int argc, char* argv[])
 	struct args args;
 
 	int err = args_parse(argc, argv, &args);
+	if (err) {
+		exit(1);
+	}
 
 	if (args.debug > 0) {
 		log_set_level(LOG_LEVEL_DEBUG);
 	}
 
-	if (args.argc != 1) {
-		fprintf(stderr, "usage: %s ifname\n", argv[0]);
+	if (args.load_dump_file) {
+		err = parse_dumpfile(args.dump_filename);
+		return 0;
+	}
+
+	// use first non-option argument as wifi interface to read
+	const char* ifname = args.argv[0];
+
+	// for later test/debug, save the netlink traffic to a file
+	if (args.save_dump_file) {
+		outfile = fopen(args.dump_filename,"wb");
+		if (!outfile) {
+			fprintf(stderr,"%s failed to open file=%s errno=%d err=%m\n", argv[0],
+					args.dump_filename, errno);
+			exit(1);
+		}
+		else {
+			// write a simple header so I can remember what file this silly file
+			// format is.  Header terminated by \n
+			fprintf(outfile,"scan-dump\n");
+		}
+	}
+
+	int ifidx = if_nametoindex(ifname);
+	if (ifidx <=0 ) {
+		fprintf(stderr,"%s failed to open interface=%s errno=%d err=%m\n", argv[0],
+					ifname, errno);
 		exit(1);
 	}
 
-	const char* ifname = args.argv[0];
-
-	// for later test/debug, save the attributes to a file
-//	outfile = fopen("scan-dump.dat","wb");
-	if (outfile) {
-		// write a simple header so I can remember what file this silly file
-		// format is.  Header terminated by \n
-		fprintf(outfile,"scan-dump\n");
+	if (args.debug) {
+		printf("ifindex=%d\n", ifidx);
 	}
 
 	DEFINE_DL_LIST(bss_list);
@@ -828,8 +956,9 @@ int main(int argc, char* argv[])
 	err = genl_connect(nl_sock);
 
 	int nl80211_id = genl_ctrl_resolve(nl_sock, NL80211_GENL_NAME);
-
-	int ifidx = if_nametoindex(ifname);
+	if (args.debug) {
+		printf("nl80211_id=%d\n", nl80211_id);
+	}
 
 	struct nl_msg* msg = nlmsg_alloc();
 
