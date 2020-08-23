@@ -246,7 +246,7 @@ static int on_scan_event_valid_handler(struct nl_msg *msg, void *arg)
 	return NL_SKIP;
 }
 
-int capture_keys (void *arg, enum MHD_ValueKind kind, 
+MHD_Result capture_keys (void *arg, enum MHD_ValueKind kind, 
 					const char *key, const char *value)
 {
 	// MHD callback
@@ -452,7 +452,7 @@ MHD_Response* get_file_response(const char* url)
 	return response;
 }
 
-int answer_to_connection (void *arg, 
+MHD_Result answer_to_connection (void *arg, 
 						struct MHD_Connection *connection,
 						const char *url,
 						const char *method, 
@@ -526,7 +526,7 @@ int answer_to_connection (void *arg,
 		// TODO check for error
 	}
 
-	int ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
+	MHD_Result ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
 	// TODO check return
 
 	MHD_destroy_response (response);
@@ -535,7 +535,7 @@ int answer_to_connection (void *arg,
 }
 
 
-static int on_client_connect (void *cls,
+static MHD_Result on_client_connect (void *cls,
 								const struct sockaddr *addr,
 								socklen_t addrlen)
 {
