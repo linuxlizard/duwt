@@ -33,6 +33,10 @@
 #include <unordered_map>
 #include <vector>
 
+// microhttpd switched to enums after this point
+#if MHD_VERSION <= 0x00097000
+typedef int MHD_Result;
+#endif
 
 // https://en.cppreference.com/w/cpp/feature_test
 #ifdef __has_include
