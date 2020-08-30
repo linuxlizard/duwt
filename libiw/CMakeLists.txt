@@ -36,7 +36,7 @@ pkg_check_modules(libnl_genl REQUIRED libnl-genl-3.0)
 
 add_library(iw STATIC iw.c iw-scan.c bytebuf.c xassert.c log.c hdump.c
 		util.c ssid.c nlnames.c ie.c ie_he.c bss.c bug.c ie_print.c args.c
-		bss_json.c str.c)
+		bss_json.c str.c dumpfile.c)
 
 target_include_directories(iw PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
 
@@ -69,7 +69,7 @@ endforeach()
 
 add_test(NAME test_ie COMMAND test_ie)
 add_test(NAME test_bss COMMAND test_bss)
-add_test(NAME test_decode COMMAND test_decode)
+add_test(NAME test_decode COMMAND test_decode soup.dat)
 add_test(NAME test_bytebuf COMMAND test_bytebuf)
 add_test(NAME test_ie_he COMMAND test_ie_he)
 add_test(NAME test_nlnames COMMAND test_nlnames)

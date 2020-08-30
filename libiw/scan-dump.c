@@ -24,6 +24,7 @@
 #include "ssid.h"
 #include "nlnames.h"
 #include "str.h"
+#include "dumpfile.h"
 #include "scan-dump.h"
 
 FILE* outfile;
@@ -62,21 +63,6 @@ static int ack_handler(struct nl_msg *msg, void *arg)
 }
 
 
-static int parse_nlattr(struct nlattr* attr, size_t attr_len, struct nlattr** tb_msg, struct BSS** p_bss)
-{
-	nla_parse(tb_msg, NL80211_ATTR_MAX, attr, attr_len, NULL);
-
-	peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
-
-	int err = bss_from_nlattr(tb_msg, p_bss);
-	if (err) {
-		*p_bss = NULL;
-		return err;
-	}
-
-	return 0;
-}
-
 static int valid_handler(struct nl_msg *msg, void *arg)
 {
 	struct BSS* bss = NULL;
@@ -94,22 +80,24 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 
 	// for later test/debug, save the attributes to a file
 	if (outfile) {
-		// 4-byte magic 
-		uint32_t magic = SCAN_DUMP_COOKIE;
-		fwrite((void*)&magic, sizeof(uint32_t), 1, outfile);
-		// 4-byte length
-		uint32_t len = genlmsg_attrlen(gnlh, 0);
-		fwrite((void*)&len, sizeof(uint32_t), 1, outfile);
-		// write the data
-		fwrite((void*)genlmsg_attrdata(gnlh,0), len, 1, outfile);
+		dumpfile_write( outfile, genlmsg_attrdata(gnlh,0), genlmsg_attrlen(gnlh,0));
 		if (debug > 2) {
-			hex_dump(__func__, (void*)genlmsg_attrdata(gnlh,0), len);
+			hex_dump(__func__, (void*)genlmsg_attrdata(gnlh,0), genlmsg_attrlen(gnlh,0));
 		}
 	}
 
 	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
-	int ret = parse_nlattr(genlmsg_attrdata(gnlh,0), genlmsg_attrlen(gnlh,0), tb_msg, &bss);
-	// TODO check error
+	int err = nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh,0), genlmsg_attrlen(gnlh,0), NULL);
+	if (err < 0) {
+		return err;
+	}
+
+	peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
+
+	err = bss_from_nlattr(tb_msg, &bss);
+	if (err) {
+		return err;
+	}
 
 	dl_list_add_tail(bss_list, &bss->node);
 
@@ -778,98 +766,6 @@ static void print_short(const struct BSS* bss)
 
 }
 
-static int parse_dumpfile(const char* dump_filename)
-{
-	FILE* infile;
-	int err = 0;
-
-	infile = fopen(dump_filename, "rb");
-	if (!infile) {
-		return errno;
-	}
-
-	// read until \n (the header)
-	while (!feof(infile)) {
-		uint8_t c;
-		int ret;
-
-		ret = fread(&c, sizeof(uint8_t), 1, infile);
-		if (c=='\n') {
-			break;
-		}
-	}
-	if (feof(infile)) {
-		return -EINVAL;
-	}
-
-	DEFINE_DL_LIST(bss_list);
-
-	const int max_size = 4096;
-	struct BSS* bss=NULL;
-	while (true) { 
-		int ret;
-		uint32_t size, cookie;
-		uint8_t buf[max_size];
-
-		ret = fread((char *)&cookie, sizeof(uint32_t), 1, infile);
-		if (ret != 1) {
-			if (feof(infile)) {
-				// normal end of file. no more data!
-				break;
-			}
-
-			fprintf(stderr,"%s premature end of file reading cookie; read=%d expected=%d\n", __func__, ret, 1);
-			err = -EINVAL;
-			goto leave;
-		}
-
-		ret = fread((char *)&size, sizeof(uint32_t), 1, infile);
-		if (ret != 1) {
-			fprintf(stderr,"%s premature end of file reading size; read=%d expected=%d\n", __func__, ret, 1);
-			err = -EINVAL;
-			goto leave;
-		}
-
-		printf("%1$s cookie=%2$#"PRIx32" size=%3$#"PRIx32" (%3$#"PRIu32")\n", __func__, cookie, size);
-
-		if (cookie != SCAN_DUMP_COOKIE) {
-			fprintf(stderr, "%s invalid cookie=%#"PRIx32"; not a valid scan-dump file\n", 
-					dump_filename, cookie);
-			err = -EINVAL;
-			goto leave;
-		}
-		if (size > max_size) { 
-			fprintf(stderr,"%s size=%#"PRIu32" (%#"PRIu32") too big\n", __func__, size);
-			err = -E2BIG;
-			goto leave;
-		}
-
-		ret = fread((char *)buf, sizeof(uint8_t), size, infile);
-		if (ret != size) {
-			fprintf(stderr,"%s premature end of file reading buffer; read=%d expected=%d\n", __func__, ret, size);
-			err = -EINVAL;
-			goto leave;
-		}
-
-		int attrlen = (int) size;
-		struct nlattr* attr = (struct nlattr*)buf;
-		struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
-
-		// inject data into the normal netlink callback path
-		ret = parse_nlattr(attr, attrlen, tb_msg, &bss);
-
-		dl_list_add_tail(&bss_list, &bss->node);
-	}
-
-	dl_list_for_each(bss, &bss_list, struct BSS, node) {
-		print_short(bss);
-	}
-leave:
-	bss_free_list(&bss_list);
-	fclose(infile);
-	return err;
-}
-
 //static void print_json(const struct BSS* bss)
 //{
 //	int err= bss_to_json(bss);
@@ -909,8 +805,15 @@ int main(int argc, char* argv[])
 		log_set_level(LOG_LEVEL_DEBUG);
 	}
 
+	DEFINE_DL_LIST(bss_list);
+
 	if (args.load_dump_file) {
-		err = parse_dumpfile(args.dump_filename);
+		struct BSS* bss;
+		err = dumpfile_parse(args.dump_filename, &bss_list);
+		dl_list_for_each(bss, &bss_list, struct BSS, node) {
+			print_short(bss);
+		}
+		bss_free_list(&bss_list);
 		return 0;
 	}
 
@@ -943,7 +846,6 @@ int main(int argc, char* argv[])
 		printf("ifindex=%d\n", ifidx);
 	}
 
-	DEFINE_DL_LIST(bss_list);
 	struct nl_cb* cb = nl_cb_alloc(NL_CB_DEFAULT);
 
 	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, valid_handler, (void*)&bss_list);
