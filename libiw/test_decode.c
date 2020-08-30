@@ -274,7 +274,8 @@ int main(int argc, char* argv[])
 	int i;
 	struct args args;
 
-	int err = args_parse(argc, argv, &args);
+	int err=0;
+//	int err = args_parse(argc, argv, &args);
 
 	if (args.debug > 0) {
 		log_set_level(LOG_LEVEL_DEBUG);
@@ -290,11 +291,11 @@ int main(int argc, char* argv[])
 
 	DEFINE_DL_LIST(bss_list);
 
-	for (i=0 ; i<args.argc ; i++) {
+	for (i=1 ; i<argc ; i++) {
 		uint8_t* buf;
 		size_t size;
 
-		err = load_scan_dump_file(args.argv[i], &buf, &size);
+		err = load_scan_dump_file(argv[i], &buf, &size);
 		if (err < 0) {
 			fprintf(stderr, "failed to load file \"%s\"; err=%d\n", args.argv[i], err);
 			continue;
