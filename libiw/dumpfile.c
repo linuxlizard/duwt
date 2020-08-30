@@ -8,6 +8,21 @@
 #include "iw.h"
 #include "dumpfile.h"
 
+int dumpfile_create(const char* filename, FILE** p_outfile)
+{
+	*p_outfile = fopen(filename,"wb");
+	if (!*p_outfile) {
+		return errno;
+	}
+	else {
+		// write a simple header so I can remember what file this silly file
+		// format is.  Header terminated by \n
+		fprintf(*p_outfile,"scan-dump\n");
+	}
+
+	return 0;
+}
+
 int dumpfile_parse(const char* dump_filename, struct dl_list* bss_list )
 {
 	FILE* infile;

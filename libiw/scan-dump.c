@@ -822,16 +822,11 @@ int main(int argc, char* argv[])
 
 	// for later test/debug, save the netlink traffic to a file
 	if (args.save_dump_file) {
-		outfile = fopen(args.dump_filename,"wb");
-		if (!outfile) {
+		err = dumpfile_create(args.dump_filename, &outfile);
+		if (err != 0) {
 			fprintf(stderr,"%s failed to open file=%s errno=%d err=%m\n", argv[0],
-					args.dump_filename, errno);
+				args.dump_filename, errno);
 			exit(1);
-		}
-		else {
-			// write a simple header so I can remember what file this silly file
-			// format is.  Header terminated by \n
-			fprintf(outfile,"scan-dump\n");
 		}
 	}
 

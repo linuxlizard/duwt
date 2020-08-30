@@ -5,6 +5,7 @@
 
 int dumpfile_parse(const char* dump_filename, struct dl_list* bss_list);
 
+int dumpfile_create(const char* filename, FILE** p_outfile);
 int dumpfile_write(FILE* outfile, struct nlattr* attrdata, int attrlen);
 
 #endif
