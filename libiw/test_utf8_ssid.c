@@ -31,7 +31,11 @@ int main(int argc, char* argv[])
 		struct BSS* bss;
 		dl_list_for_each(bss, &bss_list, struct BSS, node) {
 			UChar ssid_u[SSID_MAX_LEN*2];
-			int ret = bss_get_utf8_ssid(bss, ssid_u, sizeof(ssid_u));
+			int ret = ssid_get_utf8_from_bss(bss, ssid_u, sizeof(ssid_u));
+			if (ret < 0) {
+				ERR("invalid SSID\n");
+				continue;
+			}
 
 			u_printf("ssid=%S\n", ssid_u);
 		}

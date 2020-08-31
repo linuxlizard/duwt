@@ -48,7 +48,7 @@ const UChar* ssid_get_hidden(void)
 	return hidden;
 }
 
-int bss_get_utf8_ssid(const struct BSS* bss, UChar u_ssid[], size_t u_ssid_len )
+int ssid_get_utf8_from_bss(const struct BSS* bss, UChar u_ssid[], size_t u_ssid_len )
 {
 	const struct IE_SSID* sie = bss_get_ssid(bss);
 	if (!sie) {

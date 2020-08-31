@@ -641,7 +641,7 @@ static void print_mobility_domain(const struct BSS* bss)
 static void print_ssid(struct BSS* bss)
 {
 	UChar ssid[SSID_MAX_LEN*2];
-	int ret = bss_get_utf8_ssid(bss, ssid, sizeof(ssid));
+	int ret = ssid_get_utf8_from_bss(bss, ssid, sizeof(ssid));
 	XASSERT(ret>=0, ret);
 
 	if (ret==0 || ret==-ENOENT) {
@@ -701,7 +701,7 @@ static void print_bss_to_csv(struct BSS* bss, bool header)
 	}
 
 	UChar ssid[SSID_MAX_LEN*2];
-	int ret = bss_get_utf8_ssid(bss, ssid, sizeof(ssid));
+	int ret = ssid_get_utf8_from_bss(bss, ssid, sizeof(ssid));
 	XASSERT(ret>=0, ret);
 
 	printf("%s, %d, %0.2f, ", bss->bssid_str, bss->frequency, bss->signal_strength_mbm/100.0);
@@ -717,7 +717,7 @@ static void print_bss_to_csv(struct BSS* bss, bool header)
 static void print_short(const struct BSS* bss)
 {
 	UChar ssid[SSID_MAX_LEN*2];
-	int ret = bss_get_utf8_ssid(bss, ssid, sizeof(ssid));
+	int ret = ssid_get_utf8_from_bss(bss, ssid, sizeof(ssid));
 	XASSERT(ret>=0, ret);
 
 	//  SSID            BSSID              CHAN RATE  S:N   INT CAPS
