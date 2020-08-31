@@ -552,17 +552,6 @@ static void print_ht_operation(const struct BSS* bss)
 
 }
 
-static int get_ssid(const struct BSS* bss, UChar u_ssid[], size_t u_ssid_len )
-{
-	const struct IE_SSID* sie = bss_get_ssid(bss);
-	if (!sie) {
-		// returns a copy of hidden SSID u_string
-		return ssid_to_unicode_str(NULL, 0, u_ssid, u_ssid_len);
-	}
-
-	return ssid_to_unicode_str(sie->ssid, sie->ssid_len, u_ssid, u_ssid_len);
-}
-
 static void print_country(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_COUNTRY);
@@ -652,7 +641,7 @@ static void print_mobility_domain(const struct BSS* bss)
 static void print_ssid(struct BSS* bss)
 {
 	UChar ssid[SSID_MAX_LEN*2];
-	int ret = get_ssid(bss, ssid, sizeof(ssid));
+	int ret = bss_get_utf8_ssid(bss, ssid, sizeof(ssid));
 	XASSERT(ret>=0, ret);
 
 	if (ret==0 || ret==-ENOENT) {
@@ -712,7 +701,7 @@ static void print_bss_to_csv(struct BSS* bss, bool header)
 	}
 
 	UChar ssid[SSID_MAX_LEN*2];
-	int ret = get_ssid(bss, ssid, sizeof(ssid));
+	int ret = bss_get_utf8_ssid(bss, ssid, sizeof(ssid));
 	XASSERT(ret>=0, ret);
 
 	printf("%s, %d, %0.2f, ", bss->bssid_str, bss->frequency, bss->signal_strength_mbm/100.0);
@@ -728,7 +717,7 @@ static void print_bss_to_csv(struct BSS* bss, bool header)
 static void print_short(const struct BSS* bss)
 {
 	UChar ssid[SSID_MAX_LEN*2];
-	int ret = get_ssid(bss, ssid, sizeof(ssid));
+	int ret = bss_get_utf8_ssid(bss, ssid, sizeof(ssid));
 	XASSERT(ret>=0, ret);
 
 	//  SSID            BSSID              CHAN RATE  S:N   INT CAPS

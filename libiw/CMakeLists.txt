@@ -58,7 +58,7 @@ target_link_libraries(scan-dump ${icu_LDFLAGS} icuio)
 target_link_libraries(scan-dump jansson)
 target_link_libraries(scan-dump ${cpprestsdk_LDFLAGS})
 
-foreach(test IN ITEMS test_ie test_bss test_decode test_bytebuf test_ie_he test_nlnames test_str)
+foreach(test IN ITEMS test_ie test_bss test_decode test_bytebuf test_ie_he test_nlnames test_str test_utf8_ssid)
 	message("test=${test}")
 	add_executable(${test} ${test}.c)
 	target_include_directories(${test} PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
@@ -75,3 +75,4 @@ add_test(NAME test_ie_he COMMAND test_ie_he)
 add_test(NAME test_nlnames COMMAND test_nlnames)
 add_test(NAME test_str COMMAND test_str)
 
+add_test(NAME test_utf8_ssid COMMAND test_utf8_ssid)

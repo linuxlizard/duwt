@@ -7,6 +7,7 @@
 #include <unicode/ustdio.h>
 
 #include "core.h"
+#include "bss.h"
 #include "ssid.h"
 
 U_STRING_DECL(hidden, "<hidden>", 8);
@@ -45,5 +46,16 @@ const UChar* ssid_get_hidden(void)
 		hidden_len = u_strlen(hidden);
 	}
 	return hidden;
+}
+
+int bss_get_utf8_ssid(const struct BSS* bss, UChar u_ssid[], size_t u_ssid_len )
+{
+	const struct IE_SSID* sie = bss_get_ssid(bss);
+	if (!sie) {
+		// returns a copy of hidden SSID u_string
+		return ssid_to_unicode_str(NULL, 0, u_ssid, u_ssid_len);
+	}
+
+	return ssid_to_unicode_str(sie->ssid, sie->ssid_len, u_ssid, u_ssid_len);
 }
 

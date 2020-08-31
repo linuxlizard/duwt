@@ -80,7 +80,7 @@ int parse_nla_bss(struct nlattr* attr_list, struct BSS* bss)
 	uint8_t *ptr = nla_data(bss_attr[NL80211_BSS_BSSID]);
 	memcpy(bss->bssid, ptr, ETH_ALEN);
 	mac_addr_n2a(bss->bssid_str, bss->bssid);
-	INFO("%s found bssid=%s\n", __func__, bss->bssid_str);
+	DBG("%s found bssid=%s\n", __func__, bss->bssid_str);
 
 	if ((attr = bss_attr[NL80211_BSS_CAPABILITY])) {
 		bss->capability = nla_get_u16(attr);

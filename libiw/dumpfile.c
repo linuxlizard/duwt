@@ -73,7 +73,7 @@ int dumpfile_parse(const char* dump_filename, struct dl_list* bss_list )
 			goto leave;
 		}
 
-		printf("%1$s cookie=%2$#"PRIx32" size=%3$#"PRIx32" (%3$#"PRIu32")\n", __func__, cookie, size);
+		DBG("%1$s cookie=%2$#"PRIx32" size=%3$#"PRIx32" (%3$#"PRIu32")\n", __func__, cookie, size);
 
 		if (cookie != SCAN_DUMP_COOKIE) {
 			fprintf(stderr, "%s invalid cookie=%#"PRIx32"; not a valid scan-dump file\n", 

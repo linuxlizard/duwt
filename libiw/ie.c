@@ -928,7 +928,7 @@ static int ie_extension_new(struct IE* ie)
 
 	uint8_t ext_id = ie->buf[0];
 
-	INFO("%s eid=%d len=%zu\n", __func__, ext_id, ie->len);
+	DBG("%s eid=%d len=%zu\n", __func__, ext_id, ie->len);
 
 	if (ie_ext_classes[ext_id].constructor) {
 		return ie_ext_classes[ext_id].constructor(ie);
@@ -1097,8 +1097,7 @@ int ie_new(uint8_t id, uint8_t len, const uint8_t* buf, struct IE** pie)
 		}
 	}
 	else {
-		WARN("%s unparsed IE=%d\n", __func__, id);
-		DBG("%s unparsed IE=%d\n", __func__, id);
+		WARN("%s unparsed IE=%d len=%d\n", __func__, id, len);
 		char msg[32];
 		snprintf(msg, 32, "unparsed id=%d len=%d", id, len);
 		hex_dump(msg, buf, len);
