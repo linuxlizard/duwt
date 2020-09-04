@@ -1,3 +1,13 @@
+# setup.py  python nl80211 library build
+#
+#	This library is free software; you can redistribute it and/or
+#	modify it under the terms of the GNU Lesser General Public
+#	License as published by the Free Software Foundation version 2.1
+#	of the License.
+#
+# Copyright (c) 2019-2020 David Poole <dpoole@cradlepoint.com>
+#
+
 from distutils.core import setup, Extension
 
 module1 = Extension('_iw',

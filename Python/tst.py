@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
 
+# tst.py  python nl80211 library test script
+#
+#	This library is free software; you can redistribute it and/or
+#	modify it under the terms of the GNU Lesser General Public
+#	License as published by the Free Software Foundation version 2.1
+#	of the License.
+#
+# Copyright (c) 2019-2020 David Poole <dpoole@cradlepoint.com>
+#
+
 import sys
 import time
 import faulthandler
