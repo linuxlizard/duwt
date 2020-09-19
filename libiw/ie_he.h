@@ -1,13 +1,13 @@
+// I don't have the US$3000 to get the IEEE 80211.ax standard so I'm using
+// Wireshark's decode code. I'm putting HE decode into its own file to
+// carefully show the HE code from Wireshark which is GPLv2.
+
+// the structure member names taken from Wireshark epan/dissectors/packet-ieee80211.c
+
 #ifndef IE_HE_H
 #define IE_HE_H
 
 #include "ie.h"
-
-// I don't have the US$3000 to get the IEEE 80211.ax standard so I'm using
-// Wireshark's decode code. I'm putting HE decode into its own file to
-// carefully show the HE code from Wireshark.
-
-// the structure member names taken from Wireshark epan/dissectors/packet-ieee80211.c
 
 struct __attribute__((__packed__)) IE_HE_MAC
 {

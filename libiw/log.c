@@ -1,3 +1,9 @@
+/*
+ * libiw/log.c   general logging functionality
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <stdio.h>
 #include <stdarg.h>
 

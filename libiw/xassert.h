@@ -1,3 +1,9 @@
+/*
+ * libiw/xassert.h   embraced and extended assert 
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #ifndef XASSERT_H
 #define XASSERT_H
 

@@ -1,3 +1,9 @@
+/*
+ * libiw/config.c   nl80211 configuration detection tester
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <stdio.h>
 #include <linux/nl80211.h>
 

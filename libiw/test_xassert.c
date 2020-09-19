@@ -1,3 +1,9 @@
+/*
+ * libiw/test_xassert.c   test xassert functions
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdlib.h>

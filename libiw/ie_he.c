@@ -1,7 +1,6 @@
 /* Uses chunks of Wireshark, specifically the strings from packet-ieee80211.c
  *
- * So this file needs to be carefully aligned with Wireshark's license.
- *
+ * So this file needs to be carefully aligned with Wireshark's GPLv2 license.
  *
  */ 
 

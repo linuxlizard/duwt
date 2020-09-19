@@ -1,3 +1,11 @@
+/*
+ * libiw/iw.h   library-ish wrapper around some `iw` fuctionality
+ *
+ * Contains copied chunks from from iw iw.h See COPYING.
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #ifndef IW_H
 #define IW_H
 

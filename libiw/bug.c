@@ -1,3 +1,5 @@
+/* davep 20191129 ; originally from include/linux/bug.h */
+/* SPDX-License-Identifier: GPL-2.0 */
 #include <stdio.h>
 #include <stdarg.h>
 

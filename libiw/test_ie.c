@@ -1,3 +1,9 @@
+/*
+ * libiw/test_ie.c   test IE decode functions
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <stdlib.h>
 #include <string.h>
 

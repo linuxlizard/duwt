@@ -1,3 +1,14 @@
+/*
+ * libiw/bss_json.c   encode a BSS as JSON using jansson
+ *
+ *	This library is free software; you can redistribute it and/or
+ *	modify it under the terms of the GNU Lesser General Public
+ *	License as published by the Free Software Foundation version 2.1
+ *	of the License.
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <string.h>
 
 // https://jansson.readthedocs.io/en/2.12/

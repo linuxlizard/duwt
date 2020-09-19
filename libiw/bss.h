@@ -1,3 +1,9 @@
+/*
+ * libiw/bss.h   BSS data structure
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #ifndef BSS_H
 #define BSS_H
 

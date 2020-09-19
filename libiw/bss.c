@@ -1,3 +1,9 @@
+/*
+ * libiw/bss.c   BSS data structure
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <string.h>
 #include <linux/nl80211.h>
 

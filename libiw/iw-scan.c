@@ -1,4 +1,24 @@
 /* davep 20181011 ; learning nl80211 */
+
+/* davep 20200919 ; adding copyright COPYING from 'iw' from which this springs */
+
+//Copyright (c) 2007, 2008	Johannes Berg
+//Copyright (c) 2007		Andy Lutomirski
+//Copyright (c) 2007		Mike Kershaw
+//Copyright (c) 2008-2009		Luis R. Rodriguez
+//
+//Permission to use, copy, modify, and/or distribute this software for any
+//purpose with or without fee is hereby granted, provided that the above
+//copyright notice and this permission notice appear in all copies.
+//
+//THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+//WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+//MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+//ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+//WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+//ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+//OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
 //https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/nl80211.h
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +41,6 @@
 #include "core.h"
 #include "hdump.h"
 #include "nlnames.h"
-#include "bytebuf.h"
 #include "iw-scan.h"
 
 /* iw-4.9 iw.h */
@@ -678,26 +697,6 @@ int decode_attr_scan_frequencies( struct nlattr *attr )
 	return 0;
 }
 
-
-int decode_attr_scan_ssids( struct nlattr *attr, struct bytebuf_array* ssid_list )
-{
-	struct nlattr *nst;
-	int rem_nst;
-	int err;
-
-	bytebuf_array_verify(ssid_list);
-	nla_for_each_nested(nst, attr, rem_nst) {
-		err = bytebuf_array_emplace_back( ssid_list, nla_data(nst), nla_len(nst));
-		if (err) {
-			goto fail;
-		}
-	}
-
-	return 0;
-fail:
-	bytebuf_array_free(ssid_list);
-	return err;
-}
 
 static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err, void *arg)
 {

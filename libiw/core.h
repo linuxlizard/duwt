@@ -1,3 +1,9 @@
+/*
+ * libiw/core.h   all the things header file
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #ifndef CORE_H
 #define CORE_H
 

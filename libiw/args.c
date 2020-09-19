@@ -1,3 +1,9 @@
+/*
+ * libiw/args.c   command line parser
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>

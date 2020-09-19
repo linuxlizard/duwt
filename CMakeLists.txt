@@ -4,10 +4,10 @@
 # 	cmake ..
 #
 # Debian packages install (FIXME incomplete)
-# apt install build-essential pkg-config cmake libnl-3-dev libnl-genl-3-dev libjsoncpp-dev libicu-dev libjansson-dev libmicrohttpd-dev
+# apt install build-essential pkg-config cmake libnl-3-dev libnl-genl-3-dev libjsoncpp-dev libjansson-dev libmicrohttpd-dev
 
 # Fedora packages install TODO (most recent test: Fedora 32)
-# sudo dnf install make cmake gcc-g++ libnl3-devel jsoncpp-devel libicu-devel jansson-devel libmicrohttpd-devel
+# sudo dnf install make cmake gcc-g++ libnl3-devel jsoncpp-devel jansson-devel libmicrohttpd-devel
 # 
 
 # hint: command line invocation

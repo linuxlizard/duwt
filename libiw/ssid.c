@@ -1,61 +1,80 @@
+/*
+ * libiw/ssid.c  handle SSID
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
 
-// https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/
-#include <unicode/utypes.h>
-#include <unicode/ustring.h>
-#include <unicode/utext.h>
-#include <unicode/utf8.h>
-#include <unicode/ustdio.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <iconv.h>
 
 #include "core.h"
 #include "bss.h"
 #include "ssid.h"
 
-U_STRING_DECL(hidden, "<hidden>", 8);
-static int hidden_len = 0;
-
-int ssid_to_unicode_str(const char* buf, size_t buf_len, UChar ssid[], size_t ssid_len )
+// https://github.com/zwegner/faster-utf8-validator/blob/master/z_validate.c
+//
+// https://stackoverflow.com/questions/115210/how-to-check-whether-a-file-is-valid-utf-8
+//
+int ssid_utf8_validate(const char* ssid, size_t ssid_len)
 {
-	if (hidden_len == 0) {
-		U_STRING_INIT(hidden, "<hidden>", 8);
-		hidden_len = u_strlen(hidden);
+	int retcode = 0;
+
+	if (ssid_len > SSID_MAX_LEN) {
+		return -ENAMETOOLONG;
 	}
 
-	if (buf==NULL || buf_len==0 || buf[0] == 0) {
-		u_strncpy(ssid, hidden, ssid_len);
-		return hidden_len;
+	// convert an allegedly UTF-8 ssid into UTF-16 which should allow the
+	// iconv() library to validate the UTF-8-ness of our SSID
+	iconv_t cd = iconv_open("UTF16//", "UTF-8//");
+	if (cd  == (iconv_t)-1) {
+		// failed
+		return -errno;
 	}
 
-	int32_t new_ssid_len = (int32_t)ssid_len;
+	hex_dump(__func__, (unsigned char*)ssid, ssid_len);
 
-	// http://userguide.icu-project.org/strings
-	// http://userguide.icu-project.org/strings/utf-8
-	UErrorCode status = U_ZERO_ERROR;
-	u_strFromUTF8(ssid, ssid_len, &new_ssid_len, buf, buf_len, &status);
-	if ( !U_SUCCESS(status)) {
-		ERR("%s unicode parse fail status=%d\n", __func__, status);
-		return -EINVAL;
+	char out[ssid_len*4];
+	size_t out_len = sizeof(out);
+	char *inp = (char *)ssid;
+	char *outp = out;
+	errno = 0;
+	size_t s = iconv(cd, &inp, &ssid_len, &outp, &out_len);
+	if (s == (size_t)-1) {
+		printf("%s s=%zu out_len=%zu %d %m\n", __func__, s, out_len, errno);
+		return -errno;
 	}
 
-	return ssid_len;
+	iconv_close(cd);
+	return 0;
 }
 
-const UChar* ssid_get_hidden(void)
-{
-	if (hidden_len == 0) {
-		U_STRING_INIT(hidden, "<hidden>", 8);
-		hidden_len = u_strlen(hidden);
-	}
-	return hidden;
-}
-
-int ssid_get_utf8_from_bss(const struct BSS* bss, UChar u_ssid[], size_t u_ssid_len )
+int ssid_print(const struct BSS* bss, FILE* outfile, const char* extra_str)
 {
 	const struct IE_SSID* sie = bss_get_ssid(bss);
-	if (!sie) {
-		// returns a copy of hidden SSID u_string
-		return ssid_to_unicode_str(NULL, 0, u_ssid, u_ssid_len);
+	if (!sie || sie->ssid_is_hidden) {
+		// if no SSID found for this BSS so say hidden
+		if (extra_str) {
+			return(fprintf(outfile, "%32s%s", HIDDEN_SSID, extra_str));
+		}
+		else {
+			return(fprintf(outfile, "%32s", HIDDEN_SSID ));
+		}
 	}
 
-	return ssid_to_unicode_str(sie->ssid, sie->ssid_len, u_ssid, u_ssid_len);
+	if ( !sie->ssid_is_valid_utf8 ) {
+		// TODO print the hex dump
+		return sie->ssid_len;
+	}
+
+	// TODO check ssid_is_printable
+
+	if (extra_str) {
+		return(fprintf(outfile, "%32.*s%s", sie->ssid_len, sie->ssid, extra_str));
+	}
+	else {
+		return(fprintf(outfile, "%32.*s", sie->ssid_len, sie->ssid));
+	}
+
 }
 

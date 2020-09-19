@@ -1,3 +1,9 @@
+/*
+ * libiw/test_decode.c   test dumpfile functions
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -20,8 +26,8 @@
 #include "ssid.h"
 
 // known SSIDs from test dumps
-U_STRING_DECL(u_maxan_anvol, "Maxan Anvol", 11);
-U_STRING_DECL(u_e300, "E300-7e2-5g", 11);
+//U_STRING_DECL(u_maxan_anvol, "Maxan Anvol", 11);
+//U_STRING_DECL(u_e300, "E300-7e2-5g", 11);
 
 static int decode(uint8_t* buf, ssize_t buflen, struct dl_list* bss_list)
 {
@@ -196,9 +202,9 @@ static void verify_bss(const struct BSS* bss)
 	const struct IE_SSID* ssid_ie = bss_get_ssid(bss);
 	XASSERT(ssid_ie, 0);
 
-	UChar u_ssid[SSID_MAX_LEN*2];
-	int ret = ssid_to_unicode_str(ssid_ie->ssid, ssid_ie->ssid_len, u_ssid, sizeof(u_ssid));
-	XASSERT(ret>=0, ret);
+//	UChar u_ssid[SSID_MAX_LEN*2];
+//	int ret = ssid_to_unicode_str(ssid_ie->ssid, ssid_ie->ssid_len, u_ssid, sizeof(u_ssid));
+//	XASSERT(ret>=0, ret);
 
 #if 0
 	if (u_strcmp(u_ssid, u_maxan_anvol) == 0) {
@@ -210,7 +216,7 @@ static void verify_bss(const struct BSS* bss)
 #endif
 
 	char s[64];
-	ret = bss_get_chan_width_str(bss, s, sizeof(s));
+	int ret = bss_get_chan_width_str(bss, s, sizeof(s));
 	INFO("%s %s width=%s\n", __func__, bss->bssid_str, s);
 }
 
@@ -286,8 +292,8 @@ int main(int argc, char* argv[])
 	WARN("%s this is a warning message\n", __func__);
 	ERR("%s this is an error message\n", __func__);
 
-	U_STRING_INIT(u_maxan_anvol, "Maxan Anvol", 11);
-	U_STRING_INIT(u_e300, "E300-7e2-5g", 11);
+//	U_STRING_INIT(u_maxan_anvol, "Maxan Anvol", 11);
+//	U_STRING_INIT(u_e300, "E300-7e2-5g", 11);
 
 	DEFINE_DL_LIST(bss_list);
 

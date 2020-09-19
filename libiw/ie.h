@@ -1,3 +1,9 @@
+/*
+ * libiw/ie.h  decode IEs
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #ifndef IE_H
 #define IE_H
 
@@ -38,11 +44,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-
-// https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/
-//#include <unicode/utypes.h>
-//#include <unicode/utext.h>
-//#include <unicode/utf8.h>
 
 typedef enum {
 	IE_SSID = 0,
@@ -124,9 +125,6 @@ struct IE
 	uint32_t cookie;\
 	struct IE* base;
 
-// standard says 32 octets but Unicode seriously muddies the water
-#define SSID_MAX_LEN 32
-
 #define IE_CAST(_ie, _type)\
 	((_type*)((_ie)->specific))
 
@@ -168,10 +166,16 @@ struct IE_SSID
 #endif
 	size_t ssid_len;
 
-	// http://userguide.icu-project.org/strings
-	// http://userguide.icu-project.org/strings/utf-8
-//	UChar ssid[SSID_MAX_LEN*2];
-//	int32_t ssid_len;
+	// NEVER ASSUME SSID IS NULL TERMIANTED.
+	// Turns out ((nonstring)) doesn't trigger a warning from printf()
+
+	// ssid has been verified to be correct UTF8
+	bool ssid_is_valid_utf8;
+
+	// ssid is NULL or a block of NULLs
+	bool ssid_is_hidden;
+
+	bool ssid_is_printable;
 };
 
 struct Supported_Rate

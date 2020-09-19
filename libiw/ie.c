@@ -1,19 +1,20 @@
+/*
+ * libiw/ie.c  decode IEs
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
-
-//#include <unicode/utypes.h>
-//#include <unicode/ustring.h>
-//#include <unicode/utext.h>
-//#include <unicode/utf8.h>
-//#include <unicode/ustdio.h>
 
 #define HAVE_MODULE_LOGLEVEL 1
 
 #include "core.h"
 #include "ie.h"
 #include "ie_he.h"
+#include "ssid.h"
 
 const uint8_t ms_oui[3] = { 0x00, 0x50, 0xf2 };
 const uint8_t ieee80211_oui[3] = { 0x00, 0x0f, 0xac };
@@ -30,22 +31,25 @@ static int ie_ssid_new(struct IE* ie)
 {
 	CONSTRUCT(struct IE_SSID)
 
-	sie->ssid = (char *)ie->buf;
-	sie->ssid_len = ie->len;
-#if 0
-	UChar ssid[SSID_MAX_LEN*2];
-	UErrorCode status = U_ZERO_ERROR;
-	u_strFromUTF8( ssid, sizeof(ssid), &sie->ssid_len, ie->buf, ie->len, &status);
-	if ( !U_SUCCESS(status)) {
-		PTR_FREE(sie);
-		ERR("%s unicode parse fail status=%d\n", __func__, status);
-		return -EINVAL;
+	// make a copy of the SSID with an extra slot for null-terminator just to
+	// be super-duper safe. This will also allow us at least a 1-byte string
+	// (null terminated) for a zero-length SSID (hiden)
+	sie->ssid = (char*)calloc(ie->len+1, sizeof(char));
+	if (!sie->ssid) {
+		return -ENOMEM;
 	}
+	memcpy(sie->ssid, ie->buf, ie->len);
 
-	if (sie->ssid_len > SSID_MAX_LEN) {
-		WARN("ssid too long len=%d\n", sie->ssid_len);
-	}
-#endif
+	sie->ssid_len = ie->len;
+
+	sie->ssid_is_hidden = sie->ssid_len == 0 || sie->ssid[0] == (char)0;
+
+	// validate the SSID for utf8 safety
+	sie->ssid_is_valid_utf8 = 0 == ssid_utf8_validate(sie->ssid, sie->ssid_len);
+
+	// TODO check for crappy crap that's not really a printable SSID (embedded
+	// NULLs get past the UTF8 check)
+	sie->ssid_is_printable = false;
 
 	return 0;
 }
@@ -55,6 +59,9 @@ static void ie_ssid_free(struct IE* ie)
 	struct IE_SSID* sie = (struct IE_SSID*)ie->specific;
 
 	XASSERT(sie->cookie == IE_SPECIFIC_COOKIE, sie->cookie);
+
+	memset(sie->ssid, POISON, sie->ssid_len);
+	PTR_FREE(sie->ssid);
 
 	memset(sie, POISON, sizeof(*sie));
 	PTR_FREE(ie->specific);

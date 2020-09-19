@@ -1,3 +1,9 @@
+/*
+ * libiw/dumpfile.c   write nl80211/netlink blobs to a file for later testing
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <stdio.h>
 #include <errno.h>
 #include <inttypes.h>

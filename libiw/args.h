@@ -1,3 +1,9 @@
+/*
+ * libiw/args.h   command line parser
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #ifndef ARGS_H
 #define ARGS_H
 

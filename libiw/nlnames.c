@@ -1,3 +1,9 @@
+/*
+ * libiw/nlnames.c  convert nl80211 enum to nice debug strings
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <linux/nl80211.h>
 
 #include "config.h"

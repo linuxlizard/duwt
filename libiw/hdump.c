@@ -1,3 +1,9 @@
+/*
+ * libiw/hdump.c   useful hexdump I've hauled around for years
+ *
+ * Copyright (c) 199?-2020 David Poole <davep@mbuf.com>
+ */
+
 #define _FILE_OFFSET_BITS 64 
 #include <stdio.h>
 #include <ctype.h>

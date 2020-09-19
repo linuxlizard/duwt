@@ -1,3 +1,9 @@
+/*
+ * libiw/test_ie_he.c   test ie-he (80211ax) decode functions
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 

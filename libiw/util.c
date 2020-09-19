@@ -1,3 +1,10 @@
+/*
+ * libiw/util.c  "stuff"
+ *
+ * Contains copied chunks from from iw iw.h See COPYING.
+ *
+ */
+
 #include <stdio.h>
 #include <inttypes.h>
 #include <linux/if_ether.h>

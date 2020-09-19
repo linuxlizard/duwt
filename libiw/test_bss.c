@@ -1,3 +1,9 @@
+/*
+ * libiw/test_bss_convert.c   test bss.[ch] functions
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <string.h>
 #include "core.h"
 #include "bss.h"

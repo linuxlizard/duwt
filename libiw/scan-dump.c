@@ -1,14 +1,13 @@
+/*
+ * libiw/scan-dump.c   dump wifi scan results in various formats
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
 #include <net/if.h>
-
-// https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/
-#include <unicode/utypes.h>
-#include <unicode/ustring.h>
-#include <unicode/utext.h>
-#include <unicode/utf8.h>
-#include <unicode/ustdio.h>
 
 #include <jansson.h>
 
@@ -638,20 +637,6 @@ static void print_mobility_domain(const struct BSS* bss)
 	ie_print_mobility_domain(sie);
 }
 
-static void print_ssid(struct BSS* bss)
-{
-	UChar ssid[SSID_MAX_LEN*2];
-	int ret = ssid_get_utf8_from_bss(bss, ssid, sizeof(ssid));
-	XASSERT(ret>=0, ret);
-
-	if (ret==0 || ret==-ENOENT) {
-		u_printf("\tSSID: %S\n", ssid_get_hidden());
-	}
-	else {
-		u_printf("\tSSID: %S\n", ssid);
-	}
-}
-
 static void print_bss(struct BSS* bss)
 {
 	XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
@@ -671,7 +656,7 @@ static void print_bss(struct BSS* bss)
 	printf("\tcapability: %s (%#06x)\n", str, bss->capability);
 
 	printf("\tsignal: %0.2f dBm\n", bss->signal_strength_mbm/100.0);
-	print_ssid(bss);
+	ssid_print(bss, stdout, "\n");
 	print_supported_rates(bss);
 	print_dsss_param(bss);
 	print_country(bss);
@@ -694,39 +679,10 @@ static void print_bss(struct BSS* bss)
 	print_vendor(bss);
 }
 
-static void print_bss_to_csv(struct BSS* bss, bool header)
-{
-	if (header) {
-		printf("BSSID,frequency,signal_strength,SSID\n");
-	}
-
-	UChar ssid[SSID_MAX_LEN*2];
-	int ret = ssid_get_utf8_from_bss(bss, ssid, sizeof(ssid));
-	XASSERT(ret>=0, ret);
-
-	printf("%s, %d, %0.2f, ", bss->bssid_str, bss->frequency, bss->signal_strength_mbm/100.0);
-	if (ret==0) {
-		u_printf("%S ", ssid_get_hidden());
-	}
-	else {
-		u_printf("%S ", ssid);
-	}
-	printf("\n");
-}
-
 static void print_short(const struct BSS* bss)
 {
-	UChar ssid[SSID_MAX_LEN*2];
-	int ret = ssid_get_utf8_from_bss(bss, ssid, sizeof(ssid));
-	XASSERT(ret>=0, ret);
-
 	//  SSID            BSSID              CHAN RATE  S:N   INT CAPS
-	if (ret==0) {
-		u_printf("%32S ", ssid_get_hidden());
-	}
-	else {
-		u_printf("%32S ", ssid);
-	}
+	ssid_print(bss, stdout, NULL);
 
 	bool is_ht = ie_list_find_id(&bss->ie_list, IE_HT_OPERATION) != NULL;
 	bool is_vht = ie_list_find_id(&bss->ie_list, IE_VHT_OPERATION) != NULL;
@@ -754,11 +710,6 @@ static void print_short(const struct BSS* bss)
 	printf("\n");
 
 }
-
-//static void print_json(const struct BSS* bss)
-//{
-//	int err= bss_to_json(bss);
-//}
 
 static void search_for(struct dl_list* list)
 {
@@ -868,16 +819,6 @@ int main(int argc, char* argv[])
 		print_bss(bss);
 	}
 
-//	bool first=true;
-//	list_for_each_entry(bss, &bss_list, node) {
-//		print_bss_to_csv(bss, first);
-//		first = false;
-//	}
-
-	printf("\n\n");
-//	list_for_each_entry(bss, &bss_list, node) {
-//		print_json(bss);
-//	}
 	json_t* jlist=NULL;
 	err = bss_list_to_json(&bss_list, &jlist);
 	XASSERT(err==0, err);
@@ -896,16 +837,6 @@ int main(int argc, char* argv[])
 		print_short(bss);
 	}
 
-#if 0
-	printf("\n\n");
-	dl_list_for_each(bss, &bss_list, struct BSS, node) {
-//		uint64_t bssid = *(uint64_t*)bss->bssid & ~(0xffffULL << 48);
-		uint64_t bssid = BSSID_U64(bss->bssid);
-
-		printf(MAC_ADD_FMT " %#018" PRIx64 "\n", 
-				MAC_ADD_PRN(bss->bssid), bssid);
-	}
-#endif
 
 //	search_for(&bss_list);
 
@@ -914,7 +845,6 @@ leave:
 	nl_cb_put(cb);
 	nl_socket_free(nl_sock);
 	nlmsg_free(msg);
-	u_cleanup();
 
 	if (outfile) {
 		fclose(outfile);

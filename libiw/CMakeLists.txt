@@ -1,3 +1,13 @@
+#
+#  libiw/CMakeLists.txt   cmakefile for libiw
+# 
+# 	This library is free software; you can redistribute it and/or
+# 	modify it under the terms of the GNU Lesser General Public
+# 	License as published by the Free Software Foundation version 2.1
+# 	of the License.
+# 
+#  Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+# 
 cmake_minimum_required(VERSION 3.10.0)
 
 enable_testing()
@@ -34,18 +44,11 @@ find_package(PkgConfig)
 pkg_check_modules(libnl REQUIRED libnl-3.0)
 pkg_check_modules(libnl_genl REQUIRED libnl-genl-3.0)
 
-add_library(iw STATIC iw.c iw-scan.c bytebuf.c xassert.c log.c hdump.c
+add_library(iw STATIC iw.c iw-scan.c xassert.c log.c hdump.c
 		util.c ssid.c nlnames.c ie.c ie_he.c bss.c bug.c ie_print.c args.c
 		bss_json.c str.c dumpfile.c)
 
 target_include_directories(iw PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
-
-# scan-dump uses ICU 
-# 	http://site.icu-project.org/
-# 	http://userguide.icu-project.org/
-# 	https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/index.html
-pkg_check_modules(icu REQUIRED icu-i18n)
-message("icu found=${icu_FOUND} include=${icu_INCLUDE_DIRS} ldflags=${icu_LDFLAGS}" )
 
 # I'm also using the jansson JSON library
 pkg_check_modules(jansson REQUIRED jansson)
@@ -54,16 +57,14 @@ message("jansson found=${jansson_FOUND} include=${jansson_INCLUDE_DIRS} ldflags=
 add_executable(scan-dump scan-dump.c)
 target_include_directories(scan-dump PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
 target_link_libraries(scan-dump iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
-target_link_libraries(scan-dump ${icu_LDFLAGS} icuio)
 target_link_libraries(scan-dump jansson)
 target_link_libraries(scan-dump ${cpprestsdk_LDFLAGS})
 
-foreach(test IN ITEMS test_ie test_bss test_decode test_bytebuf test_ie_he test_nlnames test_str test_utf8_ssid)
+foreach(test IN ITEMS test_ie test_bss test_decode test_ie_he test_nlnames test_str test_utf8_ssid)
 	message("test=${test}")
 	add_executable(${test} ${test}.c)
 	target_include_directories(${test} PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
 	target_link_libraries(${test} iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
-	target_link_libraries(${test}  ${icu_LDFLAGS} icuio)
 	target_link_libraries(${test} jansson)
 endforeach()
 
