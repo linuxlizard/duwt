@@ -67,35 +67,35 @@ int dumpfile_parse(const char* dump_filename, struct dl_list* bss_list )
 				break;
 			}
 
-			fprintf(stderr,"%s premature end of file reading cookie; read=%d expected=%d\n", __func__, ret, 1);
+			ERR("%s premature end of file reading cookie; read=%d expected=%d\n", __func__, ret, 1);
 			err = -EINVAL;
 			goto leave;
 		}
 
 		ret = fread((char *)&size, sizeof(uint32_t), 1, infile);
 		if (ret != 1) {
-			fprintf(stderr,"%s premature end of file reading size; read=%d expected=%d\n", __func__, ret, 1);
+			ERR("%s premature end of file reading size; read=%d expected=%d\n", __func__, ret, 1);
 			err = -EINVAL;
 			goto leave;
 		}
 
-		DBG("%1$s cookie=%2$#"PRIx32" size=%3$#"PRIx32" (%3$#"PRIu32")\n", __func__, cookie, size);
+		DBG("%1$s cookie=%2$#"PRIx32" size=%3$#"PRIx32" (%3$#"PRIx32")\n", __func__, cookie, size);
 
 		if (cookie != SCAN_DUMP_COOKIE) {
-			fprintf(stderr, "%s invalid cookie=%#"PRIx32"; not a valid scan-dump file\n", 
+			ERR("%s invalid cookie=%#"PRIx32"; not a valid scan-dump file\n", 
 					dump_filename, cookie);
 			err = -EINVAL;
 			goto leave;
 		}
 		if (size > max_size) { 
-			fprintf(stderr,"%s size=%#"PRIu32" (%#"PRIu32") too big\n", __func__, size);
+			ERR("%1$s size=%2$"PRIu32" (%2$#"PRIx32") too big\n", __func__, size);
 			err = -E2BIG;
 			goto leave;
 		}
 
 		ret = fread((char *)buf, sizeof(uint8_t), size, infile);
 		if (ret != size) {
-			fprintf(stderr,"%s premature end of file reading buffer; read=%d expected=%d\n", __func__, ret, size);
+			ERR("%s premature end of file reading buffer; read=%d expected=%d\n", __func__, ret, size);
 			err = -EINVAL;
 			goto leave;
 		}
