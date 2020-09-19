@@ -60,6 +60,10 @@ target_link_libraries(scan-dump iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
 target_link_libraries(scan-dump jansson)
 target_link_libraries(scan-dump ${cpprestsdk_LDFLAGS})
 
+add_executable(iw-link iw-link.c)
+target_include_directories(iw-link PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
+target_link_libraries(iw-link iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
+
 foreach(test IN ITEMS test_ie test_bss test_decode test_ie_he test_nlnames test_str test_utf8_ssid)
 	message("test=${test}")
 	add_executable(${test} ${test}.c)
