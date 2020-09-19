@@ -18,11 +18,11 @@ if [ -z "$ID" ] ; then
 	exit 1
 fi
 
-DEBIAN_ISH="build-essential libnl-3-dev libnl-genl-3-dev libicu-dev libmicrohttpd-dev libjansson-dev"
+DEBIAN_ISH="build-essential libnl-3-dev libnl-genl-3-dev libmicrohttpd-dev libjansson-dev"
 
 if [ "${ID}" = "fedora" ] ; then
 	echo "Fedora"
-	packages="libnl3-devel libicu-devel libmicrohttpd-devel jansson-devel"
+	packages="libnl3-devel libmicrohttpd-devel jansson-devel"
 	echo "Installing ${packages}"
 	sudo dnf install ${packages}
 
