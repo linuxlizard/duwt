@@ -45,7 +45,7 @@ pkg_check_modules(libnl REQUIRED libnl-3.0)
 pkg_check_modules(libnl_genl REQUIRED libnl-genl-3.0)
 
 add_library(iw STATIC iw.c iw-scan.c xassert.c log.c hdump.c
-		util.c ssid.c nlnames.c ie.c ie_he.c bss.c bug.c ie_print.c args.c
+		util.c ssid.c nlnames.c ie.c ie_he.c bss.c ie_print.c args.c
 		bss_json.c str.c dumpfile.c)
 
 target_include_directories(iw PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
