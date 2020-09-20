@@ -127,10 +127,11 @@ int parse_nla_bss(struct nlattr* attr_list, struct BSS* bss)
 		else if (bss->frequency < 5900) {
 			bss->band = NL80211_BAND_5GHZ;
 		}
-	//	else if (bss->frequency < 8000) {
-	//		bss->band = NL80211_BAND_6GHZ;
-	//	}
-
+#ifdef HAVE_NL80211_BAND_6GHZ
+		else if (bss->frequency < 8000) {
+			bss->band = NL80211_BAND_6GHZ;
+		}
+#endif
 	}
 
 	// need IEs before BSS_CHAN_WIDTH because we have to guess chan_width from
@@ -161,3 +162,56 @@ fail:
 	return err;
 }
 
+// from iw station.c but converted to write to my struct instead of a string
+int parse_bitrate(struct nlattr *bitrate_attr, struct bitrate* br)
+{
+	int rate = 0;
+	struct nlattr *rinfo[NL80211_RATE_INFO_MAX + 1];
+	static struct nla_policy rate_policy[NL80211_RATE_INFO_MAX + 1] = {
+		[NL80211_RATE_INFO_BITRATE] = { .type = NLA_U16 },
+		[NL80211_RATE_INFO_BITRATE32] = { .type = NLA_U32 },
+		[NL80211_RATE_INFO_MCS] = { .type = NLA_U8 },
+		[NL80211_RATE_INFO_40_MHZ_WIDTH] = { .type = NLA_FLAG },
+		[NL80211_RATE_INFO_SHORT_GI] = { .type = NLA_FLAG },
+	};
+
+	int err;
+	if (err = nla_parse_nested(rinfo, NL80211_RATE_INFO_MAX,
+			     bitrate_attr, rate_policy)) {
+		return err;
+	}
+
+	if (rinfo[NL80211_RATE_INFO_BITRATE32])
+		rate = nla_get_u32(rinfo[NL80211_RATE_INFO_BITRATE32]);
+	else if (rinfo[NL80211_RATE_INFO_BITRATE])
+		rate = nla_get_u16(rinfo[NL80211_RATE_INFO_BITRATE]);
+	if (rate > 0)
+		br->rate = (uint32_t)rate;
+
+	if (rinfo[NL80211_RATE_INFO_MCS])
+		br->mcs = nla_get_u8(rinfo[NL80211_RATE_INFO_MCS]);
+	if (rinfo[NL80211_RATE_INFO_VHT_MCS])
+		br->vht_mcs = nla_get_u8(rinfo[NL80211_RATE_INFO_VHT_MCS]);
+	if (rinfo[NL80211_RATE_INFO_40_MHZ_WIDTH])
+		br->chan_width = NL80211_CHAN_WIDTH_40;
+	if (rinfo[NL80211_RATE_INFO_80_MHZ_WIDTH])
+		br->chan_width = NL80211_CHAN_WIDTH_80;
+	if (rinfo[NL80211_RATE_INFO_80P80_MHZ_WIDTH])
+		br->chan_width = NL80211_CHAN_WIDTH_80P80;
+	if (rinfo[NL80211_RATE_INFO_160_MHZ_WIDTH])
+		br->chan_width = NL80211_CHAN_WIDTH_160;
+	if (rinfo[NL80211_RATE_INFO_SHORT_GI])
+		br->short_gi = true;
+	if (rinfo[NL80211_RATE_INFO_VHT_NSS])
+		br->vht_nss = nla_get_u8(rinfo[NL80211_RATE_INFO_VHT_NSS]);
+	if (rinfo[NL80211_RATE_INFO_HE_MCS])
+		br->he_mcs = nla_get_u8(rinfo[NL80211_RATE_INFO_HE_MCS]);
+	if (rinfo[NL80211_RATE_INFO_HE_NSS])
+		br->he_nss = nla_get_u8(rinfo[NL80211_RATE_INFO_HE_NSS]);
+	if (rinfo[NL80211_RATE_INFO_HE_GI])
+		br->he_gi = nla_get_u8(rinfo[NL80211_RATE_INFO_HE_GI]);
+	if (rinfo[NL80211_RATE_INFO_HE_DCM])
+		br->he_dcm = nla_get_u8(rinfo[NL80211_RATE_INFO_HE_DCM]);
+	if (rinfo[NL80211_RATE_INFO_HE_RU_ALLOC])
+		br->he_ru_alloc = nla_get_u8(rinfo[NL80211_RATE_INFO_HE_RU_ALLOC]);
+}

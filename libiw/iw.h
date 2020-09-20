@@ -27,6 +27,44 @@
 extern "C" {
 #endif
 
+// nl80211.h enum nl80211_rate_info
+struct bitrate 
+{
+	// avoid floats so using what iw uses (rate*10):
+	// "%d.%d MBit/s", rate / 10, rate % 10);
+	uint32_t rate;
+
+	uint8_t mcs;
+	enum nl80211_chan_width chan_width;
+	bool short_gi;
+
+	uint8_t vht_mcs;
+	uint8_t vht_nss;
+
+	uint8_t he_mcs;
+	uint8_t he_nss;
+	uint8_t he_gi;
+	uint8_t he_dcm;
+	uint8_t he_ru_alloc;
+};
+
+struct iw_link_state 
+{
+	uint32_t rx_bytes, rx_packets;
+	uint32_t tx_bytes, tx_packets;
+
+	// note signed integer
+	int8_t signal_dbm;
+
+	// enum nl80211_sta_bss_param encoded as (1<<enum)
+	uint32_t bss_param;
+
+	uint8_t dtim_period;
+	uint16_t beacon_int;
+
+	struct bitrate rx_bitrate, tx_bitrate;
+};
+
 void peek_nla_attr( struct nlattr* tb_msg[], size_t count);
 //void peek_nla_bss(struct nlattr* bss_msg[], size_t count);
 //void peek_nla_bss(const struct nlattr* bss_msg[const static NL80211_BSS_MAX], size_t count);
@@ -57,6 +95,9 @@ int rm_enabled_capa_to_str(const struct IE_RM_Enabled_Capabilities* sie, unsigne
 int mobility_domain_to_str(const struct IE_Mobility_Domain* sie, unsigned int bit, char* s, size_t len);
 int ieee80211_channel_to_frequency(int chan, enum nl80211_band band);
 int ieee80211_frequency_to_channel(int freq);
+
+void mac_addr_n2a(char *mac_addr, const unsigned char *arg);
+int parse_bitrate(struct nlattr *bitrate_attr, struct bitrate* br); 
 
 #ifdef __cplusplus
 } // end extern "C"
