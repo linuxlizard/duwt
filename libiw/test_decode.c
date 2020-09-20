@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -47,7 +48,7 @@ static int decode(uint8_t* buf, ssize_t buflen, struct dl_list* bss_list)
 		// data length
 		uint32_t len = *(uint32_t*)buf;
 		hex_dump(__func__, buf, len);
-		printf("blob len=%zu remain=%zu\n", len, buflen);
+		printf("blob len=%"PRIu32" remain=%zu\n", len, buflen);
 		buf += sizeof(uint32_t);
 		XASSERT(buf < endbuf, (endbuf-buf));
 
