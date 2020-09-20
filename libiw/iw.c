@@ -192,6 +192,8 @@ int parse_bitrate(struct nlattr *bitrate_attr, struct bitrate* br)
 		br->mcs = nla_get_u8(rinfo[NL80211_RATE_INFO_MCS]);
 	if (rinfo[NL80211_RATE_INFO_VHT_MCS])
 		br->vht_mcs = nla_get_u8(rinfo[NL80211_RATE_INFO_VHT_MCS]);
+
+	br->chan_width = -1;  // unknown/invalid
 	if (rinfo[NL80211_RATE_INFO_40_MHZ_WIDTH])
 		br->chan_width = NL80211_CHAN_WIDTH_40;
 	if (rinfo[NL80211_RATE_INFO_80_MHZ_WIDTH])
@@ -200,6 +202,7 @@ int parse_bitrate(struct nlattr *bitrate_attr, struct bitrate* br)
 		br->chan_width = NL80211_CHAN_WIDTH_80P80;
 	if (rinfo[NL80211_RATE_INFO_160_MHZ_WIDTH])
 		br->chan_width = NL80211_CHAN_WIDTH_160;
+
 	if (rinfo[NL80211_RATE_INFO_SHORT_GI])
 		br->short_gi = true;
 	if (rinfo[NL80211_RATE_INFO_VHT_NSS])

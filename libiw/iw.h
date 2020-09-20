@@ -35,7 +35,10 @@ struct bitrate
 	uint32_t rate;
 
 	uint8_t mcs;
+
+	// will be set to -1 if no value (0 is a valid value)
 	enum nl80211_chan_width chan_width;
+
 	bool short_gi;
 
 	uint8_t vht_mcs;
