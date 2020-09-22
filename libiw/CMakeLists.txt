@@ -26,6 +26,7 @@ set(CMAKE_TRY_COMPILE_TARGET_TYPE,EXE)
 set(Tests HAVE_NL80211_BSS_PAD HAVE_NUM_NL80211_BANDS HAVE_NL80211_BAND_6GHZ)
 list(APPEND Tests HAVE_NL80211_STA_INFO_RX_DURATION)
 list(APPEND Tests HAVE_NL80211_BSS_CHAIN_SIGNAL)
+list(APPEND Tests HAVE_NL80211_RATE_INFO_HE_MCS)
 
 # iterate through all the symbols we need, discovering if they exist
 foreach(test IN LISTS Tests)

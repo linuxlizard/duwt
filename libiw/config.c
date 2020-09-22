@@ -23,8 +23,11 @@ int main(void)
 #endif
 
 #ifdef HAVE_NL80211_BSS_CHAIN_SIGNAL
-	this should fail
-	enum nl80211_bss = NL80211_BSS_CHAIN_SIGNAL;
+	enum nl80211_bss chain_signal = NL80211_BSS_CHAIN_SIGNAL;
+#endif
+
+#ifdef HAVE_NL80211_RATE_INFO_HE_MCS
+	enum nl80211_rate_info info = NL80211_RATE_INFO_HE_MCS;
 #endif
 
 	return 0;

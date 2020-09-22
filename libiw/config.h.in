@@ -12,6 +12,7 @@
 #cmakedefine HAVE_NUM_NL80211_BANDS
 #cmakedefine HAVE_NL80211_BAND_6GHZ
 #cmakedefine HAVE_NL80211_BSS_CHAIN_SIGNAL
+#cmakedefine HAVE_NL80211_RATE_INFO_HE_MCS
 
 #endif
 

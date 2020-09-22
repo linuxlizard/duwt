@@ -207,6 +207,7 @@ int parse_bitrate(struct nlattr *bitrate_attr, struct bitrate* br)
 		br->short_gi = true;
 	if (rinfo[NL80211_RATE_INFO_VHT_NSS])
 		br->vht_nss = nla_get_u8(rinfo[NL80211_RATE_INFO_VHT_NSS]);
+#ifdef HAVE_NL80211_RATE_INFO_HE_MCS
 	if (rinfo[NL80211_RATE_INFO_HE_MCS])
 		br->he_mcs = nla_get_u8(rinfo[NL80211_RATE_INFO_HE_MCS]);
 	if (rinfo[NL80211_RATE_INFO_HE_NSS])
@@ -217,4 +218,5 @@ int parse_bitrate(struct nlattr *bitrate_attr, struct bitrate* br)
 		br->he_dcm = nla_get_u8(rinfo[NL80211_RATE_INFO_HE_DCM]);
 	if (rinfo[NL80211_RATE_INFO_HE_RU_ALLOC])
 		br->he_ru_alloc = nla_get_u8(rinfo[NL80211_RATE_INFO_HE_RU_ALLOC]);
+#endif
 }
