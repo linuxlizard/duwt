@@ -53,6 +53,11 @@ struct bitrate
 
 struct iw_link_state 
 {
+	int ifindex;
+
+	// bssid we're connected to
+	uint8_t connected[ETH_ALEN];
+
 	uint32_t rx_bytes, rx_packets;
 	uint32_t tx_bytes, tx_packets;
 

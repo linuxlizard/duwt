@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <inttypes.h>
+#include <unistd.h>
 #include <net/if.h>
 #include <linux/netlink.h>
 #include <netlink/attr.h>
@@ -8,6 +9,7 @@
 #include <netlink/genl/ctrl.h>
 #include <linux/nl80211.h>
 
+#include "core.h"
 #include "iw.h"
 #include "log.h"
 #include "hdump.h"
@@ -61,6 +63,14 @@ static char* bitrate_to_str(const struct bitrate* br, char* buf, int buflen)
 // using the printf()s from iw print_link_sta() - link.c
 static void print_link_state(const struct iw_link_state* ls)
 {
+	char str[IF_NAMESIZE*2];
+	memset(str,0,sizeof(str));
+
+	if (!if_indextoname(ls->ifindex,str)) {
+		strncpy(str, strerror(errno), IF_NAMESIZE*2);
+	}
+
+	printf("Connected to " MAC_ADD_FMT " (on %s)\n", MAC_ADD_PRN(ls->connected), str);
 	printf("\tRX: %u bytes (%u packets)\n", ls->rx_bytes, ls->rx_packets);
 	printf("\tTX: %u bytes (%u packets)\n", ls->tx_bytes, ls->tx_packets);
 	printf("\tsignal: %d dBm\n", ls->signal_dbm);
@@ -121,6 +131,14 @@ static int decode_link_sta(struct nl_msg *msg, void *arg)
 		  genlmsg_attrlen(gnlh, 0), NULL);
 
 	peek_nla_attr(tb, NL80211_ATTR_MAX);
+
+	if (tb[NL80211_ATTR_IFINDEX]) {
+		link->ifindex = (int)nla_get_u32(tb[NL80211_ATTR_IFINDEX]);
+	}
+
+	if (tb[NL80211_ATTR_MAC]) {
+		memcpy(link->connected, nla_get_string(tb[NL80211_ATTR_MAC]), ETH_ALEN);
+	}
 
 	if (!tb[NL80211_ATTR_STA_INFO]) {
 		fprintf(stderr, "sta stats missing!\n");
@@ -195,10 +213,72 @@ static int ack_handler(struct nl_msg *msg, void *arg)
 	return NL_STOP;
 }
 
+void short_print_link_state(struct iw_link_state* ls)
+{
+	printf("%d,%d,%d,%d,%d,%d\n", ls->rx_bytes, ls->rx_packets, ls->tx_bytes, ls->tx_packets,
+			ls->rx_bitrate.vht_mcs, ls->tx_bitrate.vht_mcs);
+}
+
+// XXX experimental; tinkering with reading the status in a loop
+void poll_link(int ifidx, struct nl_sock* nl_sock, int nl80211_id, struct nl_cb* cb, int* cb_err)
+{
+	int err;
+	struct nl_msg* msg = NULL;
+
+	struct iw_link_state iw_link;
+	nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, decode_link_sta, &iw_link);
+
+	while(1) {
+		memset(&iw_link, 0, sizeof(struct iw_link_state));
+
+		msg = nlmsg_alloc();
+		if (!msg) {
+			ERR("%s nlmsg_alloc failed\n", __func__);
+			break;
+		}
+
+		if (!genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, nl80211_id, 0, 
+							NLM_F_DUMP, NL80211_CMD_GET_STATION, 0)) {
+			ERR("%s genlmsg_put failed\n", __func__);
+			break;
+		}
+		nla_put_u32(msg, NL80211_ATTR_IFINDEX, ifidx);
+
+		err = nl_send_auto(nl_sock, msg);
+		if (err < 0) {
+			ERR("nl_send_auto failed err=%d %s\n", err, nl_geterror(err));
+			break;
+		}
+
+		*cb_err = 1;
+		err = 0;
+		while (err == 0 && *cb_err > 0) {
+			err = nl_recvmsgs(nl_sock, cb);
+			if (err) {
+				INFO("nl_recvmsgs err=%d %s\n", err, nl_geterror(err));
+			}
+		}
+
+		short_print_link_state(&iw_link);
+		fflush(stdout);
+
+		nlmsg_free(msg);
+		msg = NULL;
+
+		sleep(1);
+	}
+
+	if (msg) {
+		nlmsg_free(msg);
+	}
+}
+
+
 int main(int argc, char* argv[])
 {
 	int err;
 
+//	log_set_level(LOG_LEVEL_INFO);
 	log_set_level(LOG_LEVEL_DEBUG);
 
 	if (argc != 2) {
@@ -244,6 +324,8 @@ int main(int argc, char* argv[])
 
 	int nl80211_id = genl_ctrl_resolve(nl_sock, NL80211_GENL_NAME);
 
+//	poll_link(ifidx, nl_sock, nl80211_id, cb, &cb_err);
+
 	msg = nlmsg_alloc();
 	if (!msg) {
 		ERR("%s nlmsg_alloc failed\n", __func__);
@@ -255,8 +337,8 @@ int main(int argc, char* argv[])
 		ERR("%s genlmsg_put failed\n", __func__);
 		goto leave;
 	}
-
 	nla_put_u32(msg, NL80211_ATTR_IFINDEX, ifidx);
+
 	err = nl_send_auto(nl_sock, msg);
 	if (err < 0) {
 		ERR("nl_send_auto failed err=%d %s\n", err, nl_geterror(err));
@@ -266,7 +348,9 @@ int main(int argc, char* argv[])
 	err = 0;
 	while (err == 0 && cb_err > 0) {
 		err = nl_recvmsgs(nl_sock, cb);
-		INFO("nl_recvmsgs err=%d %s\n", err, nl_geterror(err));
+		if (err) {
+			INFO("nl_recvmsgs err=%d %s\n", err, nl_geterror(err));
+		}
 	}
 
 	print_link_state(&iw_link);
