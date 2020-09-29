@@ -656,7 +656,8 @@ static void print_bss(struct BSS* bss)
 	printf("\tcapability: %s (%#06x)\n", str, bss->capability);
 
 	printf("\tsignal: %0.2f dBm\n", bss->signal_strength_mbm/100.0);
-	ssid_print(bss, stdout, "\n");
+	printf("\tSSID: ");
+	ssid_print(bss, stdout, 1, "\n");
 	print_supported_rates(bss);
 	print_dsss_param(bss);
 	print_country(bss);
@@ -682,7 +683,7 @@ static void print_bss(struct BSS* bss)
 static void print_short(const struct BSS* bss)
 {
 	//  SSID            BSSID              CHAN RATE  S:N   INT CAPS
-	ssid_print(bss, stdout, NULL);
+	ssid_print(bss, stdout, 32, NULL);
 
 	bool is_ht = ie_list_find_id(&bss->ie_list, IE_HT_OPERATION) != NULL;
 	bool is_vht = ie_list_find_id(&bss->ie_list, IE_VHT_OPERATION) != NULL;

@@ -49,16 +49,21 @@ int ssid_utf8_validate(const char* ssid, size_t ssid_len)
 	return 0;
 }
 
-int ssid_print(const struct BSS* bss, FILE* outfile, const char* extra_str)
+int ssid_print(const struct BSS* bss, FILE* outfile, size_t width, const char* extra_str)
 {
+	// default to 32-char display width
+	if (width==0) {
+		width = 32;
+	}
+
 	const struct IE_SSID* sie = bss_get_ssid(bss);
 	if (!sie || sie->ssid_is_hidden) {
 		// if no SSID found for this BSS so say hidden
 		if (extra_str) {
-			return(fprintf(outfile, "%32s%s", HIDDEN_SSID, extra_str));
+			return(fprintf(outfile, "%*s%s", width, HIDDEN_SSID, extra_str));
 		}
 		else {
-			return(fprintf(outfile, "%32s", HIDDEN_SSID ));
+			return(fprintf(outfile, "%*s", width, HIDDEN_SSID ));
 		}
 	}
 
@@ -70,10 +75,10 @@ int ssid_print(const struct BSS* bss, FILE* outfile, const char* extra_str)
 	// TODO check ssid_is_printable
 
 	if (extra_str) {
-		return(fprintf(outfile, "%32.*s%s", sie->ssid_len, sie->ssid, extra_str));
+		return(fprintf(outfile, "%*.*s%s", width, sie->ssid_len, sie->ssid, extra_str));
 	}
 	else {
-		return(fprintf(outfile, "%32.*s", sie->ssid_len, sie->ssid));
+		return(fprintf(outfile, "%*.*s", width, sie->ssid_len, sie->ssid));
 	}
 
 }

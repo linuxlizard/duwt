@@ -25,7 +25,7 @@ struct BSS;
 
 int ssid_utf8_validate(const char* ssid, size_t ssid_len);
 
-int ssid_print(const struct BSS* bss, FILE* outfile, const char* extra_str);
+int ssid_print(const struct BSS* bss, FILE* outfile, size_t width, const char* extra_str);
 
 #ifdef __cplusplus
 } // end extern "C"
