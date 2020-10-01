@@ -127,6 +127,17 @@ static void print_dsss_param(struct BSS* bss)
 	}
 }
 
+static void print_dtim(struct BSS* bss)
+{
+	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_TIM);
+	if (!ie) {
+		return;
+	}
+	const struct IE_TIM* sie = IE_CAST(ie, const struct IE_TIM);
+	printf("\tTIM: DTIM Count %d DTIM Period %d Bitmap Control 0x%x Bitmap[0] 0x%x\n",
+			sie->dtim_count, sie->dtim_period, sie->control, sie->bitmap[0]);
+}
+
 static void print_extended_capabilities(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_EXTENDED_CAPABILITIES);
@@ -660,6 +671,7 @@ static void print_bss(struct BSS* bss)
 	ssid_print(bss, stdout, 1, "\n");
 	print_supported_rates(bss);
 	print_dsss_param(bss);
+	print_dtim(bss);
 	print_country(bss);
 	print_bss_load(bss);
 	print_ap_channel_report(bss);
