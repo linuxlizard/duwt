@@ -745,6 +745,37 @@ static void search_for(struct dl_list* list)
 	}
 }
 
+static void json_dump_bss_list(struct dl_list* bss_list)
+{
+	json_t* jlist=NULL;
+	int err = bss_list_to_json(bss_list, &jlist);
+	XASSERT(err==0, err);
+
+	char* s = json_dumps(jlist, JSON_INDENT(1));
+	printf("%s\n", s);
+	json_array_clear(jlist);
+	json_decref(jlist);
+}
+
+static void dump_from_file(struct args* args)
+{
+	struct BSS* bss;
+	int err = 0;
+
+	DEFINE_DL_LIST(bss_list);
+
+	err = dumpfile_parse(args->dump_filename, &bss_list);
+	XASSERT(err==0, err);
+
+	json_dump_bss_list(&bss_list);
+
+	dl_list_for_each(bss, &bss_list, struct BSS, node) {
+		print_short(bss);
+	}
+
+	bss_free_list(&bss_list);
+}
+
 int main(int argc, char* argv[])
 {
 	struct args args;
@@ -758,17 +789,12 @@ int main(int argc, char* argv[])
 		log_set_level(LOG_LEVEL_DEBUG);
 	}
 
-	DEFINE_DL_LIST(bss_list);
-
 	if (args.load_dump_file) {
-		struct BSS* bss;
-		err = dumpfile_parse(args.dump_filename, &bss_list);
-		dl_list_for_each(bss, &bss_list, struct BSS, node) {
-			print_short(bss);
-		}
-		bss_free_list(&bss_list);
+		dump_from_file(&args);
 		return 0;
 	}
+
+	DEFINE_DL_LIST(bss_list);
 
 	// use first non-option argument as wifi interface to read
 	const char* ifname = args.argv[0];
@@ -832,18 +858,7 @@ int main(int argc, char* argv[])
 		print_bss(bss);
 	}
 
-	json_t* jlist=NULL;
-	err = bss_list_to_json(&bss_list, &jlist);
-	XASSERT(err==0, err);
-
-	printf("json list len=%zu\n", json_array_size(jlist));
-
-	char* s = json_dumps(jlist, JSON_INDENT(1));
-//	char* s = json_dumps(jlist, 0);
-	printf("%s\n", s);
-	PTR_FREE(s);
-	json_array_clear(jlist);
-	json_decref(jlist);
+	json_dump_bss_list(&bss_list);
 
 	printf("\n\n");
 	dl_list_for_each(bss, &bss_list, struct BSS, node) {

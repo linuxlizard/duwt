@@ -1,11 +1,6 @@
 /*
  * libiw/bss_json.c   encode a BSS as JSON using jansson
  *
- *	This library is free software; you can redistribute it and/or
- *	modify it under the terms of the GNU Lesser General Public
- *	License as published by the Free Software Foundation version 2.1
- *	of the License.
- *
  * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
  */
 
@@ -18,137 +13,74 @@
 #include "iw.h"
 #include "ie.h"
 #include "list.h"
+#include "str.h"
+#include "ssid.h"
 #include "bss.h"
 #include "bss_json.h"
 
-#define ERRCHECK(msg)\
-		if (err) {\
-			ERR("%s %s failed\n", __func__, msg);\
-			err = -EINVAL;\
-			goto fail;\
-		}
-
 int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 {
-	int err = 0;
-	json_t* jbss = NULL; // object containing a single bss; keys: ssid bssid dBm freq
-	json_t* jssid = NULL;
-	json_t* jbssid = NULL;
-	json_t* jfreq = NULL;
-	json_t* jdbm = NULL;
-	json_t* jwidth = NULL; // channel width
-	json_t* jmode = NULL; // b/g/n vs a/n/ac etc.
+	json_t* jbss, *jssid;
+	json_error_t jerror;
+	char escaped[128];
+	int retcode=0;
 
+	// ssid standalone so can add the "<hidden>" 
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SSID);
 	if (ie) {
 		const struct IE_SSID* sie = IE_CAST(ie, struct IE_SSID);
 		jssid = json_stringn(sie->ssid, sie->ssid_len);
+		if (!jssid) {
+			// invalid UTF8 string
+			memset(escaped,0,sizeof(escaped));
+			retcode = str_escape(sie->ssid, sie->ssid_len, escaped, sizeof(escaped)-1);
+			if (retcode < 0) {
+				// give up
+				return -EINVAL;
+			}
+			jssid = json_string(escaped);
+		}
 	}
 	else {
-		jssid = json_string("<hidden>");
+		jssid = json_string(HIDDEN_SSID);
+	}
+	if (!jssid) {
+		return -ENOMEM;
 	}
 
-	jbssid = json_string(bss->bssid_str);
-	if (!jbssid) {
-		ERR("%s bssid failed\n", __func__);
-		err = -ENOMEM;
-		goto fail;
+	// channel width and mode are optional so extra work required
+	char channel_width[32], *channel_width_ptr = NULL;
+	char mode[32], *mode_ptr = NULL;
+
+	retcode = bss_get_chan_width_str(bss, channel_width, sizeof(channel_width));
+	if (retcode > 0) {
+		channel_width_ptr = channel_width;
 	}
 
-	jfreq = json_integer(bss->frequency);
-	if (!jfreq) {
-		ERR("%s freq failed\n", __func__);
-		err = -ENOMEM;
-		goto fail;
+	retcode = bss_get_mode_str(bss, mode, sizeof(mode));
+	if(retcode > 0) {
+		mode_ptr = mode;
 	}
 
-	jdbm = json_real(bss->signal_strength_mbm / 100.0);
-	if (!jdbm) {
-		ERR("%s dbm failed\n", __func__);
-		err = -ENOMEM;
-		goto fail;
-	}
+	// "the reference to the value passed to o is stolen by the container."
+	// so no need to decref jssid
 
-	// channel width might not be provided so extra checks are required
-	char s[64];
-	int ret = bss_get_chan_width_str(bss, s, sizeof(s));
-	if (ret > 0) {
-		jwidth = json_string(s);
-		if (!jwidth) {
-			ERR("%s chan width failed\n", __func__);
-			err = -ENOMEM;
-			goto fail;
-		}
-	}
-
-	ret = bss_get_mode_str(bss, s, sizeof(s));
-	if (ret > 0) {
-		jmode = json_string(s);
-		if (!jmode) {
-			ERR("%s get_mode failed\n", __func__);
-			err = -ENOMEM;
-			goto fail;
-		}
-	}
-
-	jbss = json_object();
+	jbss = json_pack_ex(&jerror, 0, "{sssosisfss*ss*}", 
+				"bssid", bss->bssid_str,  // object key
+				"ssid", jssid, 
+				"freq", bss->frequency, 
+				"dbm", bss->signal_strength_mbm / 100.0,
+				"chwidth", channel_width_ptr,
+				"mode", mode_ptr);
 	if (!jbss) {
-		ERR("%s json_object failed\n", __func__);
-		err = -ENOMEM;
-		goto fail;
+		json_decref(jssid);
+		XASSERT(0,0);
+		return -1;
 	}
-
-	err = json_object_set_new(jbss, "bssid", jbssid);
-	ERRCHECK("new bssid");
-
-	err = json_object_set_new(jbss, "ssid", jssid);
-	ERRCHECK("new ssid");
-
-	err = json_object_set_new(jbss, "freq", jfreq);
-	ERRCHECK("new freq");
-
-	err = json_object_set_new(jbss, "dbm", jdbm);
-	ERRCHECK("new dbm");
-
-	if (jwidth) {
-		err = json_object_set_new(jbss, "chwidth", jwidth);
-		ERRCHECK("new dbm");
-	}
-
-	if (jmode) {
-		err = json_object_set_new(jbss, "mode", jmode);
-		ERRCHECK("new mode");
-	}
-
 
 	PTR_ASSIGN(*p_jbss, jbss);
 
 	return 0;
-
-fail:
-	if (jbss) {
-		json_decref(jbss);
-	}
-	if (jssid) {
-		json_decref(jssid);
-	}
-	if (jbssid) {
-		json_decref(jbssid);
-	}
-	if (jfreq) {
-		json_decref(jfreq);
-	}
-	if (jdbm) {
-		json_decref(jdbm);
-	}
-	if (jwidth) {
-		json_decref(jwidth);
-	}
-	if (jmode) {
-		json_decref(jmode);
-	}
-
-	return err;
 }
 
 int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray)
@@ -166,10 +98,16 @@ int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray)
 	struct BSS* bss;
 	dl_list_for_each(bss, bss_list, struct BSS, node) {
 		err = bss_to_json_summary(bss, &jbss);
-		ERRCHECK("bss_to_json_summary")
+		if (err) {
+			ERR("%s failed at bss_to_json_summary", __func__);
+			goto fail;
+		}
 
 		err = json_array_append_new(jarray, jbss);
-		ERRCHECK("array append");
+		if (err) {
+			ERR("%s failed at json_array_append_new", __func__);
+			goto fail;
+		}
 	}
 
 	PTR_ASSIGN(*p_jarray, jarray);
