@@ -65,7 +65,7 @@ add_executable(iw-link iw-link.c)
 target_include_directories(iw-link PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
 target_link_libraries(iw-link iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
 
-foreach(test IN ITEMS test_ie test_bss test_decode test_ie_he test_nlnames test_str test_utf8_ssid)
+foreach(test IN ITEMS test_bss_json test_ie test_bss test_decode test_ie_he test_nlnames test_str test_utf8_ssid)
 	message("test=${test}")
 	add_executable(${test} ${test}.c)
 	target_include_directories(${test} PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
@@ -82,3 +82,4 @@ add_test(NAME test_nlnames COMMAND test_nlnames)
 add_test(NAME test_str COMMAND test_str)
 
 add_test(NAME test_utf8_ssid COMMAND test_utf8_ssid)
+add_test(NAME test_bss_json COMMAND test_bss_json)

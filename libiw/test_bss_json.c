@@ -14,9 +14,47 @@
 #include "dumpfile.h"
 #include "bss_json.h"
 
-static void dump_from_file(struct args* args)
+static void json_summary(struct dl_list* bss_list)
 {
 	struct BSS* bss;
+	dl_list_for_each(bss, bss_list, struct BSS, node) {
+		json_t* jbss;
+		int err = bss_to_json_summary(bss, &jbss);
+		XASSERT(err==0, err);
+		char* s = json_dumps(jbss, JSON_INDENT(3));
+		printf("%s\n", s);
+		PTR_FREE(s);
+		json_decref(jbss);
+	}
+}
+
+static void json_summary_list(struct dl_list* bss_list)
+{
+	json_t* jarray;
+	int err = bss_list_to_json(bss_list, &jarray);
+	XASSERT(err==0, err);
+	char* s = json_dumps(jarray, 0);
+	printf("%s\n", s);
+	PTR_FREE(s);
+	json_decref(jarray);
+}
+
+static void json_full_dump(struct dl_list* bss_list)
+{
+	struct BSS* bss;
+
+	dl_list_for_each(bss, bss_list, struct BSS, node) {
+		json_t* jbss;
+		int err = bss_to_json(bss, &jbss);
+		char* s = json_dumps(jbss, 0);
+		printf("%s\n", s);
+		PTR_FREE(s);
+		json_decref(jbss);
+	}
+}
+
+static void dump_from_file(struct args* args)
+{
 	int err = 0;
 
 	DEFINE_DL_LIST(bss_list);
@@ -24,14 +62,11 @@ static void dump_from_file(struct args* args)
 	err = dumpfile_parse(args->dump_filename, &bss_list);
 	XASSERT(err==0, err);
 
-	dl_list_for_each(bss, &bss_list, struct BSS, node) {
-//		print_short(bss);
-		json_t* jbss;
-		err = bss_to_json_summary(bss, &jbss);
-		char* s = json_dumps(jbss, JSON_INDENT(3));
-		printf("%s\n", s);
-		json_decref(jbss);
-	}
+	json_summary(&bss_list);
+
+	json_summary_list(&bss_list);
+
+	json_full_dump(&bss_list);
 
 	bss_free_list(&bss_list);
 }
@@ -53,7 +88,6 @@ int main(int argc, char* argv[])
 
 	if (args.load_dump_file) {
 		dump_from_file(&args);
-		return 0;
 	}
 
 	return EXIT_SUCCESS;

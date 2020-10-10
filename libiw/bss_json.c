@@ -83,6 +83,19 @@ int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 	return 0;
 }
 
+int bss_to_json(const struct BSS* bss, json_t** p_jbss)
+{
+	json_t* jbss;
+	int err = bss_to_json_summary(bss, &jbss);
+	if (err) {
+		return err;
+	}
+
+	PTR_ASSIGN(*p_jbss, jbss);
+
+	return 0;
+}
+
 int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray)
 {
 	int err = 0;

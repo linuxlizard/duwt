@@ -21,6 +21,9 @@ extern "C" {
 // get a simple summary of a BSS
 int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss);
 
+// full meal deal dump of a BSS to json (big!)
+int bss_to_json(const struct BSS* bss, json_t** p_jbss);
+
 int bss_list_to_json(struct dl_list* list, json_t** p_jlist);
 
 #ifdef __cplusplus
