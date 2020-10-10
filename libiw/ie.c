@@ -1166,13 +1166,14 @@ int decode_ie_buf( const uint8_t* ptr, size_t len, struct IE_List* ie_list)
 		struct IE* ie;
 		err = ie_new(id, ielen, ptr, &ie);
 		if (err) {
-			ERR("%s failed to create ie err=%d\n", __func__, err);
-			return err;
+			WARN("%s failed to create IE id=%d err=%d\n", __func__, id, err);
 		}
-		err = ie_list_move_back(ie_list, &ie);
-		if (err) {
-			ie_delete(&ie);
-			return err;
+		else {
+			err = ie_list_move_back(ie_list, &ie);
+			if (err) {
+				ie_delete(&ie);
+				return err;
+			}
 		}
 		// ie will be NULL at this point
 

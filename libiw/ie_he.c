@@ -60,7 +60,9 @@ int ie_he_operation_new(struct IE* ie)
 	// 1 byte for the extension ID
 	// 6 bytes for the payload
 	if (ie->len != 7) {
+		hex_dump(__func__, ie->buf, (unsigned long int)ie->len);
 //		XASSERT(0, ie->len);
+		WARN("%s incorrect len=%zu\n", __func__, ie->len);
 		return -EINVAL;
 	}
 
