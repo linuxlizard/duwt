@@ -60,10 +60,10 @@ int ssid_print(const struct BSS* bss, FILE* outfile, size_t width, const char* e
 	if (!sie || sie->ssid_is_hidden) {
 		// if no SSID found for this BSS so say hidden
 		if (extra_str) {
-			return(fprintf(outfile, "%*s%s", width, HIDDEN_SSID, extra_str));
+			return(fprintf(outfile, "%*s%s", (int)width, HIDDEN_SSID, extra_str));
 		}
 		else {
-			return(fprintf(outfile, "%*s", width, HIDDEN_SSID ));
+			return(fprintf(outfile, "%*s", (int)width, HIDDEN_SSID ));
 		}
 	}
 
@@ -75,10 +75,10 @@ int ssid_print(const struct BSS* bss, FILE* outfile, size_t width, const char* e
 	// TODO check ssid_is_printable
 
 	if (extra_str) {
-		return(fprintf(outfile, "%*.*s%s", width, sie->ssid_len, sie->ssid, extra_str));
+		return(fprintf(outfile, "%*.*s%s", (int)width, (int)sie->ssid_len, sie->ssid, extra_str));
 	}
 	else {
-		return(fprintf(outfile, "%*.*s", width, sie->ssid_len, sie->ssid));
+		return(fprintf(outfile, "%*.*s", (int)width, (int)sie->ssid_len, sie->ssid));
 	}
 
 }
