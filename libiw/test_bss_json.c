@@ -31,7 +31,7 @@ static void json_summary(struct dl_list* bss_list)
 static void json_summary_list(struct dl_list* bss_list)
 {
 	json_t* jarray;
-	int err = bss_list_to_json(bss_list, &jarray);
+	int err = bss_list_to_json(bss_list, &jarray, bss_json_summary);
 	XASSERT(err==0, err);
 	char* s = json_dumps(jarray, 0);
 	printf("%s\n", s);
@@ -39,11 +39,21 @@ static void json_summary_list(struct dl_list* bss_list)
 	json_decref(jarray);
 }
 
-static void json_full_dump(struct dl_list* bss_list)
+static void json_full_list(struct dl_list* bss_list)
+{
+	json_t* jarray;
+	int err = bss_list_to_json(bss_list, &jarray, bss_json_summary);
+	XASSERT(err==0, err);
+	char* s = json_dumps(jarray, 0);
+	printf("%s\n", s);
+	PTR_FREE(s);
+	json_decref(jarray);
+}
+
+static void json_full(struct dl_list* bss_list)
 {
 	struct BSS* bss;
 
-	int counter = 0;
 	dl_list_for_each(bss, bss_list, struct BSS, node) {
 		json_t* jbss;
 		int err = bss_to_json(bss, &jbss);
@@ -52,11 +62,6 @@ static void json_full_dump(struct dl_list* bss_list)
 		printf("%s\n", s);
 		PTR_FREE(s);
 		json_decref(jbss);
-		// XXX temp while chasing memory leak
-		counter++;
-		if (counter > 2) {
-//			break;
-		}
 	}
 }
 
@@ -70,10 +75,10 @@ static void dump_from_file(struct args* args)
 	XASSERT(err==0, err);
 
 	json_summary(&bss_list);
-
 	json_summary_list(&bss_list);
 
-	json_full_dump(&bss_list);
+	json_full(&bss_list);
+	json_full_list(&bss_list);
 
 	bss_free_list(&bss_list);
 }

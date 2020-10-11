@@ -745,7 +745,7 @@ void search_for(struct dl_list* list)
 static void json_dump_bss_list(struct dl_list* bss_list)
 {
 	json_t* jlist=NULL;
-	int err = bss_list_to_json(bss_list, &jlist);
+	int err = bss_list_to_json(bss_list, &jlist, bss_json_summary);
 	XASSERT(err==0, err);
 
 	char* s = json_dumps(jlist, JSON_INDENT(1));

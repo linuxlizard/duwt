@@ -74,7 +74,7 @@ int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 				"chwidth", channel_width_ptr,
 				"mode", mode_ptr);
 	if (!jbss) {
-		ERR("%s bss json encode failed msg=%s\n", __func__, jerror.text);
+		ERR("%s bss json encode failed msg=\"%s\"\n", __func__, jerror.text);
 		json_decref(jssid);
 		return -ENOMEM;
 	}
@@ -104,7 +104,7 @@ static int ie_to_json(const struct IE* ie, json_t** p_jie)
 
 	json_t* jie;
 	json_error_t jerror;
-	jie = json_pack_ex(&jerror, 0, "{sisiss}",
+	jie = json_pack_ex(&jerror, 0, "{sisiss?}",
 			"id", ie->id, 
 			"len", ie->len,
 			"bytes", hexdump
@@ -117,7 +117,7 @@ static int ie_to_json(const struct IE* ie, json_t** p_jie)
 	}
 
 	if (!jie) {
-		ERR("%s json ie=%d len=%zu encode failed msg=%s\n", 
+		ERR("%s json ie=%d len=%zu encode failed msg=\"%s\"\n", 
 				__func__, ie->id, ie->len, jerror.text);
 		return -ENOMEM;
 	}
@@ -143,7 +143,8 @@ int bss_to_json(const struct BSS* bss, json_t** p_jbss)
 		err = ie_to_json(ie, &jie);
 		if (err) {
 			// skip this and continue
-			WARN("%s ie=%d encode failed (continuing)\n", __func__, ie->id);
+			WARN("%s bss=%s ie=%d encode failed (continuing)\n", 
+					__func__, bss->bssid_str, ie->id);
 			continue;
 		}
 
@@ -177,7 +178,7 @@ fail:
 	return err;
 }
 
-int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray)
+int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray, enum bss_json_encode bss_encode)
 {
 	int err = 0;
 	json_t* jarray = NULL; // array of bss
@@ -191,9 +192,14 @@ int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray)
 
 	struct BSS* bss;
 	dl_list_for_each(bss, bss_list, struct BSS, node) {
-		err = bss_to_json_summary(bss, &jbss);
+		if (bss_encode == bss_json_summary) {
+			err = bss_to_json_summary(bss, &jbss);
+		} 
+		else {
+			err = bss_to_json(bss, &jbss);
+		}
 		if (err) {
-			ERR("%s failed at bss_to_json_summary", __func__);
+			ERR("%s failed get bss json err=%d", __func__, err);
 			goto fail;
 		}
 
