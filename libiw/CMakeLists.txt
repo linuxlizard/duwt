@@ -1,17 +1,14 @@
 #
 #  libiw/CMakeLists.txt   cmakefile for libiw
 # 
-# 	This library is free software; you can redistribute it and/or
-# 	modify it under the terms of the GNU Lesser General Public
-# 	License as published by the Free Software Foundation version 2.1
-# 	of the License.
-# 
 #  Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
 # 
 cmake_minimum_required(VERSION 3.10.0)
 
 enable_testing()
 enable_language(C)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wshadow -pedantic")
 
 # XXX tinkering
 get_property(c_features GLOBAL PROPERTY CMAKE_C_KNOWN_FEATURES)
@@ -76,7 +73,6 @@ endforeach()
 add_test(NAME test_ie COMMAND test_ie)
 add_test(NAME test_bss COMMAND test_bss)
 add_test(NAME test_decode COMMAND test_decode soup.dat)
-add_test(NAME test_bytebuf COMMAND test_bytebuf)
 add_test(NAME test_ie_he COMMAND test_ie_he)
 add_test(NAME test_nlnames COMMAND test_nlnames)
 add_test(NAME test_str COMMAND test_str)

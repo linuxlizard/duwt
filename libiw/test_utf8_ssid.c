@@ -24,10 +24,7 @@
 
 static void test_strings(void)
 {
-	// http://www.columbia.edu/~fdc/utf8/
-	// http://kermitproject.org/utf8.html
-//	char s[] = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
-	char s[] = "An preost wes on leoden, Laȝamon was ihoten";
+	char s[] = "Académie française";
 	size_t len = sizeof(s);
 
 	// this should succeed
@@ -36,24 +33,27 @@ static void test_strings(void)
 	XASSERT(retcode==0, retcode);
 
 	// this should fail;
-	s[0] = 0xef;
+	s[0] = (char)0xef;
 	retcode = ssid_utf8_validate(s, len);
 	printf("%s %s retcode=%d\n", __func__, s, retcode);
-	XASSERT(retcode==0, retcode);
+	XASSERT(retcode!=0, retcode);
 
 	// this should fail;
 	memset(s,0,len);
 	retcode = ssid_utf8_validate(s, len);
 	printf("%s %s retcode=%d\n", __func__, s, retcode);
 
-	char s2[] = "ვეპხის ტყაოსანი შოთა რუსთაველი";
+	char s2[] = "你好";
 	len = sizeof(s2);
 	retcode = ssid_utf8_validate(s2, len);
 	printf("%s %s retcode=%d\n", __func__, s2, retcode);
+	XASSERT(retcode==0, retcode);
+
 	// break something
 	s2[1] = 0x19;
 	retcode = ssid_utf8_validate(s2, len);
 	printf("%s %s retcode=%d\n", __func__, s2, retcode);
+	XASSERT(retcode!=0, retcode);
 
 	// success
 	char s3[] = "🤮";

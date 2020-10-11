@@ -26,10 +26,6 @@
 #include "bss_json.h"
 #include "ssid.h"
 
-// known SSIDs from test dumps
-//U_STRING_DECL(u_maxan_anvol, "Maxan Anvol", 11);
-//U_STRING_DECL(u_e300, "E300-7e2-5g", 11);
-
 static int decode(uint8_t* buf, ssize_t buflen, struct dl_list* bss_list)
 {
 	struct BSS* bss = NULL;
@@ -149,52 +145,6 @@ fail:
 	return -err;
 }
 
-static void verify_maxan_anvol(const struct BSS* bss)
-{
-	INFO("%s\n", __func__);
-
-	XASSERT(bss->band == NL80211_BAND_5GHZ, bss->band);
-	XASSERT(bss->frequency ==5765, bss->frequency );
-	XASSERT(bss->signal_strength_mbm == -3000, bss->signal_strength_mbm);
-
-	const struct IE* const ht_ie = ie_list_find_id(&bss->ie_list, IE_HT_CAPABILITIES);
-	const struct IE* const vht_ie = ie_list_find_id(&bss->ie_list, IE_VHT_CAPABILITIES);
-	const struct IE* const he_ie = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES );
-
-	XASSERT(ht_ie, 0);
-	XASSERT(vht_ie, 0);
-	XASSERT(!he_ie, 0);
-
-	char s[64];
-	int ret = bss_get_mode_str(bss, s, sizeof(s));
-	XASSERT(ret > 0, ret);
-	XASSERT(strncmp(s, "a/n/ac", 9) == 0, 0);
-}
-
-static void verify_e300(const struct BSS* bss)
-{
-	INFO("%s\n", __func__);
-
-	XASSERT(bss->band == NL80211_BAND_5GHZ, bss->band);
-	XASSERT(bss->frequency == 5720, bss->frequency );
-	XASSERT(bss->signal_strength_mbm == -3700, bss->signal_strength_mbm);
-
-	const struct IE* const ht_ie = ie_list_find_id(&bss->ie_list, IE_HT_CAPABILITIES);
-	const struct IE* const vht_ie = ie_list_find_id(&bss->ie_list, IE_VHT_CAPABILITIES);
-	const struct IE* const he_ie_capa = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES );
-	const struct IE* const he_ie_op = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_OPERATION);
-
-	XASSERT(ht_ie, 0);
-	XASSERT(vht_ie, 0);
-	XASSERT(he_ie_capa, 0);
-	XASSERT(he_ie_op, 0);
-
-	char s[64];
-	int ret = bss_get_mode_str(bss, s, sizeof(s));
-	XASSERT(ret > 0, ret);
-	XASSERT(strncmp(s, "a/n/ac/ax", 9) == 0, 0);
-}
-
 static void verify_bss(const struct BSS* bss)
 {
 	XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
@@ -203,25 +153,13 @@ static void verify_bss(const struct BSS* bss)
 	const struct IE_SSID* ssid_ie = bss_get_ssid(bss);
 	XASSERT(ssid_ie, 0);
 
-//	UChar u_ssid[SSID_MAX_LEN*2];
-//	int ret = ssid_to_unicode_str(ssid_ie->ssid, ssid_ie->ssid_len, u_ssid, sizeof(u_ssid));
-//	XASSERT(ret>=0, ret);
-
-#if 0
-	if (u_strcmp(u_ssid, u_maxan_anvol) == 0) {
-		verify_maxan_anvol(bss);
-	}
-	else if (u_strcmp(u_ssid, u_e300) == 0) {
-		verify_e300(bss);
-	}
-#endif
-
 	char s[64];
 	int ret = bss_get_chan_width_str(bss, s, sizeof(s));
+	XASSERT(ret==0, ret);
 	INFO("%s %s width=%s\n", __func__, bss->bssid_str, s);
 }
 
-static void test_encode(uint8_t* buf, size_t buf_len)
+void test_encode(uint8_t* buf, size_t buf_len)
 {
 	DBG("%s\n", __func__);
 
@@ -282,19 +220,13 @@ int main(int argc, char* argv[])
 	struct args args;
 
 	int err=0;
-//	int err = args_parse(argc, argv, &args);
 
-	if (args.debug > 0) {
-		log_set_level(LOG_LEVEL_DEBUG);
-	}
+	log_set_level(LOG_LEVEL_DEBUG);
 
 	DBG("%s this is a debug message\n", __func__);
 	INFO("%s this is an info message\n", __func__);
 	WARN("%s this is a warning message\n", __func__);
 	ERR("%s this is an error message\n", __func__);
-
-//	U_STRING_INIT(u_maxan_anvol, "Maxan Anvol", 11);
-//	U_STRING_INIT(u_e300, "E300-7e2-5g", 11);
 
 	DEFINE_DL_LIST(bss_list);
 

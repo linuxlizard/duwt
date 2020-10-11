@@ -176,8 +176,8 @@ int parse_bitrate(struct nlattr *bitrate_attr, struct bitrate* br)
 	};
 
 	int err;
-	if (err = nla_parse_nested(rinfo, NL80211_RATE_INFO_MAX,
-			     bitrate_attr, rate_policy)) {
+	if ((err = nla_parse_nested(rinfo, NL80211_RATE_INFO_MAX,
+			     bitrate_attr, rate_policy))) {
 		return err;
 	}
 
@@ -219,4 +219,5 @@ int parse_bitrate(struct nlattr *bitrate_attr, struct bitrate* br)
 	if (rinfo[NL80211_RATE_INFO_HE_RU_ALLOC])
 		br->he_ru_alloc = nla_get_u8(rinfo[NL80211_RATE_INFO_HE_RU_ALLOC]);
 #endif
+	return 0;
 }

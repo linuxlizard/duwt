@@ -18,8 +18,6 @@
 //
 int ssid_utf8_validate(const char* ssid, size_t ssid_len)
 {
-	int retcode = 0;
-
 	if (ssid_len > SSID_MAX_LEN) {
 		return -ENAMETOOLONG;
 	}
@@ -41,7 +39,10 @@ int ssid_utf8_validate(const char* ssid, size_t ssid_len)
 	errno = 0;
 	size_t s = iconv(cd, &inp, &ssid_len, &outp, &out_len);
 	if (s == (size_t)-1) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
 		printf("%s s=%zu out_len=%zu %d %m\n", __func__, s, out_len, errno);
+#pragma GCC diagnostic pop
 		return -errno;
 	}
 

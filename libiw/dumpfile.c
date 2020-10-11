@@ -45,16 +45,20 @@ int dumpfile_parse(const char* dump_filename, struct dl_list* bss_list )
 		int ret;
 
 		ret = fread(&c, sizeof(uint8_t), 1, infile);
+		if (ret != 1) {
+			break;
+		}
 		if (c=='\n') {
 			break;
 		}
 	}
-	if (feof(infile)) {
+	if (ferror(infile) || feof(infile)) {
+		fclose(infile);
 		return -EINVAL;
 	}
 
-	const int max_size = 4096;
-	struct BSS* bss=NULL;
+	const size_t max_size = 4096;
+
 	while (true) { 
 		int ret;
 		uint32_t size, cookie;
@@ -79,7 +83,10 @@ int dumpfile_parse(const char* dump_filename, struct dl_list* bss_list )
 			goto leave;
 		}
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
 		DBG("%1$s cookie=%2$#"PRIx32" size=%3$#"PRIx32" (%3$#"PRIx32")\n", __func__, cookie, size);
+#pragma GCC diagnostic pop
 
 		if (cookie != SCAN_DUMP_COOKIE) {
 			ERR("%s invalid cookie=%#"PRIx32"; not a valid scan-dump file\n", 
@@ -88,13 +95,16 @@ int dumpfile_parse(const char* dump_filename, struct dl_list* bss_list )
 			goto leave;
 		}
 		if (size > max_size) { 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
 			ERR("%1$s size=%2$"PRIu32" (%2$#"PRIx32") too big\n", __func__, size);
+#pragma GCC diagnostic pop
 			err = -E2BIG;
 			goto leave;
 		}
 
 		ret = fread((char *)buf, sizeof(uint8_t), size, infile);
-		if (ret != size) {
+		if ((size_t)ret != size) {
 			ERR("%s premature end of file reading buffer; read=%d expected=%d\n", __func__, ret, size);
 			err = -EINVAL;
 			goto leave;
@@ -108,7 +118,7 @@ int dumpfile_parse(const char* dump_filename, struct dl_list* bss_list )
 		// inject data into the normal netlink callback path
 		err = nla_parse(tb_msg, NL80211_ATTR_MAX, attr, attrlen, NULL);
 		if (err < 0) {
-			return err;
+			goto leave;
 		}
 
 		peek_nla_attr(tb_msg, NL80211_ATTR_MAX);

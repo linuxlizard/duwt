@@ -88,14 +88,14 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
 	int err = nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh,0), genlmsg_attrlen(gnlh,0), NULL);
 	if (err < 0) {
-		return err;
+		goto fail;
 	}
 
 	peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
 
 	err = bss_from_nlattr(tb_msg, &bss);
 	if (err) {
-		return err;
+		goto fail;
 	}
 
 	dl_list_add_tail(bss_list, &bss->node);
@@ -103,6 +103,7 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 	DBG("%s success\n", __func__);
 	return NL_OK;
 fail:
+	DBG("%s fail\n", __func__);
 	return NL_SKIP;
 }
 
@@ -697,14 +698,10 @@ static void print_short(const struct BSS* bss)
 	//  SSID            BSSID              CHAN RATE  S:N   INT CAPS
 	ssid_print(bss, stdout, 32, NULL);
 
-	bool is_ht = ie_list_find_id(&bss->ie_list, IE_HT_OPERATION) != NULL;
-	bool is_vht = ie_list_find_id(&bss->ie_list, IE_VHT_OPERATION) != NULL;
-	bool is_he = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES) != NULL;
-
-	char mode[32] = {};
+	char mode[32];
 	bss_get_mode_str(bss, mode, 32);
 
-	char width[32] = {};
+	char width[32];
 	bss_get_chan_width_str(bss, width, 32);
 
 	printf("%18s  %d %8s %10s  %0.2f ", bss->bssid_str, bss->frequency, width, mode, bss->signal_strength_mbm/100.0);
@@ -724,7 +721,7 @@ static void print_short(const struct BSS* bss)
 
 }
 
-static void search_for(struct dl_list* list)
+void search_for(struct dl_list* list)
 {
 	// tinkering with searching the bss list for a BSS with certain IE fields
 	//
@@ -782,7 +779,7 @@ int main(int argc, char* argv[])
 
 	int err = args_parse(argc, argv, &args);
 	if (err) {
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (args.debug > 0) {
@@ -803,16 +800,22 @@ int main(int argc, char* argv[])
 	if (args.save_dump_file) {
 		err = dumpfile_create(args.dump_filename, &outfile);
 		if (err != 0) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
 			fprintf(stderr,"%s failed to open file=%s errno=%d err=%m\n", argv[0],
 				args.dump_filename, errno);
+#pragma GCC diagnostic pop
 			exit(1);
 		}
 	}
 
 	int ifidx = if_nametoindex(ifname);
 	if (ifidx <=0 ) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat"
 		fprintf(stderr,"%s failed to open interface=%s errno=%d err=%m\n", argv[0],
 					ifname, errno);
+#pragma GCC diagnostic pop
 		exit(1);
 	}
 

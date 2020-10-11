@@ -32,7 +32,7 @@ static char* bitrate_to_str(const struct bitrate* br, char* buf, int buflen)
 		pos += snprintf(pos, buflen - (pos - buf), " VHT-MCS %d", br->vht_mcs);
 	}
 
-	if (br->chan_width != -1) {
+	if (br->chan_width != (enum nl80211_chan_width)-1) {
 		pos += snprintf(pos, buflen - (pos - buf), " %sMHz", bw_str(br->chan_width));
 	}
 

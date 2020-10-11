@@ -44,7 +44,7 @@ int str_join_uint8(char* str, size_t len, const uint8_t num_array[], size_t num_
 
 int str_escape(const char* src, size_t src_len, char* dst, size_t dst_len)
 {
-	int i;
+	size_t i;
 	char* ptr = dst;
 	char* endptr = dst + dst_len;
 
@@ -75,13 +75,14 @@ int str_escape(const char* src, size_t src_len, char* dst, size_t dst_len)
 	return ptr - dst;
 }
 
-int str_hexdump(const char* src, size_t src_len, char* dst, size_t dst_len)
+int str_hexdump(const unsigned char* src, size_t src_len, char* dst, size_t dst_len)
 {
+	size_t i;
 	char* ptr = dst;
 	char* endptr = dst + dst_len;
 	uint8_t* srcptr = (uint8_t*)src;
 
-	for (int i=0 ; i<src_len ; i++) {
+	for (i=0 ; i<src_len ; i++) {
 		// check for equality so we have enough space left for terminating NULL
 		if (ptr+2 >= endptr) {
 			return -ENOMEM;

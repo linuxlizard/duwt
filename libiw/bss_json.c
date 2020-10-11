@@ -93,7 +93,7 @@ static int ie_to_json(const struct IE* ie, json_t** p_jie)
 	// ie->len can be zero for a hidden SSID
 	if (ie->len) {
 		dumplen = ie->len*2+1;
-		char* hexdump = (char*)malloc(dumplen);
+		hexdump = (char*)malloc(dumplen);
 		if (!hexdump) {
 			return -ENOMEM;
 		}

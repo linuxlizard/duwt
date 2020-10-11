@@ -77,6 +77,8 @@ void test_json_escape(void)
 	jstr = json_stringn(src, strlen(src));
 	XASSERT(json_is_string(jstr), json_typeof(jstr));
 	const char* hello = json_string_value(jstr);
+	XASSERT(hello, 0);
+	XASSERT(str_match(hello,12,src,12),0);
 	json_decref(jstr);
 
 	json_t* jobj;
@@ -135,7 +137,7 @@ static void test_str_hexdump(void)
 	char hex[128];
 
 	memset(hex,0xff,sizeof(hex));
-	int ret = str_hexdump(s, strlen(s), hex, sizeof(hex));
+	int ret = str_hexdump((unsigned char*)s, strlen(s), hex, sizeof(hex));
 	XASSERT(ret==32, ret);
 	XASSERT(hex[32]==0, hex[32]);
 	XASSERT(str_match(hex,strlen(hex),"30313233343536373839616263646566",32),0);
@@ -143,23 +145,23 @@ static void test_str_hexdump(void)
 	// destination exactly fits src (+1 for NULL)
 	// str_hexdump() responsible for the terminating NULL
 	memset(hex,0xff,sizeof(hex));
-	ret = str_hexdump(s, strlen(s), hex, strlen(s)*2+1);
+	ret = str_hexdump((unsigned char*)s, strlen(s), hex, strlen(s)*2+1);
 //	printf("hex=%zu %s\n", strlen(hex), hex);
 	XASSERT(ret==32, ret);
 	XASSERT(hex[32]==0, hex[32]);
 
 	// not enough space for NULL (one short)
-	ret = str_hexdump(s,strlen(s),hex,32);
+	ret = str_hexdump((unsigned char*)s,strlen(s),hex,32);
 	XASSERT(ret == -ENOMEM, ret);
 
 	memset(hex,0xff,sizeof(hex));
-	ret = str_hexdump(s,strlen(s),hex,33);
+	ret = str_hexdump((unsigned char*)s,strlen(s),hex,33);
 	XASSERT(ret == 32, ret);
 	XASSERT(hex[32]==0, hex[32]);
 
 	// fill 's' with garbage (strlen will no longer work)
 	memset(s,0,sizeof(s));
-	ret = str_hexdump(s, sizeof(s), hex, sizeof(hex));
+	ret = str_hexdump((unsigned char*)s, sizeof(s), hex, sizeof(hex));
 	XASSERT(ret==sizeof(s)*2, ret);
 //	printf("hex=%zu %s\n", strlen(hex), hex);
 	XASSERT(str_match(hex,sizeof(s)*2,"0000000000000000000000000000000000",sizeof(s)*2),0);
