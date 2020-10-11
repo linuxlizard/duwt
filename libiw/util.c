@@ -485,7 +485,75 @@ int rsn_capabilities_to_str(const struct IE_RSN* sie, char* s, size_t len)
 			sie->pbac ? " PBAC" : "",
 			sie->extkey_id ? " extKeyID" : ""
 			);
+}
 
+int rsn_capabilities_to_str_list(const struct IE_RSN* sie, char s_list[][64], size_t len, size_t s_list_len)
+{
+	static const char* ptksa_str[] = {
+		"1-PTKSA-RC",
+		"2-PTKSA-RC",
+		"4-PTKSA-RC",
+		"16-PTKSA-RC",
+	};
+	static const char* gtksa_str[] = {
+		"1-GTKSA-RC",
+		"2-GTKSA-RC",
+		"4-GTKSA-RC",
+		"16-GTKSA-RC",
+	};
+
+	// write the RSN capabilities, one flag per string, to a list of strings
+	int idx = 0;
+
+	if (s_list_len < 12) {
+		return -ENOMEM;
+	}
+
+	// strings from iw scan.c _print_rsn_ie()
+	if (sie->preauth) {
+		strncpy(s_list[idx++], "PreAuth", len);
+	}
+
+	if (sie->no_pairwise) {
+		strncpy(s_list[idx++], "NoPairwise", len);
+	}
+
+	strncpy(s_list[idx++], ptksa_str[sie->ptksa_rc], len);
+	strncpy(s_list[idx++], gtksa_str[sie->gtksa_rc], len);
+
+	if (sie->mfp_required) {
+		strncpy(s_list[idx++], "MFP-required", len);
+	}
+
+	if (sie->mfp_capable) {
+		strncpy(s_list[idx++], "MFP-capable", len);
+	}
+
+	if (sie->multiband_rsna) {
+		strncpy(s_list[idx++], "JointMulti-bandRSNA", len);
+	}
+
+	if (sie->peerkey_enabled) {
+		strncpy(s_list[idx++], "Peerkey-enabled", len);
+	}
+
+	if (sie->spp_amsdu_required) {
+		strncpy(s_list[idx++], "SPP-AMSDU-capable", len);
+	}
+
+	if (sie->spp_amsdu_required) {
+		strncpy(s_list[idx++], "SPP-AMSDU-required", len);
+	}
+
+	if (sie->pbac) {
+		strncpy(s_list[idx++], "PBAC", len);
+	}
+
+	if (sie->extkey_id) {
+		strncpy(s_list[idx++], "extKeyID", len);
+	}
+
+	return idx;
 }
 
 int rm_enabled_capa_to_str(const struct IE_RM_Enabled_Capabilities* sie, unsigned int idx, char* s, size_t len)

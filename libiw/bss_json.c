@@ -18,6 +18,34 @@
 #include "bss.h"
 #include "bss_json.h"
 
+struct json_key_value
+{
+	char* key;
+	json_t* value;
+};
+
+static int transaction_add(json_t* jobj, struct json_key_value* kvp_list, size_t len)
+{
+	// fn to add all or nothing key/value pairs to an object .
+	// If any add fails, then all the same keys are removed.
+
+	size_t i;
+	for (i=0 ; i<len ; i++) {
+		if (json_object_set_new(jobj, kvp_list[i].key, kvp_list[i].value)) {
+			break;
+		}
+	}
+	if (i != len) {
+		// failure so clean up what we just added
+		while(i>0) {
+			i--;
+			json_object_del(jobj, kvp_list[i].key);
+		};
+		return -ENOMEM;
+	}
+	return 0;
+}
+
 int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 {
 	json_t* jbss, *jssid;
@@ -84,6 +112,135 @@ int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 	return 0;
 }
 
+static int ie_rsn_to_json(const struct IE* ie, json_t* jie)
+{
+	int err, ret;
+	char s[128];
+
+	const struct IE_RSN* sie = IE_CAST(ie, const struct IE_RSN);
+
+	json_t* jversion = json_integer(sie->version);
+	json_t* jpairwise_cipher_list = json_array();
+	json_t* jgroup_cipher = json_string(s);
+	json_t* jakm_suite_list = json_array();
+	json_t* jcapa_list = json_array();
+
+	if (!jversion || !jpairwise_cipher_list || !jgroup_cipher || !jakm_suite_list || !jcapa_list) {
+		err = -ENOMEM;
+		goto fail;
+	}
+
+	// Group Cipher (single string)
+	ret = cipher_suite_to_str(sie->group_data, s, sizeof(s));
+	XASSERT((size_t)ret<sizeof(s), ret);
+
+	// Pairwise Ciphers (Array) 
+	for (size_t i=0 ; i<sie->pairwise_cipher_count ; i++) {
+		ret = cipher_suite_to_str(&sie->pairwise[i], s, sizeof(s));
+		XASSERT((size_t)ret<sizeof(s), ret);
+
+		json_t* jstr = json_string(s);
+		if (!jstr) {
+			err = -ENOMEM;
+			goto fail;
+		}
+
+		err = json_array_append_new(jpairwise_cipher_list, jstr);
+		if (err) {
+			json_decref(jstr);
+			err = -ENOMEM;
+			goto fail;
+		}
+	}
+
+	// Authentication Suites (Array)
+	for (size_t i=0 ; i<sie->akm_suite_count; i++) {
+		XASSERT((sie->akm_suite) != NULL, i);
+		ret = auth_to_str(&sie->akm_suite[i], s, sizeof(s));
+		XASSERT((size_t)ret<sizeof(s), ret);
+
+		json_t* jstr = json_string(s);
+		if (!jstr ) {
+			err = -ENOMEM;
+			goto fail;
+		}
+
+		err = json_array_append_new(jakm_suite_list, jstr);
+		if (err) {
+			json_decref(jstr);
+			err = -ENOMEM;
+			goto fail;
+		}
+	}
+
+	// Capabilities
+	char capabilities[16][64];
+	ret = rsn_capabilities_to_str_list(sie, capabilities, 64, 16);
+	XASSERT(ret > 0, ret);
+
+	for (int i=0 ; i<ret ; i++ ) {
+		json_t* jstr = json_string(capabilities[i]);
+		if (!jstr) {
+			err = -ENOMEM;
+			goto fail;
+		}
+
+		err = json_array_append_new(jcapa_list, jstr);
+		if (err) {
+			json_decref(jstr);
+			err = -ENOMEM;
+			goto fail;
+		}
+	}
+
+	// store all our calculated stuff in the object
+	struct json_key_value kvp_list[] = {
+		{ "version", jversion },
+		{ "group", jgroup_cipher},
+		{ "pairwise", jpairwise_cipher_list},
+		{ "auth", jakm_suite_list},
+		{ "capabilities", jcapa_list},
+	};
+
+	err = transaction_add( jie, kvp_list, 5);
+	if (err) {
+		goto fail;
+	}
+
+	return 0;
+fail:
+	if (jversion) {
+		json_decref(jversion);
+	}
+	if (jpairwise_cipher_list) {
+		json_decref(jpairwise_cipher_list);
+	}
+	if (jgroup_cipher) {
+		json_decref(jgroup_cipher);
+	}
+	if (jakm_suite_list) {
+		json_decref(jakm_suite_list);
+	}
+	if (jcapa_list) {
+		json_decref(jcapa_list);
+	}
+	return err;
+}
+
+static int ie_body_to_json(const struct IE* ie, json_t* jie)
+{
+	switch (ie->id) {
+		case IE_RSN:
+			ie_rsn_to_json(ie, jie);
+			break;
+
+		default:
+			break;
+	}
+
+	return 0;
+}
+
 static int ie_to_json(const struct IE* ie, json_t** p_jie)
 {
 	// each byte becomes two characters plus one for null
@@ -121,6 +278,8 @@ static int ie_to_json(const struct IE* ie, json_t** p_jie)
 				__func__, ie->id, ie->len, jerror.text);
 		return -ENOMEM;
 	}
+
+	ie_body_to_json(ie, jie);
 
 	PTR_ASSIGN(*p_jie, jie);
 	return 0;

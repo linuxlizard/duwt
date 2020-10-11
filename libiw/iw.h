@@ -100,6 +100,7 @@ int cipher_suite_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t le
 int auth_to_str(const struct RSN_Cipher_Suite* suite, char* s, size_t len);
 int rsn_capabilities_to_str(const struct IE_RSN* ie, char* s, size_t len);
 int rm_enabled_capa_to_str(const struct IE_RM_Enabled_Capabilities* sie, unsigned int idx, char* s, size_t len);
+int rsn_capabilities_to_str_list(const struct IE_RSN* sie, char s_list[][64], size_t len, size_t s_list_len);
 int mobility_domain_to_str(const struct IE_Mobility_Domain* sie, unsigned int bit, char* s, size_t len);
 int ieee80211_channel_to_frequency(int chan, enum nl80211_band band);
 int ieee80211_frequency_to_channel(int freq);
