@@ -60,10 +60,10 @@ static void ie_ssid_free(struct IE* ie)
 
 	XASSERT(sie->cookie == IE_SPECIFIC_COOKIE, sie->cookie);
 
-	memset(sie->ssid, POISON, sie->ssid_len);
+	POISON(sie->ssid, sie->ssid_len);
 	PTR_FREE(sie->ssid);
 
-	memset(sie, POISON, sizeof(*sie));
+	POISON(sie, sizeof(*sie));
 	PTR_FREE(ie->specific);
 }
 
@@ -1132,11 +1132,11 @@ void ie_delete(struct IE** pie)
 
 	// now free my memory
 	if (ie->buf) {
-		memset(ie->buf, POISON, ie->len);
+		POISON(ie->buf, ie->len);
 		PTR_FREE(ie->buf);
 	}
 
-	memset(ie, POISON, sizeof(struct IE));
+	POISON(ie, sizeof(struct IE));
 	PTR_FREE(ie);
 }
 
@@ -1208,9 +1208,9 @@ void ie_list_release(struct IE_List* list)
 		ie_delete(&list->ieptrlist[i]);
 	}
 
-	memset(list->ieptrlist, POISON, sizeof(struct IE*)*list->max);
+	POISON(list->ieptrlist, sizeof(struct IE*)*list->max);
 	PTR_FREE(list->ieptrlist);
-	memset(list, POISON, sizeof(struct IE_List));
+	POISON(list, sizeof(struct IE_List));
 }
 
 int ie_list_move_back(struct IE_List* list, struct IE** pie)

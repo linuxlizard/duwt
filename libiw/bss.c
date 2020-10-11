@@ -48,7 +48,7 @@ void bss_free(struct BSS** pbss)
 
 	ie_list_release(&bss->ie_list);
 
-	memset(bss, POISON, sizeof(struct BSS));
+	POISON(bss, sizeof(struct BSS));
 	PTR_FREE(bss);
 }
 

@@ -48,7 +48,8 @@ int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 		return -ENOMEM;
 	}
 
-	// channel width and mode are optional so extra work required
+	// channel width and mode are optional so extra work required:
+	// if the ptr is NULL, json_pack_ex() won't include in the object
 	char channel_width[32], *channel_width_ptr = NULL;
 	char mode[32], *mode_ptr = NULL;
 
@@ -73,13 +74,55 @@ int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 				"chwidth", channel_width_ptr,
 				"mode", mode_ptr);
 	if (!jbss) {
+		ERR("%s bss json encode failed msg=%s\n", __func__, jerror.text);
 		json_decref(jssid);
-		XASSERT(0,0);
-		return -1;
+		return -ENOMEM;
 	}
 
 	PTR_ASSIGN(*p_jbss, jbss);
 
+	return 0;
+}
+
+static int ie_to_json(const struct IE* ie, json_t** p_jie)
+{
+	// each byte becomes two characters plus one for null
+	char* hexdump = NULL;
+	size_t dumplen = 0;
+
+	// ie->len can be zero for a hidden SSID
+	if (ie->len) {
+		dumplen = ie->len*2+1;
+		char* hexdump = (char*)malloc(dumplen);
+		if (!hexdump) {
+			return -ENOMEM;
+		}
+
+		int ret = str_hexdump(ie->buf, ie->len, hexdump, dumplen);
+		XASSERT(ret > 0, ret);
+	}
+
+	json_t* jie;
+	json_error_t jerror;
+	jie = json_pack_ex(&jerror, 0, "{sisiss}",
+			"id", ie->id, 
+			"len", ie->len,
+			"bytes", hexdump
+			);
+
+	// appears jansson makes a copy
+	if (hexdump) {
+		POISON(hexdump, dumplen);
+		PTR_FREE(hexdump);
+	}
+
+	if (!jie) {
+		ERR("%s json ie=%d len=%zu encode failed msg=%s\n", 
+				__func__, ie->id, ie->len, jerror.text);
+		return -ENOMEM;
+	}
+
+	PTR_ASSIGN(*p_jie, jie);
 	return 0;
 }
 
@@ -91,9 +134,47 @@ int bss_to_json(const struct BSS* bss, json_t** p_jbss)
 		return err;
 	}
 
+	// build the array of encoded IEs
+	json_t* jielist = json_array();
+
+	const struct IE* ie;
+	ie_list_for_each_entry(ie, bss->ie_list) {
+		json_t* jie;
+		err = ie_to_json(ie, &jie);
+		if (err) {
+			// skip this and continue
+			WARN("%s ie=%d encode failed (continuing)\n", __func__, ie->id);
+			continue;
+		}
+
+		err = json_array_append_new(jielist, jie);
+		if (err) {
+			// memory failure so we're kinda hosed
+			json_decref(jie);
+			err = -ENOMEM;
+			goto fail;
+		}
+
+	}
+
+	// ie list now belongs to the jbss
+	err = json_object_set_new(jbss, "IE", jielist);
+	if (err) {
+		// memory failure so we're kinda hosed
+		err = -ENOMEM;
+		goto fail;
+	}
+
 	PTR_ASSIGN(*p_jbss, jbss);
 
 	return 0;
+
+fail:
+	if (jielist) {
+		json_decref(jielist);
+	}
+
+	return err;
 }
 
 int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray)

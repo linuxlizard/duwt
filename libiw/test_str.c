@@ -14,6 +14,20 @@
 #include "core.h"
 #include "str.h"
 
+void test_str_match(void)
+{
+	XASSERT(str_match(NULL,1024,NULL,1024),0);
+	XASSERT(str_match("hello, world",12,"hello, world",12),0);
+	XASSERT(!str_match("hello, world",12,"hello, world",11),0);
+	XASSERT(!str_match("hello, world",12,NULL,12),0);
+	XASSERT(!str_match("hello, world",12,NULL,13),0);
+	XASSERT(!str_match(NULL,12,"hello, world",12),0);
+	XASSERT(!str_match(NULL,13,"hello, world",12),0);
+	XASSERT(!str_match("hello, world",12,"hello, qorld",12),0);
+	XASSERT(str_match("hello\x00world",12,"hello\x00world",12),0);
+	XASSERT(str_match("",0,"",0),0);
+}
+
 void test_escape(void)
 {
 	char s[32] = "hello, world";
@@ -28,7 +42,7 @@ void test_escape(void)
 	memset(s, 0, sizeof(s));
 	retcode = str_escape(s, 12, escaped, sizeof(escaped)-1);
 	XASSERT( retcode == 12*4, retcode );
-	XASSERT( (retcode=strncmp(escaped, "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00", 48))==0, retcode);
+	XASSERT( str_match(escaped, 48, "\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00\\x00", 48),0);
 
 	memset(escaped,0,sizeof(escaped));
 	memcpy(s, "\xf0\xf9\xa4\xae\x00", 5);
@@ -115,10 +129,49 @@ void test_json_escape(void)
 	json_decref(jobj);
 }
 
+static void test_str_hexdump(void)
+{
+	char s[] = "0123456789abcdef";
+	char hex[128];
+
+	memset(hex,0xff,sizeof(hex));
+	int ret = str_hexdump(s, strlen(s), hex, sizeof(hex));
+	XASSERT(ret==32, ret);
+	XASSERT(hex[32]==0, hex[32]);
+	XASSERT(str_match(hex,strlen(hex),"30313233343536373839616263646566",32),0);
+
+	// destination exactly fits src (+1 for NULL)
+	// str_hexdump() responsible for the terminating NULL
+	memset(hex,0xff,sizeof(hex));
+	ret = str_hexdump(s, strlen(s), hex, strlen(s)*2+1);
+//	printf("hex=%zu %s\n", strlen(hex), hex);
+	XASSERT(ret==32, ret);
+	XASSERT(hex[32]==0, hex[32]);
+
+	// not enough space for NULL (one short)
+	ret = str_hexdump(s,strlen(s),hex,32);
+	XASSERT(ret == -ENOMEM, ret);
+
+	memset(hex,0xff,sizeof(hex));
+	ret = str_hexdump(s,strlen(s),hex,33);
+	XASSERT(ret == 32, ret);
+	XASSERT(hex[32]==0, hex[32]);
+
+	// fill 's' with garbage (strlen will no longer work)
+	memset(s,0,sizeof(s));
+	ret = str_hexdump(s, sizeof(s), hex, sizeof(hex));
+	XASSERT(ret==sizeof(s)*2, ret);
+//	printf("hex=%zu %s\n", strlen(hex), hex);
+	XASSERT(str_match(hex,sizeof(s)*2,"0000000000000000000000000000000000",sizeof(s)*2),0);
+
+}
+
 int main(void)
 {
+	test_str_match();
 	test_escape();
 	test_json_escape();
+	test_str_hexdump();
 
 	return EXIT_SUCCESS;
 }

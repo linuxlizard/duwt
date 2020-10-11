@@ -19,7 +19,7 @@
 #define PTR_FREE(p) do { free(p); (p)=NULL; } while(0)
 #define PTR_ASSIGN(dst,src) do { (dst)=(src); (src)=NULL; } while(0)
 
-#define POISON 0xee
+#define POISON(buf,len) memset(buf,0xee,len)
 
 #define ARRAY_SIZE(ar) (sizeof(ar)/sizeof(ar[0]))
 
