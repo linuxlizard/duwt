@@ -57,9 +57,9 @@ typedef int MHD_Result;
 #include "nlnames.h"
 #include "hdump.h"
 #include "ie.h"
-#include "bss_json.h"
 #include "mimetypes.h"
 #include "args.h"
+#include "bss_json.h"
 
 #define PORT 8081
 //#define PORT 8888
@@ -286,24 +286,40 @@ static MHD_Response* get_survey_response(const BSSMap* bss_map)
 {
 	struct MHD_Response* response  { nullptr };
 
-	Json::Value jarray(Json::arrayValue);
+	json_t* jarray;
+	jarray = json_array();
 
 	for (auto iter : *bss_map) {
 		struct BSS* bss = iter.second;
 		XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
-		jarray.append(bss_to_json(bss));
+
+		json_t* jbss;
+		int err = bss_to_json(bss, &jbss);
+
+		err = json_array_append_new(jarray, jbss);
 	}
 
-	Json::StreamWriterBuilder builder;
-	builder["indentation"] = "";
-	builder["emitUTF8"] = true;
-	const std::string json_file = Json::writeString(builder, jarray);
+//	int err = bss_list_to_json(bss_list, &jarray, bss_json_summary);
+//	if (err) {
+//		ERR("%s create bss json list failed err=%d\n", __func__, err);
+//		return response
+//	}
+
+	char* s = json_dumps(jarray, 0);
+	if (!s) {
+		ERR("%s json dump failed\n", __func__);
+		json_decref(jarray);
+		return response;
+	}
+
+	json_decref(jarray);
 
 	response = MHD_create_response_from_buffer(
-					json_file.length(),
-					(void *)json_file.c_str(), 
-					MHD_RESPMEM_MUST_COPY);
+					strlen(s),
+					(void *)s, 
+					MHD_RESPMEM_MUST_FREE);
 	if (!response) {
+		PTR_FREE(s);
 		return response;
 	}
 
@@ -345,17 +361,17 @@ static MHD_Response* get_bssid_response(const char* bssid_str, ssize_t bssid_len
 	}
 
 	struct MHD_Response* response  { nullptr };
-	Json::Value bss_json = bss_to_json(bss);
+	json_t* jbss;
+	int err = bss_to_json(bss, &jbss);
 
-	Json::StreamWriterBuilder builder;
-	builder["indentation"] = "";
-	builder["emitUTF8"] = true;
-	const std::string json_file = Json::writeString(builder, bss_json);
+	char* s = json_dumps(jbss, 0);
+
+	json_decref(jbss);
 
 	response = MHD_create_response_from_buffer(
-					json_file.length(),
-					(void *)json_file.c_str(), 
-					MHD_RESPMEM_MUST_COPY);
+					strlen(s),
+					(void *)s, 
+					MHD_RESPMEM_MUST_FREE);
 	if (!response) {
 		return response;
 	}
