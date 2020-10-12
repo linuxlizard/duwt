@@ -31,6 +31,11 @@ static int transaction_add(json_t* jobj, struct json_key_value* kvp_list, size_t
 
 	size_t i;
 	for (i=0 ; i<len ; i++) {
+		// check for caller's memory fail
+		if (!kvp_list[i].value) {
+			break;
+		}
+
 		if (json_object_set_new(jobj, kvp_list[i].key, kvp_list[i].value)) {
 			break;
 		}
@@ -111,6 +116,44 @@ int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 
 	return 0;
 }
+
+static int ie_tim_to_json(const struct IE* ie, json_t* jie)
+{
+	int err;
+//	char s[128];
+	const struct IE_TIM* sie = IE_CAST(ie, const struct IE_TIM);
+	char bitmap_hex[512];
+
+	int ret = str_hexdump(ie->buf, ie->len-3, bitmap_hex, sizeof(bitmap_hex));
+	XASSERT(ret > 0, ret);
+
+	struct json_key_value kvp_list[] = {
+		{ "count", json_integer(sie->dtim_count) },
+		{ "period", json_integer(sie->dtim_period) },
+		{ "control", json_integer(sie->control) },
+		{ "bitmap", json_string(bitmap_hex) }
+	};
+
+	err = transaction_add( jie, kvp_list, 4);
+	if (err) {
+		return err;
+	}
+
+	return 0;
+}
+
+#if 0
+static int ie_extended_capabilities_to_json(const struct IE* ie, json_t* jie)
+{
+	int err, ret;
+	char s[128];
+
+	const struct IE_Extended_Capabilities* sie = IE_CAST(ie, const struct IE_Extended_Capabilities);
+
+	// TODO  so. many. flags. 
+	return 0;
+}
+#endif
 
 static int ie_rsn_to_json(const struct IE* ie, json_t* jie)
 {
@@ -230,9 +273,17 @@ fail:
 static int ie_body_to_json(const struct IE* ie, json_t* jie)
 {
 	switch (ie->id) {
+		case IE_TIM:
+			ie_tim_to_json(ie, jie);
+			break;
+
 		case IE_RSN:
 			ie_rsn_to_json(ie, jie);
 			break;
+
+//		case IE_EXTENDED_CAPABILITIES:
+//			ie_extended_capabilities_to_json(ie, jie);
+//			break;
 
 		default:
 			break;
