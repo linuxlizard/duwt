@@ -75,6 +75,9 @@ int str_escape(const char* src, size_t src_len, char* dst, size_t dst_len)
 	return ptr - dst;
 }
 
+// write a hexdump of bytes in 'src' into 'dst'
+// Return the length written.
+// Will always null terminate.  Will return -ENOMEM if not enough space for destination.
 int str_hexdump(const unsigned char* src, size_t src_len, char* dst, size_t dst_len)
 {
 	size_t i;
@@ -83,7 +86,7 @@ int str_hexdump(const unsigned char* src, size_t src_len, char* dst, size_t dst_
 	uint8_t* srcptr = (uint8_t*)src;
 
 	for (i=0 ; i<src_len ; i++) {
-		// check for equality so we have enough space left for terminating NULL
+		// checks for equality so we have enough space left for terminating NULL
 		if (ptr+2 >= endptr) {
 			return -ENOMEM;
 		}
