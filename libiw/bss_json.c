@@ -119,6 +119,55 @@ int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 	return 0;
 }
 
+static int ie_supported_rates_to_json(const struct IE* ie, json_t* jie)
+{
+	int err;
+	const struct IE_Supported_Rates* sie = IE_CAST(ie, const struct IE_Supported_Rates);
+
+	if (sie->count == 0) {
+		return 0;
+	}
+
+	// "supported_rates" : [
+	// 		{ "rate": NNN,
+	// 		  "basic": boolean },
+	// 		...
+	// 		]
+
+	json_t* jrate_list = json_array();
+	if (!jrate_list) {
+		return -ENOMEM;
+	}
+
+	for( size_t i=0 ; i < sie->count ; i++ ) {
+		json_error_t jerror;
+
+		json_t* jrate = json_pack_ex(&jerror, 0, "{sfsb}", 
+							"rate", sie->rate[i], 
+							"basic", (int)sie->basic[i]);
+		if (!jrate) {
+			ERR("%s bss json encode failed msg=\"%s\"\n", __func__, jerror.text);
+			json_decref(jrate_list);
+			return -ENOMEM;
+		}
+
+		err = json_array_append_new(jrate_list, jrate);
+		if (err) {
+			json_decref(jrate);
+			json_decref(jrate_list);
+			return -ENOMEM;
+		}
+	}
+
+	err = json_object_set_new(jie, "supported_rates", jrate_list);
+	if (err) {
+		json_decref(jrate_list);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
 static int ie_tim_to_json(const struct IE* ie, json_t* jie)
 {
 	int err;
@@ -275,6 +324,10 @@ fail:
 static int ie_body_to_json(const struct IE* ie, json_t* jie)
 {
 	switch (ie->id) {
+		case IE_SUPPORTED_RATES:
+			ie_supported_rates_to_json(ie, jie);
+			break;
+
 		case IE_TIM:
 			ie_tim_to_json(ie, jie);
 			break;
