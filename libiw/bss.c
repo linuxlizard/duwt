@@ -5,6 +5,7 @@
  */
 
 #include <string.h>
+#include <time.h>
 #include <linux/nl80211.h>
 
 #include "core.h"
@@ -91,6 +92,8 @@ int bss_from_nlattr(struct nlattr* attr_list[], struct BSS** pbss)
 	if ((attr=attr_list[NL80211_ATTR_IFINDEX])) {
 		bss->ifindex = nla_get_u32(attr);
 	}
+
+	bss->last_seen = time(NULL);
 
 	PTR_ASSIGN(*pbss, bss);
 	DBG("%s success\n", __func__);

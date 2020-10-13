@@ -99,13 +99,15 @@ int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
 	// "the reference to the value passed to o is stolen by the container."
 	// so no need to decref jssid
 
-	jbss = json_pack_ex(&jerror, 0, "{sssosisfss*ss*}", 
+	jbss = json_pack_ex(&jerror, 0, "{sssosisfss*ss*sI}", 
 				"bssid", bss->bssid_str,  // object key
 				"ssid", jssid, 
 				"freq", bss->frequency, 
 				"dbm", bss->signal_strength_mbm / 100.0,
 				"chwidth", channel_width_ptr,
-				"mode", mode_ptr);
+				"mode", mode_ptr,
+				"last_seen", (json_int_t)bss->last_seen
+				);
 	if (!jbss) {
 		ERR("%s bss json encode failed msg=\"%s\"\n", __func__, jerror.text);
 		json_decref(jssid);
@@ -338,6 +340,8 @@ static int ie_to_json(const struct IE* ie, json_t** p_jie)
 
 int bss_to_json(const struct BSS* bss, json_t** p_jbss)
 {
+	*p_jbss = NULL;
+
 	json_t* jbss;
 	int err = bss_to_json_summary(bss, &jbss);
 	if (err) {
@@ -346,6 +350,10 @@ int bss_to_json(const struct BSS* bss, json_t** p_jbss)
 
 	// build the array of encoded IEs
 	json_t* jielist = json_array();
+	if (!jielist) {
+		json_decref(jbss);
+		return -ENOMEM;
+	}
 
 	const struct IE* ie;
 	ie_list_for_each_entry(ie, bss->ie_list) {

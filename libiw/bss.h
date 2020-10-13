@@ -67,6 +67,9 @@ struct BSS
 	uint32_t center_freq1, center_freq2;
 
 	struct IE_List ie_list;
+
+	// timestamp of when this BSS last seen in a scan
+	time_t last_seen;
 };
 
 // iw scan.c bits in NL80211_BSS_CAPABILITY
