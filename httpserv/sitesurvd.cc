@@ -71,6 +71,16 @@ using BSSMap = std::unordered_map<uint64_t, struct BSS*> ;
 
 static mimetypes mt;
 
+static const char* notfound = "\
+<html>\n\
+<head>\n\
+   <title>Not Found</title>\n\
+</head>\n\
+<body>\n\
+<p>Not Found.</p>\n\
+</html>\n\
+";
+
 #define BUNDLE_COOKIE 0x01448f44
 struct netlink_socket_bundle 
 {
@@ -282,7 +292,7 @@ std::vector<char> load_file(fs::path path)
 	return buf;
 }
 
-static MHD_Response* get_survey_response(const BSSMap* bss_map)
+void get_survey_response(const BSSMap* bss_map, struct MHD_Response **p_response, int* status)
 {
 	struct MHD_Response* response  { nullptr };
 
@@ -294,9 +304,14 @@ static MHD_Response* get_survey_response(const BSSMap* bss_map)
 		XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
 
 		json_t* jbss;
+
 		int err = bss_to_json(bss, &jbss);
+		// TODO error checking
+		(void)err;
 
 		err = json_array_append_new(jarray, jbss);
+		// TODO error checking
+		(void)err;
 	}
 
 //	int err = bss_list_to_json(bss_list, &jarray, bss_json_summary);
@@ -309,7 +324,7 @@ static MHD_Response* get_survey_response(const BSSMap* bss_map)
 	if (!s) {
 		ERR("%s json dump failed\n", __func__);
 		json_decref(jarray);
-		return response;
+		return;
 	}
 
 	json_decref(jarray);
@@ -320,7 +335,7 @@ static MHD_Response* get_survey_response(const BSSMap* bss_map)
 					MHD_RESPMEM_MUST_FREE);
 	if (!response) {
 		PTR_FREE(s);
-		return response;
+		return;
 	}
 
 	int ret = MHD_add_response_header(response, 
@@ -332,22 +347,28 @@ static MHD_Response* get_survey_response(const BSSMap* bss_map)
 		response = nullptr;
 	}
 
-	return response;
+	if (response) {
+		PTR_ASSIGN(*p_response, response);
+		*status = MHD_HTTP_OK;
+	}
 }
 
-static MHD_Response* get_bssid_response(const char* bssid_str, ssize_t bssid_len, const BSSMap* bss_map)
+void get_bssid_response(const char* bssid_str, ssize_t bssid_len, const BSSMap* bss_map, struct MHD_Response **p_response, int* status)
 {
 	std::cout << __func__ << " bssid_str=" << bssid_str << "\n";
 
+	*p_response = nullptr;
+	*status = MHD_HTTP_INTERNAL_SERVER_ERROR;
+
 	if (!bssid_str || !*bssid_str || bssid_len < 12) {
-		return nullptr;
+		return;
 	}
 
 	macaddr bssid;
 	int ret = bss_str_to_bss(bssid_str, bssid_len, bssid);
 	if (ret<0 ) {
 		DBG("%s failed parse bssid=%s\n", __func__, bssid_str);
-		return nullptr;
+		return;
 	}
 
 	struct BSS* bss { nullptr };
@@ -357,56 +378,73 @@ static MHD_Response* get_bssid_response(const char* bssid_str, ssize_t bssid_len
 	}
 	catch (std::out_of_range& err) {
 		INFO("%s %s not found\n", __func__, bssid_str);
-		return nullptr;
 	}
 
 	struct MHD_Response* response  { nullptr };
-	json_t* jbss;
-	int err = bss_to_json(bss, &jbss);
 
-	char* s = json_dumps(jbss, 0);
+	if (bss) {
+		json_t* jbss;
+		int err = bss_to_json(bss, &jbss);
+		// TODO error checking
+		(void)err;
 
-	json_decref(jbss);
+		char* s = json_dumps(jbss, 0);
+		// TODO error checking
 
-	response = MHD_create_response_from_buffer(
-					strlen(s),
-					(void *)s, 
-					MHD_RESPMEM_MUST_FREE);
-	if (!response) {
-		return response;
+		json_decref(jbss);
+
+		response = MHD_create_response_from_buffer(
+						strlen(s),
+						(void *)s, 
+						MHD_RESPMEM_MUST_FREE);
+		if (!response) {
+			return;
+		}
+
+		ret = MHD_add_response_header(response, 
+				"Content-Type", "application/json"
+				);
+		if (ret != MHD_YES) {
+			ERR("%s add response failed ret=%d\n", __func__, ret);
+			MHD_destroy_response(response);
+			response = nullptr;
+		}
+		*status = MHD_HTTP_OK;
+	}
+	else {
+		// 404
+		response = MHD_create_response_from_buffer(
+						strlen(notfound),
+						(void *)notfound, 
+						MHD_RESPMEM_PERSISTENT);
+		*status = MHD_HTTP_NOT_FOUND;
 	}
 
-	ret = MHD_add_response_header(response, 
-			"Content-Type", "application/json"
-			);
-	if (ret != MHD_YES) {
-		ERR("%s add response failed ret=%d\n", __func__, ret);
-		MHD_destroy_response(response);
-		response = nullptr;
+	if (response) {
+		PTR_ASSIGN(*p_response, response);
 	}
-
-	return response;
 }
 
-MHD_Response* get_api_response(const char* url, ssize_t url_len, const BSSMap* bss_map)
+void get_api_response(const char* url, ssize_t url_len, const BSSMap* bss_map, struct MHD_Response **p_response, int* status)
 {
 	// MHD callback
 
+	*p_response = nullptr;
+
 	if (url_len < 6) {
-		return nullptr;
+		return;
 	}
 
 	std::cout << __func__ << " url=" << url << "\n";
 
 	if (strncmp(url, "survey", 6) == 0) {
-		return get_survey_response(bss_map);
+		get_survey_response(bss_map, p_response, status);
+	}
+	else if (strncmp(url, "bssid/", 6) == 0) {
+		get_bssid_response(url+6, url_len-6, bss_map, p_response, status);
 	}
 
-	if (strncmp(url, "bssid/", 6) == 0) {
-		return get_bssid_response(url+6, url_len-6, bss_map);
-	}
-
-	return nullptr;
+	return ;
 }
 
 
@@ -513,12 +551,13 @@ MHD_Result answer_to_connection (void *arg,
 	}
 
 	struct MHD_Response *response;
+	int status = MHD_HTTP_OK;
 
 	// note signed size
 	ssize_t url_len = strlen(url);
 
 	if (strncmp(url, "/api/", 5) == 0) {
-		response = get_api_response(url+5, url_len-5, bss_map);
+		get_api_response(url+5, url_len-5, bss_map, &response, &status);
 		// CORS
 		if (origin.length()) {
 			int ret = MHD_add_response_header(response, 
@@ -546,7 +585,7 @@ MHD_Result answer_to_connection (void *arg,
 		// TODO check for error
 	}
 
-	MHD_Result ret = MHD_queue_response (connection, MHD_HTTP_OK, response);
+	MHD_Result ret = MHD_queue_response (connection, status, response);
 	// TODO check return
 
 	MHD_destroy_response (response);
