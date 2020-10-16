@@ -12,6 +12,7 @@
 #include <stdbool.h>
 
 #include "str.h"
+#include "xassert.h"
 
 static const char hex_ascii[] = "0123456789abcdef";
 
@@ -112,5 +113,54 @@ bool str_match(const char* s1, size_t s1_len, const char* s2, size_t s2_len)
 		return false;
 	}
 	return memcmp(s1,s2,s1_len) == 0;
+}
+
+enum splitstate {
+	SPLITTING = 1,
+	CONSUMING = 2
+};
+
+// split a string based on all chars in 'spliton'
+// start of each string put into ptrlist[]
+// NULL written src where any chars in spliton exist.
+int str_split(char* src, size_t src_len, const char* spliton, char* ptrlist[], size_t* ptrlist_len)
+{
+	enum splitstate state = SPLITTING;
+	size_t idx = 0;
+	char* end_str = src + src_len;
+
+	while (src < end_str && idx < *ptrlist_len) {
+		if (state == SPLITTING) {
+			if (strchr(spliton, *src)) {
+				// found a split char
+				*src = 0;
+			}
+			else {
+				// save the new string we found
+				ptrlist[idx++] = src;
+				state = CONSUMING;
+			}
+
+		}
+		else {
+			XASSERT(state == CONSUMING, state);
+			if (strchr(spliton, *src)) {
+				// found a new split point
+				*src = 0;
+				state = SPLITTING;
+			}
+		}
+		src++;
+	}
+
+	if (idx==*ptrlist_len) {
+		// ran out of room
+		return -ENOMEM;
+	}
+
+	// set number of strings found
+	*ptrlist_len = idx;
+
+	return 0;
 }
 

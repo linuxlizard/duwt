@@ -168,12 +168,83 @@ static void test_str_hexdump(void)
 
 }
 
+void test_str_split(void)
+{
+	// str_split() is destructive so can't use state strings
+	int err;
+	char s[1024];
+	char* ptrlist[32];
+	size_t ptrlist_size;
+
+	strcpy(s, "Hello there all you rabbits");
+	ptrlist_size = ARRAY_SIZE(ptrlist);
+	err = str_split(s, strlen(s), " ", ptrlist, &ptrlist_size);
+	XASSERT(err==0, err);
+	XASSERT(ptrlist_size == 5, ptrlist_size);
+	XASSERT(str_match(ptrlist[0], 5, "Hello", 5), 0);
+	XASSERT(str_match(ptrlist[1], 5, "there", 5), 0);
+	XASSERT(str_match(ptrlist[2], 3, "all", 3), 0);
+	XASSERT(str_match(ptrlist[3], 3, "you", 3), 0);
+	XASSERT(str_match(ptrlist[4], 7, "rabbits", 7), 0);
+
+	strcpy(s, "   Hello   there    all     you     rabbits    ");
+	ptrlist_size = ARRAY_SIZE(ptrlist);
+	err = str_split(s, strlen(s), " ", ptrlist, &ptrlist_size);
+	XASSERT(err==0, err);
+	XASSERT(ptrlist_size == 5, ptrlist_size);
+	XASSERT(str_match(ptrlist[0], 5, "Hello", 5), 0);
+	XASSERT(str_match(ptrlist[1], 5, "there", 5), 0);
+	XASSERT(str_match(ptrlist[2], 3, "all", 3), 0);
+	XASSERT(str_match(ptrlist[3], 3, "you", 3), 0);
+	XASSERT(str_match(ptrlist[4], 7, "rabbits", 7), 0);
+
+	strcpy(s, "   Hello   there    all     you     rabbits    ");
+	ptrlist_size = 1;
+	err = str_split(s, strlen(s), " ", ptrlist, &ptrlist_size);
+	XASSERT(err==-ENOMEM, err);
+
+	strcpy(s, "\t \t \t Hello \t  there \t   all \t\t    you  \t\t\t   rabbits \t\t\t   ");
+	ptrlist_size = ARRAY_SIZE(ptrlist);
+	err = str_split(s, strlen(s), " \t", ptrlist, &ptrlist_size);
+	XASSERT(err==0, err);
+	XASSERT(ptrlist_size == 5, ptrlist_size);
+	XASSERT(str_match(ptrlist[0], 5, "Hello", 5), 0);
+	XASSERT(str_match(ptrlist[1], 5, "there", 5), 0);
+	XASSERT(str_match(ptrlist[2], 3, "all", 3), 0);
+	XASSERT(str_match(ptrlist[3], 3, "you", 3), 0);
+	XASSERT(str_match(ptrlist[4], 7, "rabbits", 7), 0);
+
+	strcpy(s, "/home/davep/src/duwt/build");
+	ptrlist_size = ARRAY_SIZE(ptrlist);
+	err = str_split(s, strlen(s), "/", ptrlist, &ptrlist_size);
+	XASSERT(err==0, err);
+	XASSERT(ptrlist_size == 5, ptrlist_size);
+	XASSERT(str_match(ptrlist[0], 4, "home", 4), 0);
+	XASSERT(str_match(ptrlist[1], 5, "davep", 5), 0);
+	XASSERT(str_match(ptrlist[2], 3, "src", 3), 0);
+	XASSERT(str_match(ptrlist[3], 4, "duwt", 4), 0);
+	XASSERT(str_match(ptrlist[4], 5, "build", 5), 0);
+
+	strcpy(s, "/home/davep/src/duwt/build/..//////");
+	ptrlist_size = ARRAY_SIZE(ptrlist);
+	err = str_split(s, strlen(s), "/", ptrlist, &ptrlist_size);
+	XASSERT(err==0, err);
+	XASSERT(ptrlist_size == 6, ptrlist_size);
+	XASSERT(str_match(ptrlist[0], 4, "home", 4), 0);
+	XASSERT(str_match(ptrlist[1], 5, "davep", 5), 0);
+	XASSERT(str_match(ptrlist[2], 3, "src", 3), 0);
+	XASSERT(str_match(ptrlist[3], 4, "duwt", 4), 0);
+	XASSERT(str_match(ptrlist[4], 5, "build", 5), 0);
+	XASSERT(str_match(ptrlist[5], 2, "..", 2), 0);
+}
+
 int main(void)
 {
 	test_str_match();
 	test_escape();
 	test_json_escape();
 	test_str_hexdump();
+	test_str_split();
 
 	return EXIT_SUCCESS;
 }
