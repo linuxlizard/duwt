@@ -72,7 +72,10 @@ static void dump_from_file(struct args* args)
 	DEFINE_DL_LIST(bss_list);
 
 	err = dumpfile_parse(args->dump_filename, &bss_list);
-	XASSERT(err==0, err);
+	if (err != 0) {
+		ERR("%s failed to parse \"%s\": %s\n", __func__, args->dump_filename, strerror(err));
+		return;
+	}
 
 	json_summary(&bss_list);
 	json_summary_list(&bss_list);
