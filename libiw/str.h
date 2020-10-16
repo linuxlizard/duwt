@@ -16,6 +16,7 @@ int str_escape(const char* src, size_t src_len, char* dst, size_t dst_len);
 int str_hexdump(const unsigned char* src, size_t src_len, char* dst, size_t dst_len);
 int str_split(char* src, size_t src_len, const char* spliton, char* ptrlist[], size_t* ptrlist_len);
 
+#define WHITESPACE " \t\n\r\x0b\x0c"
 
 #endif
 

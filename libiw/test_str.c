@@ -236,6 +236,49 @@ void test_str_split(void)
 	XASSERT(str_match(ptrlist[3], 4, "duwt", 4), 0);
 	XASSERT(str_match(ptrlist[4], 5, "build", 5), 0);
 	XASSERT(str_match(ptrlist[5], 2, "..", 2), 0);
+
+	strcpy(s,"");
+	ptrlist_size = ARRAY_SIZE(ptrlist);
+	err = str_split(s, strlen(s), "q", ptrlist, &ptrlist_size);
+	XASSERT(err==0, err);
+
+	strcpy(s, "           ");
+	ptrlist_size = ARRAY_SIZE(ptrlist);
+	err = str_split(s, strlen(s), " ", ptrlist, &ptrlist_size);
+	XASSERT(err==0, err);
+	XASSERT(ptrlist_size == 0, ptrlist_size);
+
+	static const char* notfound = "\
+<html>\n\
+<head>\n\
+	<title>Not Found</title>\n\
+</head>\n\
+<body>\n\
+	<p>Not Found.</p>\n\
+</html>\n\
+";
+
+	static const char* expect[] = {
+		"<html>",
+		"<head>",
+		"<title>Not",
+		"Found</title>",
+		"</head>",
+		"<body>",
+		"<p>Not",
+		"Found.</p>",
+		"</html>",
+	};
+
+	strncpy(s, notfound, sizeof(s));
+	ptrlist_size = ARRAY_SIZE(ptrlist);
+	err = str_split(s, strlen(s), WHITESPACE, ptrlist, &ptrlist_size);
+	XASSERT(err==0, err);
+	XASSERT(ptrlist_size == 9, ptrlist_size);;
+	for (size_t i=0 ; i<ptrlist_size ; i++) {
+		XASSERT(str_match(ptrlist[i], strlen(ptrlist[i]), expect[i], strlen(expect[i])), i);
+	}
+
 }
 
 int main(void)
