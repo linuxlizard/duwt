@@ -230,7 +230,7 @@ int bss_get_mode_str(const struct BSS* bss, char* s, size_t len)
 	// btw I'm using snprintf() so I can easily change the string to something
 	// more interesting without breaking existing src
 
-	DBG("%s band=%d\n", __func__, bss->band);
+//	DBG("%s band=%d\n", __func__, bss->band);
 
 	if (bss->band == NL80211_BAND_2GHZ) {
 		if (!ht_ie) {
