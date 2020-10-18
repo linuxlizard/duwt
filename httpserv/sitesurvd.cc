@@ -362,7 +362,7 @@ void get_survey_response(const BSSMap* bss_map, struct MHD_Response **p_response
 
 		json_t* jbss;
 
-		int err = bss_to_json(bss, &jbss);
+		int err = bss_to_json(bss, &jbss, 0);
 		// TODO error checking
 		(void)err;
 
@@ -441,7 +441,7 @@ void get_bssid_response(const char* bssid_str, ssize_t bssid_len, const BSSMap* 
 
 	if (bss) {
 		json_t* jbss;
-		int err = bss_to_json(bss, &jbss);
+		int err = bss_to_json(bss, &jbss, 0);
 		// TODO error checking
 		(void)err;
 
