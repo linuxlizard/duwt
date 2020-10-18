@@ -69,6 +69,8 @@ using KeyValueList = std::list<KeyValuePair>;
 //using MacAddr = std::array<std::byte,6>;
 using BSSMap = std::unordered_map<uint64_t, struct BSS*> ;
 
+int survd_debug = 0;
+
 static mimetypes mt;
 
 static const char* notfound = "\
@@ -93,6 +95,11 @@ struct netlink_socket_bundle
 	int nl80211_id;
 	int cb_err;
 	void* more_args;
+
+	// if we're already reading a CMD_GET_SCAN result, don't push another
+	// request for scan results.
+	// https://github.com/linuxlizard/duwt/issues/3
+	bool busy;
 };
 
 
@@ -101,6 +108,10 @@ static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 	// netlink callback on the NL80211_CMD_GET_SCAN message
 	INFO("%s\n", __func__);
 
+	if (survd_debug > 1) {
+		nl_msg_dump(msg, stdout);
+	}
+
 	struct netlink_socket_bundle* bun = (struct netlink_socket_bundle*)arg;
 	XASSERT(bun->cookie == BUNDLE_COOKIE, bun->cookie);
 
@@ -108,22 +119,27 @@ static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 	BSSMap* map = (BSSMap*)bun->more_args;
 
 	struct nlmsghdr *hdr = nlmsg_hdr(msg);
+	INFO("%s len=%" PRIu32 " type=%u flags=%u seq=%" PRIu32 " pid=%" PRIu32 "\n", __func__,
+			hdr->nlmsg_len, hdr->nlmsg_type, hdr->nlmsg_flags, 
+			hdr->nlmsg_seq, hdr->nlmsg_pid);
+
 	struct genlmsghdr* gnlh = (struct genlmsghdr*)nlmsg_data(hdr);
 
 	struct nlattr* tb_msg[NL80211_ATTR_MAX + 1];
-	nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+	int err = nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
 		  genlmsg_attrlen(gnlh, 0), NULL);
+	XASSERT(err==0, err);
 
 	peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
 
 	int ifidx = -1;
 	if (tb_msg[NL80211_ATTR_IFINDEX]) {
 		ifidx = nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
-		DBG("ifindex=%d\n", ifidx);
+		DBG("%s ifindex=%d\n", __func__, ifidx);
 	}
 
 	struct BSS* new_bss = nullptr;
-	int err = bss_from_nlattr(tb_msg, &new_bss);
+	err = bss_from_nlattr(tb_msg, &new_bss);
 	if (err) {
 		ERR("%s bss_from_nlattr failed err=%d\n", __func__, err);
 		goto fail;
@@ -156,11 +172,14 @@ fail:
 
 static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err, void *arg)
 {
-	// libnl callback
-	ERR("%s\n", __func__);
 	(void)nla;
-	(void)err;
-	(void)arg;
+
+	// libnl callback TODO better error decode
+	ERR("%s seq=%" PRIu32 " error=%d: %s\n", __func__, err->msg.nlmsg_seq, err->error, strerror(err->error));
+
+	struct netlink_socket_bundle* bun = (struct netlink_socket_bundle*)arg;
+	XASSERT(bun->cookie == BUNDLE_COOKIE, bun->cookie);
+	bun->busy = false;
 
 	return NL_STOP;
 }
@@ -170,10 +189,17 @@ static int finish_handler(struct nl_msg *msg, void *arg)
 	// libnl callback
 	DBG("%s\n", __func__);
 
+	if (survd_debug > 1) {
+		nl_msg_dump(msg, stdout);
+	}
+
 	(void)msg;
 
-	int *ret = (int *)arg;
-	*ret = 0;
+	struct netlink_socket_bundle* bun = (struct netlink_socket_bundle*)arg;
+	XASSERT(bun->cookie == BUNDLE_COOKIE, bun->cookie);
+	bun->cb_err = 0;
+	bun->busy = false;
+
 	return NL_SKIP;
 }
 
@@ -181,6 +207,11 @@ static int ack_handler(struct nl_msg *msg, void *arg)
 {
 	// libnl callback
 	DBG("%s\n", __func__);
+
+	if (survd_debug > 1) {
+		nl_msg_dump(msg, stdout);
+	}
+
 	(void)msg;
 
 	int *ret = (int*)(arg);
@@ -192,6 +223,11 @@ static int no_seq_check(struct nl_msg *msg, void *arg)
 {
 	// libnl callback
 	INFO("%s\n", __func__);
+
+	if (survd_debug > 1) {
+		nl_msg_dump(msg, stdout);
+	}
+
 	(void)msg;
 	(void)arg;
 
@@ -208,7 +244,9 @@ static int on_scan_event_valid_handler(struct nl_msg *msg, void *arg)
 
 //	hex_dump("msg", (const unsigned char *)msg, 128);
 
-//	nl_msg_dump(msg,stdout);
+	if (survd_debug > 1) {
+		nl_msg_dump(msg,stdout);
+	}
 
 	struct nlmsghdr *hdr = nlmsg_hdr(msg);
 
@@ -218,8 +256,13 @@ static int on_scan_event_valid_handler(struct nl_msg *msg, void *arg)
 	struct nlattr *tb_msg[NL80211_ATTR_MAX + 1];
 
 	struct genlmsghdr *gnlh = (struct genlmsghdr*)nlmsg_data(nlmsg_hdr(msg));
-	nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+	int err = nla_parse(tb_msg, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
 		  genlmsg_attrlen(gnlh, 0), NULL);
+	if (err) {
+		// TODO
+		XASSERT(0,err);
+	}
+
 
 	DBG("%s cmd=%d %s\n", __func__, (int)(gnlh->cmd), to_string_nl80211_commands((enum nl80211_commands)gnlh->cmd));
 
@@ -235,7 +278,7 @@ static int on_scan_event_valid_handler(struct nl_msg *msg, void *arg)
 	int ifidx = -1;
 	if (tb_msg[NL80211_ATTR_IFINDEX]) {
 		ifidx = nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
-		DBG("ifindex=%d\n", ifidx);
+		DBG("%s ifindex=%d\n", __func__, ifidx);
 	}
 
 	// if new scan results,
@@ -244,16 +287,30 @@ static int on_scan_event_valid_handler(struct nl_msg *msg, void *arg)
 		struct netlink_socket_bundle* scan_sock_bun = (struct netlink_socket_bundle*)bun->more_args;
 		XASSERT(scan_sock_bun->cookie == BUNDLE_COOKIE, scan_sock_bun->cookie);
 
-		struct nl_msg* new_msg = nlmsg_alloc();
+		// https://github.com/linuxlizard/duwt/issues/3  don't start another fetch while a fetch is already running
+		if (scan_sock_bun->busy) {
+			WARN("%s not starting a new NL80211_CMD_GET_SCAN while a get already running\n", __func__);
+		}
+		else {
+			struct nl_msg* new_msg = nlmsg_alloc();
+			XASSERT(new_msg,0);
 
-		genlmsg_put(new_msg, NL_AUTO_PORT, NL_AUTO_SEQ, 
-							scan_sock_bun->nl80211_id, 
-							0, 
-							NLM_F_DUMP, NL80211_CMD_GET_SCAN, 0);
-		nla_put_u32(new_msg, NL80211_ATTR_IFINDEX, ifidx);
-		int err = nl_send_auto(scan_sock_bun->nl_sock, new_msg);
-		if (err) {
-			// TODO
+			void* p = genlmsg_put(new_msg, NL_AUTO_PORT, NL_AUTO_SEQ, 
+								scan_sock_bun->nl80211_id, 
+								0, 
+								NLM_F_DUMP, NL80211_CMD_GET_SCAN, 0);
+			XASSERT(p,0);
+			nla_put_u32(new_msg, NL80211_ATTR_IFINDEX, ifidx);
+			int ret = nl_send_auto(scan_sock_bun->nl_sock, new_msg);
+			if (ret < 0) {
+				// TODO
+				XASSERT(0,ret);
+			}
+			if (survd_debug > 1) {
+				nl_msg_dump(new_msg, stdout);
+			}
+			DBG("%s sent NL80211_CMD_GET_SCAN bytes=%d\n", __func__, ret);
+			scan_sock_bun->busy = true;
 		}
 	}
 
@@ -617,25 +674,38 @@ int setup_scan_netlink_socket(struct netlink_socket_bundle* bun)
 
 	bun->cb = nl_cb_alloc(NL_CB_DEFAULT);
 
-	nl_cb_set(bun->cb, NL_CB_VALID, NL_CB_CUSTOM, scan_survey_valid_handler, (void*)bun);
-	nl_cb_err(bun->cb, NL_CB_CUSTOM, error_handler, (void*)&bun->cb_err);
-	nl_cb_set(bun->cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_handler, (void*)&bun->cb_err);
-	nl_cb_set(bun->cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, (void*)&bun->cb_err);
+	int err;
+	err = nl_cb_set(bun->cb, NL_CB_VALID, NL_CB_CUSTOM, scan_survey_valid_handler, (void*)bun);
+	XASSERT(err>=0,err);
+	err = nl_cb_err(bun->cb, NL_CB_CUSTOM, error_handler, (void*)bun);
+	XASSERT(err>=0,err);
+	err = nl_cb_set(bun->cb, NL_CB_FINISH, NL_CB_CUSTOM, finish_handler, (void*)bun);
+	XASSERT(err>=0,err);
+	err = nl_cb_set(bun->cb, NL_CB_ACK, NL_CB_CUSTOM, ack_handler, (void*)&bun->cb_err);
+	XASSERT(err>=0,err);
 
 	bun->nl_sock = nl_socket_alloc_cb(bun->cb);
-	int err = genl_connect(bun->nl_sock);
+	XASSERT(bun->nl_sock, 0);
+
+	err = genl_connect(bun->nl_sock);
 	if (err) {
 		// TODO
+		XASSERT(0,err);
 	}
 
 	bun->nl80211_id = genl_ctrl_resolve(bun->nl_sock, NL80211_GENL_NAME);
+	XASSERT(bun->nl80211_id >= 0, bun->nl80211_id);
+
 	bun->sock_fd = nl_socket_get_fd(bun->nl_sock);
+	XASSERT(bun->sock_fd >= 0, bun->sock_fd);
 
 	return 0;
 }
 
 int setup_scan_event_sock(struct netlink_socket_bundle* bun)
 {
+	int err;
+
 	memset(bun, 0, sizeof(struct netlink_socket_bundle));
 	bun->cookie = BUNDLE_COOKIE;
 	bun->name = "events";
@@ -643,23 +713,29 @@ int setup_scan_event_sock(struct netlink_socket_bundle* bun)
 	/* from iw event.c */
 	/* no sequence checking for multicast messages */
 	bun->cb = nl_cb_alloc(NL_CB_DEFAULT);
-	nl_cb_set(bun->cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
-	nl_cb_set(bun->cb, NL_CB_VALID, NL_CB_CUSTOM, on_scan_event_valid_handler, (void*)bun);
+	err = nl_cb_set(bun->cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, no_seq_check, NULL);
+	XASSERT(err>=0,err);
+	err = nl_cb_set(bun->cb, NL_CB_VALID, NL_CB_CUSTOM, on_scan_event_valid_handler, (void*)bun);
+	XASSERT(err>=0,err);
 
 	bun->nl_sock = nl_socket_alloc_cb(bun->cb);
-	int err = genl_connect(bun->nl_sock);
+	err = genl_connect(bun->nl_sock);
 	DBG("genl_connect err=%d\n", err);
 	if (err) {
 		// TODO
+		XASSERT(0,err);
 	}
 
 	bun->nl80211_id = genl_ctrl_resolve(bun->nl_sock, NL80211_GENL_NAME);
+	XASSERT(bun->nl80211_id >= 0, bun->nl80211_id);
 
 	int mcid = get_multicast_id(bun->nl_sock, "nl80211", "scan");
 	DBG("mcid=%d\n", mcid);
-	nl_socket_add_membership(bun->nl_sock, mcid);
+	err = nl_socket_add_membership(bun->nl_sock, mcid);
+	XASSERT(err >=0, err);
 
 	bun->sock_fd = nl_socket_get_fd(bun->nl_sock);
+	XASSERT(bun->sock_fd >= 0, bun->sock_fd);
 
 	return 0;
 }
@@ -670,8 +746,10 @@ static int netlink_read(struct netlink_socket_bundle* bun)
 	do {
 		int err = nl_recvmsgs(bun->nl_sock, bun->cb);
 		DBG("%s err=%d cb_err=%d\n", __func__, err, bun->cb_err);
-		if (err) {
+		if (err < 0) {
 			// TODO
+			ERR("%s on %s err=%d: %s\n", __func__, bun->name, err, nl_geterror(err));
+			break;
 		}
 	} while (bun->cb_err > 0);
 
@@ -703,12 +781,14 @@ int main(int argc, char* argv[])
 	err = setup_scan_event_sock(&scan_event_watcher);
 	if (err) {
 		// TODO
+		XASSERT(0,err);
 	}
 
 	struct netlink_socket_bundle scan_results_watcher;
 	err = setup_scan_netlink_socket(&scan_results_watcher);
 	if (err) {
 		// TODO
+		XASSERT(0,err);
 	}
 
 	// attach the scan results watcher to the scan event watcher so we can call
@@ -730,6 +810,7 @@ int main(int argc, char* argv[])
 								&except_fd_set,
 								&max_fd);
 		XASSERT(err==MHD_YES, err);
+		printf("max_fd=%d event=%d results=%d\n", max_fd, scan_event_watcher.sock_fd, scan_results_watcher.sock_fd);
 		FD_SET(scan_event_watcher.sock_fd, &read_fd_set);
 		FD_SET(scan_results_watcher.sock_fd, &read_fd_set);
 
@@ -747,14 +828,19 @@ int main(int argc, char* argv[])
 		}
 
 		if (FD_ISSET(scan_event_watcher.sock_fd, &read_fd_set)) {
+			printf("%s %d event=%d\n", __func__, __LINE__, scan_event_watcher.sock_fd);
 			scan_event_watcher.cb_err = 0;
 			err = netlink_read(&scan_event_watcher);
+			// TODO handle error
+			XASSERT(err==0, err);
 		}
 
 		if (FD_ISSET(scan_results_watcher.sock_fd, &read_fd_set)) {
+			printf("%s %d result=%d\n", __func__, __LINE__, scan_results_watcher.sock_fd);
 			scan_results_watcher.cb_err = 1;
 			err = netlink_read(&scan_results_watcher);
-
+			// TODO handle error
+			XASSERT(err==0, err);
 		}
 
 		err = MHD_run_from_select(daemon, &read_fd_set,

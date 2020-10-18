@@ -19,6 +19,13 @@ message("jansson found=${jansson_FOUND} include=${jansson_INCLUDE_DIRS} ldflags=
 pkg_check_modules(libnl REQUIRED libnl-3.0)
 pkg_check_modules(libnl_genl REQUIRED libnl-genl-3.0)
 
+# For debugging, aim at my own libnl build.  Requires setting LD_LIBRARY_PATH
+# before running.
+#set(libnl_INCLUDE_DIRS -I/home/dpoole/libnl/include/libnl3)
+#set(libnl_LDFLAGS "-L/home/dpoole/libnl/lib -lnl-3")
+#set(libnl_genl_LDFLAGS "-L/home/dpoole/libnl/lib -lnl-genl-3")
+#message("${libnl_INCLUDE_DIRS} ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS}")
+
 add_executable(sitesurvd sitesurvd.cc )
 target_link_libraries(sitesurvd ${MHTTPD})
 target_link_libraries(sitesurvd iw)
