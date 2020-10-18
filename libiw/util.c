@@ -192,7 +192,7 @@ int erp_to_str(const struct IE_ERP* sie, char* s, size_t len)
  *
  * Max AMPDU length = (2 ^ (13 + exponent)) - 1 bytes
  */
-static uint32_t compute_ampdu_length(uint8_t exponent)
+uint32_t ht_ampdu_compute_length(uint8_t exponent)
 {
 	switch (exponent) {
 	case 0: return 8191;  /* (2 ^(13 + 0)) -1 */
@@ -208,7 +208,7 @@ int ht_ampdu_length_to_str(uint8_t exponent, char* s, size_t len)
 	// iw util.c print_ampdu_length()
 	uint32_t max_ampdu_length;
 
-	max_ampdu_length = compute_ampdu_length(exponent);
+	max_ampdu_length = ht_ampdu_compute_length(exponent);
 
 	if (max_ampdu_length) {
 		return snprintf(s, len, "Maximum RX AMPDU length %d bytes (exponent: 0x0%02x)",
@@ -231,6 +231,28 @@ const char* ht_max_amsdu_str(uint8_t max_amsdu)
 	}
 
 	return amsdu_str[max_amsdu];
+}
+
+int ht_ampdu_spacing_to_ns(uint8_t spacing)
+{
+	// standard gives in microseconds but let's avoid float
+	static const int spacing_ns[] = {
+		0, 250, 500, 1000, 2000, 4000, 8000, 16000 };
+
+//		"No restriction",
+//		"1/4 usec",
+//		"1/2 usec",
+//		"1 usec",
+//		"2 usec",
+//		"4 usec",
+//		"8 usec",
+//		"16 usec",
+
+	if (spacing > 7) {
+		return -EINVAL;
+	}
+
+	return spacing_ns[spacing];
 }
 
 // iw util.c print_ampdu_spacing()

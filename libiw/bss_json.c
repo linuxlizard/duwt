@@ -18,13 +18,13 @@
 #include "bss.h"
 #include "bss_json.h"
 
-struct json_key_value
+struct key_value
 {
 	char* key;
 	json_t* value;
 };
 
-static int transaction_add(json_t* jobj, struct json_key_value* kvp_list, size_t len)
+static int transaction_add(json_t* jobj, struct key_value* kvp_list, size_t len)
 {
 	// fn to add all or nothing key/value pairs to an object .
 	// If any add fails, then all the same keys are removed.
@@ -49,6 +49,16 @@ static int transaction_add(json_t* jobj, struct json_key_value* kvp_list, size_t
 		return -ENOMEM;
 	}
 	return 0;
+}
+
+static void kvp_list_decref(struct key_value kvp_list[], size_t kvp_list_len)
+{
+	// called when a transaction_add() fails to release all the values in the kvp list
+	for (size_t i=0 ; i< kvp_list_len ; i++ ) {
+		if (kvp_list[i].value) {
+			json_decref(kvp_list[i].value);
+		}
+	}
 }
 
 int bss_to_json_summary(const struct BSS* bss, json_t** p_jbss)
@@ -178,7 +188,7 @@ static int ie_tim_to_json(const struct IE* ie, json_t* jie)
 	int ret = str_hexdump(ie->buf, ie->len-3, bitmap_hex, sizeof(bitmap_hex));
 	XASSERT(ret > 0, ret);
 
-	struct json_key_value kvp_list[] = {
+	struct key_value kvp_list[] = {
 		{ "count", json_integer(sie->dtim_count) },
 		{ "period", json_integer(sie->dtim_period) },
 		{ "control", json_integer(sie->control) },
@@ -187,10 +197,14 @@ static int ie_tim_to_json(const struct IE* ie, json_t* jie)
 
 	err = transaction_add( jie, kvp_list, 4);
 	if (err) {
-		return err;
+		goto fail;
 	}
 
 	return 0;
+fail:
+	kvp_list_decref(kvp_list, ARRAY_SIZE(kvp_list));
+
+	return err;
 }
 
 static int jarray_append_if_true(bool cond, json_t* jlist, const char* name)
@@ -220,9 +234,14 @@ static int ie_ht_capa_to_json(const struct IE* ie, json_t* jie)
 		return -ENOMEM;
 	}
 
+	int err = -ENOMEM;
 	if (jarray_append_if_true(sie->LDPC_coding_capa, jlist, "RX LDPC") < 0) goto fail;
 	if (jarray_append_if_true(sie->supported_channel_width, jlist, "HT20/HT40") < 0) goto fail;
 	if (jarray_append_if_true(!sie->supported_channel_width, jlist, "HT20") < 0) goto fail;
+
+	if (jarray_append_if_true(sie->SM_power_save == 0, jlist, "Static SM Power Save") < 0) goto fail;
+	if (jarray_append_if_true(sie->SM_power_save == 1, jlist, "Dynamic SM Power Save") < 0) goto fail;
+	if (jarray_append_if_true(sie->SM_power_save == 3, jlist, "SM Power Save disabled") < 0) goto fail;
 
 	if (jarray_append_if_true(sie->greenfield, jlist, "RX Greenfield") < 0) goto fail;
 	if (jarray_append_if_true(sie->short_gi_20Mhz, jlist, "RX HT20 SGI") < 0) goto fail;
@@ -239,15 +258,46 @@ static int ie_ht_capa_to_json(const struct IE* ie, json_t* jie)
 	if (jarray_append_if_true(!sie->max_amsdu_len, jlist, "Max AMSDU length: 3839 bytes") < 0) goto fail;
 	if (jarray_append_if_true(sie->max_amsdu_len, jlist, "Max AMSDU length: 7935 bytes") < 0) goto fail;
 
-	if (json_object_set_new(jie, "capabilities", jlist) < 0) goto fail;
+	/*
+	 * For beacons and probe response this would mean the BSS
+	 * does or does not allow the usage of DSSS/CCK HT40.
+	 * Otherwise it means the STA does or does not use
+	 * DSSS/CCK HT40.
+	 */
+	if (jarray_append_if_true(sie->dsss_cck_in_40Mhz, jlist, "DSSS/CCK HT40") < 0) goto fail;
+	if (jarray_append_if_true(!sie->dsss_cck_in_40Mhz, jlist, "No DSSS/CCK HT40") < 0) goto fail;
+	/* BIT(13) is reserved */
+	if (jarray_append_if_true(sie->_40Mhz_intolerant, jlist, "40 MHz Intolerant") < 0) goto fail;
+	if (jarray_append_if_true(sie->lsig_txop_prot, jlist, "L-SIG TXOP protection") < 0) goto fail;
 
+//	char ampdu_len[128];
+//	int ret = ht_ampdu_length_to_str(sie->max_ampdu_len, ampdu_len, sizeof(ampdu_len));
+//	XASSERT((size_t)ret<sizeof(ampdu_len), ret);
+
+//	char ampdu_spacing[128];
+//	int ret = ht_ampdu_spacing_to_str(sie->min_ampdu_spacing, ampdu_spacing, sizeof(ampdu_spacing));
+//	XASSERT((size_t)ret<sizeof(ampdu_spacing), ret);
+
+	// TODO MCS 
+
+	struct key_value kvp_list[] = {
+		{ "capabilities", jlist },
+		{ "Maximum RX AMPDU length", json_integer(ht_ampdu_compute_length(sie->max_ampdu_len))},
+		{ "Maximum RX AMPDU time spacing (ns)", json_integer(ht_ampdu_spacing_to_ns(sie->min_ampdu_spacing))},
+	};
+
+	err = transaction_add( jie, kvp_list, ARRAY_SIZE(kvp_list));
+	if (err) {
+		goto fail;
+	}
 
 	return 0;
 fail:
 	if (jlist) {
 		json_decref(jlist);
 	}
-	return -ENOMEM;
+	kvp_list_decref(kvp_list, ARRAY_SIZE(kvp_list));
+	return err;
 }
 
 static int ie_rsn_to_json(const struct IE* ie, json_t* jie)
@@ -336,7 +386,7 @@ static int ie_rsn_to_json(const struct IE* ie, json_t* jie)
 	}
 
 	// store all our calculated stuff in the object
-	struct json_key_value kvp_list[] = {
+	struct key_value kvp_list[] = {
 		{ "version", jversion },
 		{ "group", jgroup_cipher},
 		{ "pairwise", jpairwise_cipher_list},
@@ -387,35 +437,6 @@ static int ie_body_to_json(const struct IE* ie, json_t* jie)
 		}
 	}
 	return -ENOENT;
-
-#if 0
-	switch (ie->id) {
-		case IE_SUPPORTED_RATES:
-			ie_supported_rates_to_json(ie, jie);
-			break;
-
-		case IE_TIM:
-			ie_tim_to_json(ie, jie);
-			break;
-
-		case IE_HT_CAPABILITIES:
-//			ie_ht_capa_to_json(ie, jie);
-			break;
-
-		case IE_RSN:
-			ie_rsn_to_json(ie, jie);
-			break;
-
-//		case IE_EXTENDED_CAPABILITIES:
-//			ie_extended_capabilities_to_json(ie, jie);
-//			break;
-
-		default:
-			break;
-	}
-
-	return 0;
-#endif
 }
 
 static int ie_to_json(const struct IE* ie, json_t** p_jie, unsigned int flags)
