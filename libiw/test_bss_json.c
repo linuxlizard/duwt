@@ -31,7 +31,7 @@ static void json_summary(struct dl_list* bss_list)
 static void json_summary_list(struct dl_list* bss_list)
 {
 	json_t* jarray;
-	int err = bss_list_to_json(bss_list, &jarray, bss_json_summary);
+	int err = bss_list_to_json_summary(bss_list, &jarray);
 	XASSERT(err==0, err);
 	char* s = json_dumps(jarray, 0);
 	printf("%s\n", s);
@@ -42,7 +42,7 @@ static void json_summary_list(struct dl_list* bss_list)
 static void json_full_list(struct dl_list* bss_list)
 {
 	json_t* jarray;
-	int err = bss_list_to_json(bss_list, &jarray, bss_json_summary);
+	int err = bss_list_to_json(bss_list, &jarray, 0);
 	XASSERT(err==0, err);
 	char* s = json_dumps(jarray, 0);
 	printf("%s\n", s);
@@ -56,7 +56,7 @@ static void json_full(struct dl_list* bss_list)
 
 	dl_list_for_each(bss, bss_list, struct BSS, node) {
 		json_t* jbss;
-		int err = bss_to_json(bss, &jbss);
+		int err = bss_to_json(bss, &jbss, 0);
 		XASSERT(err==0, err);
 		char* s = json_dumps(jbss, 0);
 		printf("%s\n", s);

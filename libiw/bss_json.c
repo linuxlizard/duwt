@@ -193,18 +193,62 @@ static int ie_tim_to_json(const struct IE* ie, json_t* jie)
 	return 0;
 }
 
-#if 0
-static int ie_extended_capabilities_to_json(const struct IE* ie, json_t* jie)
+static int jarray_append_if_true(bool cond, json_t* jlist, const char* name)
 {
-	int err, ret;
-	char s[128];
-
-	const struct IE_Extended_Capabilities* sie = IE_CAST(ie, const struct IE_Extended_Capabilities);
-
-	// TODO  so. many. flags. 
+	// add a true/false value to an array if the condition is true
+	// (created to build a string list of only enabled capabilities)
+	if (cond) {
+		json_t* jval;
+		jval = json_string_nocheck(name);
+		if (!jval) {
+			return -ENOMEM;
+		}
+		if (json_array_append_new(jlist, jval) < 0) {
+			json_decref(jval);
+			return -ENOMEM;
+		}
+	}
 	return 0;
 }
-#endif
+
+static int ie_ht_capa_to_json(const struct IE* ie, json_t* jie)
+{
+	const struct IE_HT_Capabilities* sie = IE_CAST(ie, const struct IE_HT_Capabilities);
+
+	json_t* jlist = json_array();
+	if (!jlist) {
+		return -ENOMEM;
+	}
+
+	if (jarray_append_if_true(sie->LDPC_coding_capa, jlist, "RX LDPC") < 0) goto fail;
+	if (jarray_append_if_true(sie->supported_channel_width, jlist, "HT20/HT40") < 0) goto fail;
+	if (jarray_append_if_true(!sie->supported_channel_width, jlist, "HT20") < 0) goto fail;
+
+	if (jarray_append_if_true(sie->greenfield, jlist, "RX Greenfield") < 0) goto fail;
+	if (jarray_append_if_true(sie->short_gi_20Mhz, jlist, "RX HT20 SGI") < 0) goto fail;
+	if (jarray_append_if_true(sie->short_gi_40Mhz, jlist, "RX HT40 SGI") < 0) goto fail;
+	if (jarray_append_if_true(sie->tx_stbc, jlist, "TX STBC") < 0) goto fail;
+
+	if (jarray_append_if_true(sie->rx_stbc == 0, jlist, "No RX STBC") < 0) goto fail;
+	if (jarray_append_if_true(sie->rx_stbc == 1, jlist, "RX STBC 1-stream") < 0) goto fail;
+	if (jarray_append_if_true(sie->rx_stbc == 2, jlist, "RX STBC 2-streams") < 0) goto fail;
+	if (jarray_append_if_true(sie->rx_stbc == 3, jlist, "RX STBC 3-streams") < 0) goto fail;
+
+	if (jarray_append_if_true(sie->delayed_block_ack, jlist, "HT Delayed Block Ack") < 0) goto fail;
+
+	if (jarray_append_if_true(!sie->max_amsdu_len, jlist, "Max AMSDU length: 3839 bytes") < 0) goto fail;
+	if (jarray_append_if_true(sie->max_amsdu_len, jlist, "Max AMSDU length: 7935 bytes") < 0) goto fail;
+
+	if (json_object_set_new(jie, "capabilities", jlist) < 0) goto fail;
+
+
+	return 0;
+fail:
+	if (jlist) {
+		json_decref(jlist);
+	}
+	return -ENOMEM;
+}
 
 static int ie_rsn_to_json(const struct IE* ie, json_t* jie)
 {
@@ -327,6 +371,24 @@ fail:
 
 static int ie_body_to_json(const struct IE* ie, json_t* jie)
 {
+	struct {
+		IE_ID id;
+		int (*fn)(const struct IE* ie, json_t* jie);
+	} encode [] = {
+		{ IE_SUPPORTED_RATES, ie_supported_rates_to_json },
+		{ IE_TIM, ie_tim_to_json },
+		{ IE_HT_CAPABILITIES, ie_ht_capa_to_json },
+		{ IE_RSN, ie_rsn_to_json },
+	};
+
+	for (size_t i=0 ; i<ARRAY_SIZE(encode) ; i++ ) {
+		if (encode[i].id == ie->id) {
+			return encode[i].fn(ie, jie);
+		}
+	}
+	return -ENOENT;
+
+#if 0
 	switch (ie->id) {
 		case IE_SUPPORTED_RATES:
 			ie_supported_rates_to_json(ie, jie);
@@ -334,6 +396,10 @@ static int ie_body_to_json(const struct IE* ie, json_t* jie)
 
 		case IE_TIM:
 			ie_tim_to_json(ie, jie);
+			break;
+
+		case IE_HT_CAPABILITIES:
+//			ie_ht_capa_to_json(ie, jie);
 			break;
 
 		case IE_RSN:
@@ -349,9 +415,10 @@ static int ie_body_to_json(const struct IE* ie, json_t* jie)
 	}
 
 	return 0;
+#endif
 }
 
-static int ie_to_json(const struct IE* ie, json_t** p_jie)
+static int ie_to_json(const struct IE* ie, json_t** p_jie, unsigned int flags)
 {
 	// each byte becomes two characters plus one for null
 	char* hexdump = NULL;
@@ -389,13 +456,15 @@ static int ie_to_json(const struct IE* ie, json_t** p_jie)
 		return -ENOMEM;
 	}
 
-	ie_body_to_json(ie, jie);
+	if (!(flags & BSS_JSON_SHORT_IE_DECODE)) {
+		ie_body_to_json(ie, jie);
+	}
 
 	PTR_ASSIGN(*p_jie, jie);
 	return 0;
 }
 
-int bss_to_json(const struct BSS* bss, json_t** p_jbss)
+int bss_to_json(const struct BSS* bss, json_t** p_jbss, unsigned int flags)
 {
 	*p_jbss = NULL;
 
@@ -415,7 +484,7 @@ int bss_to_json(const struct BSS* bss, json_t** p_jbss)
 	const struct IE* ie;
 	ie_list_for_each_entry(ie, bss->ie_list) {
 		json_t* jie;
-		err = ie_to_json(ie, &jie);
+		err = ie_to_json(ie, &jie, flags);
 		if (err) {
 			// skip this and continue
 			WARN("%s bss=%s ie=%d encode failed (continuing)\n", 
@@ -453,7 +522,7 @@ fail:
 	return err;
 }
 
-int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray, enum bss_json_encode bss_encode)
+static int _bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray, bool summary, unsigned int flags) 
 {
 	int err = 0;
 	json_t* jarray = NULL; // array of bss
@@ -467,11 +536,12 @@ int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray, enum bss_json_
 
 	struct BSS* bss;
 	dl_list_for_each(bss, bss_list, struct BSS, node) {
-		if (bss_encode == bss_json_summary) {
+		if (summary) {
 			err = bss_to_json_summary(bss, &jbss);
 		} 
 		else {
-			err = bss_to_json(bss, &jbss);
+			// all the things!
+			err = bss_to_json(bss, &jbss, flags);
 		}
 		if (err) {
 			ERR("%s failed get bss json err=%d", __func__, err);
@@ -497,5 +567,15 @@ fail:
 	}
 
 	return err;
+}
+
+int bss_list_to_json_summary(struct dl_list* bss_list, json_t** p_jarray)
+{
+	return _bss_list_to_json(bss_list, p_jarray, true, 0);
+}
+
+int bss_list_to_json(struct dl_list* bss_list, json_t** p_jarray, unsigned int flags)
+{
+	return _bss_list_to_json(bss_list, p_jarray, false, flags);
 }
 
