@@ -215,11 +215,10 @@ static int ie_rsn_to_json(const struct IE* ie, json_t* jie)
 
 	json_t* jversion = json_integer(sie->version);
 	json_t* jpairwise_cipher_list = json_array();
-	json_t* jgroup_cipher = json_string(s);
 	json_t* jakm_suite_list = json_array();
 	json_t* jcapa_list = json_array();
 
-	if (!jversion || !jpairwise_cipher_list || !jgroup_cipher || !jakm_suite_list || !jcapa_list) {
+	if (!jversion || !jpairwise_cipher_list || !jakm_suite_list || !jcapa_list) {
 		err = -ENOMEM;
 		goto fail;
 	}
@@ -227,6 +226,11 @@ static int ie_rsn_to_json(const struct IE* ie, json_t* jie)
 	// Group Cipher (single string)
 	ret = cipher_suite_to_str(sie->group_data, s, sizeof(s));
 	XASSERT((size_t)ret<sizeof(s), ret);
+	json_t* jgroup_cipher = json_string(s);
+	if (!jgroup_cipher) {
+		err = -ENOMEM;
+		goto fail;
+	}
 
 	// Pairwise Ciphers (Array) 
 	for (size_t i=0 ; i<sie->pairwise_cipher_count ; i++) {
