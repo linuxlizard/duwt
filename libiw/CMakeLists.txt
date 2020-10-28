@@ -61,6 +61,10 @@ add_executable(iw-link iw-link.c)
 target_include_directories(iw-link PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
 target_link_libraries(iw-link iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
 
+add_executable(iw-dev iw-dev.c)
+target_include_directories(iw-dev PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
+target_link_libraries(iw-dev iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
+
 add_executable(dumpfile-to-json dumpfile-to-json.c)
 target_include_directories(dumpfile-to-json PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
 target_link_libraries(dumpfile-to-json iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
