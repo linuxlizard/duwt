@@ -85,8 +85,12 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 	peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
 
 	uint32_t phy_id;
+	uint64_t wdev;
+	enum nl80211_iftype iftype;
 	int ifindex;
 	char ifname[IF_NAMESIZE+1];
+	uint8_t bssid[ETH_ALEN];
+
 	if (tb_msg[NL80211_ATTR_WIPHY]) {
 		phy_id = nla_get_u32(tb_msg[NL80211_ATTR_WIPHY]);
 		printf("phy_id=%u\n", phy_id);
@@ -96,6 +100,28 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 		ifindex = (int)nla_get_u32(tb_msg[NL80211_ATTR_IFINDEX]);
 		printf("ifindex=%d %s\n", ifindex, if_indextoname(ifindex, ifname));
 	}
+
+	if (tb_msg[NL80211_ATTR_IFNAME]) {
+		memset(ifname,0,sizeof(ifname));
+		strncpy(ifname, nla_get_string(tb_msg[NL80211_ATTR_IFNAME]), IF_NAMESIZE);
+		printf("ifname=%s\n", ifname);
+	}
+
+	if (tb_msg[NL80211_ATTR_MAC]) {
+		memcpy(bssid, nla_data(tb_msg[NL80211_ATTR_MAC]), ETH_ALEN);
+		printf("bssid=" MAC_ADD_FMT "\n", MAC_ADD_PRN(bssid));
+	}
+
+	if (tb_msg[NL80211_ATTR_WDEV]) {
+		wdev = nla_get_u64(tb_msg[NL80211_ATTR_WDEV]);
+		printf("wdev=%" PRIu64 "\n", wdev);
+	}
+
+	if (tb_msg[NL80211_ATTR_IFTYPE]) {
+		iftype = nla_get_u32(tb_msg[NL80211_ATTR_IFTYPE]);
+		printf("type=%" PRIu32 "\n", iftype);
+	}
+
 	return NL_OK;
 fail:
 	return NL_SKIP;
@@ -189,6 +215,9 @@ int main(void)
 	DBG("cleanup!\n");
 	nl_cb_put(conn.cb);
 	nl_socket_free(conn.sock);
+	if (msg) {
+		nlmsg_free(msg);
+	}
 
 	return ret;
 }
