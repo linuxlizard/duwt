@@ -1,8 +1,11 @@
 cmake_minimum_required(VERSION 3.10.0)
 
 find_package(PkgConfig)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+enable_testing()
+enable_language(C)
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wshadow -pedantic")
 
 # add microhttpd for the server side but let it be optional for now
 #find_package(microhttpd QUIET)
@@ -26,10 +29,13 @@ pkg_check_modules(libnl_genl REQUIRED libnl-genl-3.0)
 #set(libnl_genl_LDFLAGS "-L/home/dpoole/libnl/lib -lnl-genl-3")
 #message("${libnl_INCLUDE_DIRS} ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS}")
 
-add_executable(sitesurvd sitesurvd.cc )
+# openssl
+pkg_check_modules(ssl REQUIRED openssl)
+message("ssl found=${ssl_FOUND} include=${ssl_INCLUDE_DIRS} ldflags=${ssl_LDFLAGS}" )
+
+add_executable(sitesurvd sitesurvd.c bytebuf.c)
 target_link_libraries(sitesurvd ${MHTTPD})
 target_link_libraries(sitesurvd iw)
-target_link_libraries(sitesurvd stdc++fs)
 target_include_directories(sitesurvd PUBLIC ${libnl_INCLUDE_DIRS})
 target_include_directories(sitesurvd PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../libiw)
 target_include_directories(sitesurvd PUBLIC ../include)
@@ -37,3 +43,17 @@ target_link_libraries(sitesurvd ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 target_link_libraries(sitesurvd duwt)
 target_link_libraries(sitesurvd jansson)
 
+foreach(test IN ITEMS test_bytebuf)
+	message("test=${test}")
+	# strip the "test_" from the test name to get the src we're trying to test
+	string(REPLACE "test_" "" test_target ${test})
+	message("test_target=${test_target}")
+	add_executable(${test} ${test}.c ${test_target}.c)
+	target_include_directories(${test} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../libiw)
+	target_include_directories(${test} PUBLIC ${libnl_INCLUDE_DIRS} ${libnl_genl_INCLUDE_DIRS})
+	target_link_libraries(${test} iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
+	target_link_libraries(${test} jansson)
+	target_link_libraries(${test} ${ssl_LDFLAGS})
+endforeach()
+
+add_test(NAME test_bytebuf COMMAND test_bytebuf)

@@ -1,5 +1,11 @@
-// started from https://www.gnu.org/software/libmicrohttpd/tutorial.html
-// davep 20191227
+/*
+ * web api for retrieving wifi scan data
+ *
+ * started from https://www.gnu.org/software/libmicrohttpd/tutorial.html
+ * davep 20191227
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -13,6 +19,7 @@
 #include <arpa/inet.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <search.h>
 
 // netlink
 #include <linux/if_ether.h>
@@ -24,31 +31,9 @@
 
 #include <microhttpd.h>
 
-#include <iostream>
-#include <fstream>
-#include <cstddef>
-#include <algorithm>
-#include <utility>
-#include <list>
-#include <unordered_map>
-#include <vector>
-
 // microhttpd switched to enums after this point
 #if MHD_VERSION <= 0x00097000
 typedef int MHD_Result;
-#endif
-
-// https://en.cppreference.com/w/cpp/feature_test
-#ifdef __has_include
-#  if __has_include(<filesystem>)
-#    include <filesystem>  // gcc8 (Fedora29+)
-     namespace fs = std::filesystem;
-#  elif __has_include(<experimental/filesystem>)
-#    include <experimental/filesystem> // gcc7 (Ubuntu 18.04)
-     namespace fs = std::experimental::filesystem;
-#  endif
-#else
-#error no __has_include
 #endif
 
 #include "core.h"
@@ -57,21 +42,15 @@ typedef int MHD_Result;
 #include "nlnames.h"
 #include "hdump.h"
 #include "ie.h"
-#include "mimetypes.h"
+//#include "mimetypes.h"
 #include "args.h"
 #include "bss_json.h"
+#include "bytebuf.h"
 
 #define PORT 8081
 //#define PORT 8888
 
-using KeyValuePair = std::pair<const char*,const char*>;
-using KeyValueList = std::list<KeyValuePair>;
-//using MacAddr = std::array<std::byte,6>;
-using BSSMap = std::unordered_map<uint64_t, struct BSS*> ;
-
 int survd_debug = 0;
-
-static mimetypes mt;
 
 static const char* notfound = "\
 <html>\n\
@@ -82,6 +61,14 @@ static const char* notfound = "\
 <p>Not Found.</p>\n\
 </html>\n\
 ";
+
+// storage for the glibc binary tree data structure 
+// "tsearch, tfind, tdelete, twalk, tdestroy - manage a binary search tree  "
+typedef struct 
+{
+	size_t count;
+	void* root;
+} BSSMap;
 
 #define BUNDLE_COOKIE 0x01448f44
 struct netlink_socket_bundle 
@@ -102,10 +89,40 @@ struct netlink_socket_bundle
 	bool busy;
 };
 
+// tsearch() callback
+static int bss_compare(const void* p1, const void* p2)
+{
+	struct BSS* bss_one = (struct BSS*)p1;
+	struct BSS* bss_two = (struct BSS*)p2;
 
+	XASSERT(bss_one->cookie == BSS_COOKIE, 0);
+	XASSERT(bss_two->cookie == BSS_COOKIE, 0);
+
+	printf("compare %s to %s\n", bss_one->bssid_str, bss_two->bssid_str);
+
+	// TODO switch to 64-bit encapsulation of the 6-byte bssid?
+	return strcmp(bss_one->bssid_str, bss_two->bssid_str);
+}
+
+// twalk() callback
+static void bss_print(const void* nodep, const VISIT which, const int depth)
+{
+	struct BSS* bss = *(struct BSS**)nodep;
+
+	if (which==postorder || which==leaf) {
+		printf("%s %s", __func__, bss->bssid_str);
+		ssid_print(bss, stdout, 32, "\n");
+	}
+}
+
+static void bss_map_dump(const BSSMap* bss_map)
+{
+	twalk(bss_map->root, bss_print);
+}
+
+// netlink callback on the NL80211_CMD_GET_SCAN message
 static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 {
-	// netlink callback on the NL80211_CMD_GET_SCAN message
 	INFO("%s\n", __func__);
 
 	if (survd_debug > 1) {
@@ -138,7 +155,7 @@ static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 		DBG("%s ifindex=%d\n", __func__, ifidx);
 	}
 
-	struct BSS* new_bss = nullptr;
+	struct BSS* new_bss = NULL;
 	err = bss_from_nlattr(tb_msg, &new_bss);
 	if (err) {
 		ERR("%s bss_from_nlattr failed err=%d\n", __func__, err);
@@ -146,21 +163,27 @@ static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 	}
 	else {
 		uint64_t key = BSSID_U64(new_bss->bssid);
+		(void)key;
 
-		auto value = map->find(key);
-
-		// if the bss is already found, we need to release the memory before we
-		// replace it with the new version
-		if (value != map->end()) {
-			INFO("%s key %" PRIx64 " exists and will be replaced\n", __func__, key);
-
-			struct BSS* bss = (*value).second;
+		// find tree entry with matching bssid
+		void* p = tfind((void*)new_bss, &map->root, bss_compare);
+		if (p) {
+			// item found ; release the memory
+			struct BSS* bss = *(struct BSS**)p;
 			XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
+			tdelete(bss, &map->root, bss_compare);
+			DBG("%s free %p\n", __func__, (void*)bss);
 			bss_free(&bss);
 		}
-		(*map)[key] = new_bss;
+		else { 
+			// not found ; this is new 
+			// so increment our count
+			map->count++;
+		}
 
-		XASSERT( map->at(key)->cookie == BSS_COOKIE, 0);
+		// add it
+		p = tsearch((void*)new_bss, &map->root, bss_compare);
+
 	}
 
 	DBG("%s success\n", __func__);
@@ -170,11 +193,12 @@ fail:
 	return NL_SKIP;
 }
 
+// libnl callback 
 static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err, void *arg)
 {
 	(void)nla;
 
-	// libnl callback TODO better error decode
+	// TODO better error decode
 	ERR("%s seq=%" PRIu32 " error=%d: %s\n", __func__, err->msg.nlmsg_seq, err->error, strerror(err->error));
 
 	struct netlink_socket_bundle* bun = (struct netlink_socket_bundle*)arg;
@@ -184,9 +208,9 @@ static int error_handler(struct sockaddr_nl *nla, struct nlmsgerr *err, void *ar
 	return NL_STOP;
 }
 
+// libnl callback
 static int finish_handler(struct nl_msg *msg, void *arg)
 {
-	// libnl callback
 	DBG("%s\n", __func__);
 
 	if (survd_debug > 1) {
@@ -203,9 +227,9 @@ static int finish_handler(struct nl_msg *msg, void *arg)
 	return NL_SKIP;
 }
 
+// libnl callback
 static int ack_handler(struct nl_msg *msg, void *arg)
 {
-	// libnl callback
 	DBG("%s\n", __func__);
 
 	if (survd_debug > 1) {
@@ -219,9 +243,9 @@ static int ack_handler(struct nl_msg *msg, void *arg)
 	return NL_STOP;
 }
 
+// libnl callback
 static int no_seq_check(struct nl_msg *msg, void *arg)
 {
-	// libnl callback
 	INFO("%s\n", __func__);
 
 	if (survd_debug > 1) {
@@ -234,9 +258,9 @@ static int no_seq_check(struct nl_msg *msg, void *arg)
 	return NL_OK;
 }
 
+// libnl callback for the Scan Event received
 static int on_scan_event_valid_handler(struct nl_msg *msg, void *arg)
 {
-	// libnl callback for the Scan Event received
 	DBG("%s %p %p\n", __func__, (void *)msg, arg);
 
 	struct netlink_socket_bundle* bun = (struct netlink_socket_bundle*)arg;
@@ -322,7 +346,11 @@ MHD_Result capture_keys (void *arg, enum MHD_ValueKind kind,
 {
 	// MHD callback
 	printf ("%s %d %s=%s\n", __func__, kind, key, value);
-
+	(void)arg;
+	(void)kind;
+	(void)key;
+	(void)value;
+#if 0
 	if (kind == MHD_GET_ARGUMENT_KIND) {
 		KeyValueList* kv_list = static_cast<KeyValueList*>(arg);
 		kv_list->emplace_back(key, value);
@@ -331,10 +359,11 @@ MHD_Result capture_keys (void *arg, enum MHD_ValueKind kind,
 		KeyValueList* kv_list = static_cast<KeyValueList*>(arg);
 		kv_list->emplace_back(key, value);
 	}
-
+#endif
 	return MHD_YES;
 }
 
+#if 0
 std::vector<char> load_file(fs::path path)
 {
 	// TODO need many, many check for errors
@@ -348,14 +377,16 @@ std::vector<char> load_file(fs::path path)
 
 	return buf;
 }
+#endif
 
+// responsible for /api/survey 
 void get_survey_response(const BSSMap* bss_map, struct MHD_Response **p_response, int* status)
 {
-	struct MHD_Response* response  { nullptr };
+	struct MHD_Response* response  = NULL;
 
-	json_t* jarray;
-	jarray = json_array();
+	json_t* jarray = json_array();
 
+#if 0
 	for (auto iter : *bss_map) {
 		struct BSS* bss = iter.second;
 		XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
@@ -370,12 +401,7 @@ void get_survey_response(const BSSMap* bss_map, struct MHD_Response **p_response
 		// TODO error checking
 		(void)err;
 	}
-
-//	int err = bss_list_to_json(bss_list, &jarray, bss_json_summary);
-//	if (err) {
-//		ERR("%s create bss json list failed err=%d\n", __func__, err);
-//		return response
-//	}
+#endif
 
 	char* s = json_dumps(jarray, 0);
 	if (!s) {
@@ -401,7 +427,7 @@ void get_survey_response(const BSSMap* bss_map, struct MHD_Response **p_response
 	if (ret != MHD_YES) {
 		ERR("%s add response failed ret=%d\n", __func__, ret);
 		MHD_destroy_response(response);
-		response = nullptr;
+		response = NULL;
 	}
 
 	if (response) {
@@ -410,11 +436,10 @@ void get_survey_response(const BSSMap* bss_map, struct MHD_Response **p_response
 	}
 }
 
+// responsible for /api/bssid
 void get_bssid_response(const char* bssid_str, ssize_t bssid_len, const BSSMap* bss_map, struct MHD_Response **p_response, int* status)
 {
-	std::cout << __func__ << " bssid_str=" << bssid_str << "\n";
-
-	*p_response = nullptr;
+	*p_response = NULL;
 	*status = MHD_HTTP_INTERNAL_SERVER_ERROR;
 
 	if (!bssid_str || !*bssid_str || bssid_len < 12) {
@@ -428,16 +453,16 @@ void get_bssid_response(const char* bssid_str, ssize_t bssid_len, const BSSMap* 
 		return;
 	}
 
-	struct BSS* bss { nullptr };
-	uint64_t key = BSSID_U64(bssid);
-	try {
-		bss = bss_map->at(key);
-	}
-	catch (std::out_of_range& err) {
-		INFO("%s %s not found\n", __func__, bssid_str);
-	}
+	struct BSS* bss = NULL;
+//	uint64_t key = BSSID_U64(bssid);
+//	try {
+//		bss = bss_map->at(key);
+//	}
+//	catch (std::out_of_range& err) {
+//		INFO("%s %s not found\n", __func__, bssid_str);
+//	}
 
-	struct MHD_Response* response  { nullptr };
+	struct MHD_Response* response  = NULL;
 
 	if (bss) {
 		json_t* jbss;
@@ -464,7 +489,7 @@ void get_bssid_response(const char* bssid_str, ssize_t bssid_len, const BSSMap* 
 		if (ret != MHD_YES) {
 			ERR("%s add response failed ret=%d\n", __func__, ret);
 			MHD_destroy_response(response);
-			response = nullptr;
+			response = NULL;
 		}
 		*status = MHD_HTTP_OK;
 	}
@@ -482,17 +507,16 @@ void get_bssid_response(const char* bssid_str, ssize_t bssid_len, const BSSMap* 
 	}
 }
 
+// starting point for /api 
 void get_api_response(const char* url, ssize_t url_len, const BSSMap* bss_map, struct MHD_Response **p_response, int* status)
 {
 	// MHD callback
 
-	*p_response = nullptr;
+	*p_response = NULL;
 
 	if (url_len < 6) {
 		return;
 	}
-
-	std::cout << __func__ << " url=" << url << "\n";
 
 	if (strncmp(url, "survey", 6) == 0) {
 		get_survey_response(bss_map, p_response, status);
@@ -504,25 +528,25 @@ void get_api_response(const char* url, ssize_t url_len, const BSSMap* bss_map, s
 	return ;
 }
 
-
-MHD_Response* get_file_response(const char* url)
+struct MHD_Response* get_file_response(const char* url)
 {
 	// http callback
-	struct MHD_Response *response;
+	(void)url;
+	struct MHD_Response *response = NULL;
+#if 0
 
 	fs::path root = fs::absolute("public");
 	fs::path path = root;
 	std::string root_str = root.string();
 	path += url;
 
-	std::cout << "path=" << path << "\n";
 	try {
 		path = fs::canonical(path);
 	} 
 	catch (fs::filesystem_error& err) {
 		// https://en.cppreference.com/w/cpp/filesystem/filesystem_error
 		std::cerr << err.what() << "\n";
-		return nullptr;
+		return NULL;
 	};
 
 	// XXX this looks super stupid and over complicated
@@ -531,7 +555,7 @@ MHD_Response* get_file_response(const char* url)
 	// if it's a correct path and it's under our root directory, then we
 	// shall read it
 	if (pp != root_str) {
-		return nullptr;
+		return NULL;
 	}
 
 	std::vector<char> page = load_file(path);
@@ -541,7 +565,7 @@ MHD_Response* get_file_response(const char* url)
 					page.data(), 
 					MHD_RESPMEM_MUST_COPY);
 	if (!response) {
-		return nullptr;
+		return NULL;
 	}
 
 	// look for a MIME type
@@ -550,7 +574,6 @@ MHD_Response* get_file_response(const char* url)
 
 	try {
 		std::string content_type = mt.at(extension);
-		std::cout << __func__ << " ext=" << extension << " content_type=" << content_type << "\n";
 
 		int ret = MHD_add_response_header(response, 
 				"Content-Type",
@@ -558,12 +581,12 @@ MHD_Response* get_file_response(const char* url)
 		if (ret != MHD_YES) {
 			ERR("%s add response failed ret=%d\n", __func__, ret);
 			MHD_destroy_response(response);
-			response = nullptr;
+			response = NULL;
 		}
 	} catch (std::out_of_range& err) {
 		// pass
 	}
-
+#endif
 	return response;
 }
 
@@ -577,9 +600,16 @@ MHD_Result answer_to_connection (void *arg,
 						void **con_cls)
 {
 	// MHD callback
+	// TODO finish C++ -> C conversion
+	(void)arg;
+	(void)connection;
+	(void)url;
+	(void)method;
+	(void)version;
 	(void)upload_data;
 	(void)upload_data_size;
 	(void)con_cls;
+
 	BSSMap* bss_map = (BSSMap*)arg;
 
 	printf ("%s method=%s request for url=%s using version=%s\n", __func__, method, url, version);
@@ -589,6 +619,7 @@ MHD_Result answer_to_connection (void *arg,
 	char* s = inet_ntoa(((struct sockaddr_in*)conn_info->client_addr)->sin_addr);
 	printf("client=%s\n", s);
 
+#if 0
 	// get the HTTP header args
 	KeyValueList headers;
 	std::string origin;
@@ -606,7 +637,7 @@ MHD_Result answer_to_connection (void *arg,
 	for (auto& kv : args) {
 		printf("%s arg %s=%s\n", __func__, kv.first, kv.second);
 	}
-
+#endif
 	struct MHD_Response *response;
 	int status = MHD_HTTP_OK;
 
@@ -616,12 +647,12 @@ MHD_Result answer_to_connection (void *arg,
 	if (strncmp(url, "/api/", 5) == 0) {
 		get_api_response(url+5, url_len-5, bss_map, &response, &status);
 		// CORS
-		if (origin.length()) {
-			int ret = MHD_add_response_header(response, 
-					"Access-Control-Allow-Origin",
-					origin.c_str());
-			XASSERT(ret==MHD_YES, ret);
-		}
+//		if (origin.length()) {
+//			int ret = MHD_add_response_header(response, 
+//					"Access-Control-Allow-Origin",
+//					origin.c_str());
+//			XASSERT(ret==MHD_YES, ret);
+//		}
 	}
 	else {
 		response = get_file_response(url);
@@ -629,11 +660,12 @@ MHD_Result answer_to_connection (void *arg,
 
 	// if all else fails, return a simple default page
 	if (!response) {
-		size_t count = bss_map->size();
+		bss_map_dump(bss_map);
+
 		char p[64];
 		const char* msg = "<html><body>Found %zu BSSID</body></html>\n";
 
-		size_t page_len = snprintf(p, sizeof(p), msg, count);
+		size_t page_len = snprintf(p, sizeof(p), msg, bss_map->count);
 
 		response = MHD_create_response_from_buffer(
 						page_len,
@@ -765,11 +797,14 @@ int main(int argc, char* argv[])
 	if (args.debug > 0) {
 		log_set_level(LOG_LEVEL_DEBUG);
 	}
-	struct MHD_Daemon *daemon = nullptr;
+	struct MHD_Daemon *daemon = NULL;
 
-	BSSMap bss_map;
+	BSSMap bss_map = {
+		.count = 0,
+		.root = NULL
+	};
 
-	mt = mimetype_parse_default_file();
+//	mt = mimetype_parse_default_file();
 
 	daemon = MHD_start_daemon ( MHD_NO_FLAG, PORT, 
 			&on_client_connect, NULL,
@@ -815,8 +850,8 @@ int main(int argc, char* argv[])
 		FD_SET(scan_results_watcher.sock_fd, &read_fd_set);
 
 		int nfds = max_fd;
-		nfds = std::max(scan_event_watcher.sock_fd, nfds);
-		nfds = std::max(scan_results_watcher.sock_fd, nfds);
+		nfds = MAX(scan_event_watcher.sock_fd, nfds);
+		nfds = MAX(scan_results_watcher.sock_fd, nfds);
 
 		DBG("calling select nfds=%d\n", nfds);
 		err = select(nfds+1, &read_fd_set, &write_fd_set, &except_fd_set, NULL);
@@ -828,7 +863,7 @@ int main(int argc, char* argv[])
 		}
 
 		if (FD_ISSET(scan_event_watcher.sock_fd, &read_fd_set)) {
-			printf("%s %d event=%d\n", __func__, __LINE__, scan_event_watcher.sock_fd);
+			printf("%s event=%d\n", __func__, scan_event_watcher.sock_fd);
 			scan_event_watcher.cb_err = 0;
 			err = netlink_read(&scan_event_watcher);
 			// TODO handle error
@@ -836,7 +871,7 @@ int main(int argc, char* argv[])
 		}
 
 		if (FD_ISSET(scan_results_watcher.sock_fd, &read_fd_set)) {
-			printf("%s %d result=%d\n", __func__, __LINE__, scan_results_watcher.sock_fd);
+			printf("%s result=%d\n", __func__, scan_results_watcher.sock_fd);
 			scan_results_watcher.cb_err = 1;
 			err = netlink_read(&scan_results_watcher);
 			// TODO handle error
