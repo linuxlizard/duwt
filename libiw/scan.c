@@ -835,7 +835,7 @@ int get_multicast_id(struct nl_sock *sock, const char *family, const char *group
 	return ret;
 }
 
-///* from iw event.c */
+///* from iw event.c 
 //static int no_seq_check(struct nl_msg *msg, void *arg)
 //{
 //	(void)msg;
