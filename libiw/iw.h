@@ -10,6 +10,7 @@
 #define IW_H
 
 #include <stddef.h>
+#include <net/if.h>
 #include <linux/netlink.h>
 #include <netlink/attr.h>
 #include <netlink/genl/genl.h>
@@ -73,6 +74,17 @@ struct iw_link_state
 	struct bitrate rx_bitrate, tx_bitrate;
 };
 
+// a wlan device ; sort of like 'iw dev'
+struct iw_dev
+{
+	int ifindex;
+	uint8_t addr[ETH_ALEN];
+	char ifname[IF_NAMESIZE];
+	uint32_t phy_id;
+	uint64_t wdev;
+	enum nl80211_iftype iftype;
+};
+
 void peek_nla_attr( struct nlattr* tb_msg[], size_t count);
 //void peek_nla_bss(struct nlattr* bss_msg[], size_t count);
 //void peek_nla_bss(const struct nlattr* bss_msg[const static NL80211_BSS_MAX], size_t count);
@@ -109,6 +121,8 @@ int ieee80211_frequency_to_channel(int freq);
 
 void mac_addr_n2a(char *mac_addr, const unsigned char *arg);
 int parse_bitrate(struct nlattr *bitrate_attr, struct bitrate* br); 
+
+int iw_dev_list(struct iw_dev* dev_list, size_t* count);
 
 #ifdef __cplusplus
 } // end extern "C"
