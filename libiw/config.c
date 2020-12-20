@@ -26,10 +26,29 @@ int main(void)
 	enum nl80211_bss chain_signal = NL80211_BSS_CHAIN_SIGNAL;
 #endif
 
+#ifdef HAVE_NL80211_CMD_EXTERNAL_AUTH
+	enum nl80211_commands external_auth = NL80211_CMD_EXTERNAL_AUTH;
+#endif
+
+#ifdef HAVE_NL80211_CMD_ABORT_SCAN
+	enum nl80211_commands abort_scan = NL80211_CMD_ABORT_SCAN;
+#endif
+
 #ifdef HAVE_NL80211_RATE_INFO_HE_MCS
 	enum nl80211_rate_info info = NL80211_RATE_INFO_HE_MCS;
 #endif
 
+#ifdef HAVE_NL80211_ATTR_AUTH_DATA
+	enum nl80211_attrs auth_data = NL80211_ATTR_AUTH_DATA;
+#endif
+
+#ifdef HAVE_NL80211_ATTR_EXTERNAL_AUTH_ACTION
+	enum nl80211_attrs external_auth_action = NL80211_ATTR_EXTERNAL_AUTH_ACTION;
+#endif
+
+#ifdef HAVE_NL80211_ATTR_HE_OBSS_PD 
+	enum nl80211_attrs he_obss_pd = NL80211_ATTR_HE_OBSS_PD;
+#endif
 	return 0;
 }
 
