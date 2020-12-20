@@ -1,3 +1,9 @@
+/*
+ * mimetypes.h  parse /etc/mime.types into C++ map
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #ifndef MIMETYPES_H
 #define MIMETYPES_H
 
