@@ -41,7 +41,7 @@ set(MY_DEBUG_OPTIONS -Wall -Wextra -Wnon-virtual-dtor -pedantic )
 pkg_check_modules(jsoncpp REQUIRED jsoncpp)
 message("jsoncpp found=${Jsoncpp_FOUND} include=${jsoncpp_INCLUDE_DIRS} ldflags=${jsoncpp_LDFLAGS}" )
 
-add_library(duwt STATIC src/logging.cc src/oui.cc src/mimetypes.cc)
+add_library(duwt STATIC src/oui.cc src/mimetypes.cc)
 #target_compile_features(duwt PUBLIC cxx_std_17)
 target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS} ${jsoncpp_INCLUDE_DIRS})
 target_include_directories(duwt PUBLIC fmt/include)
