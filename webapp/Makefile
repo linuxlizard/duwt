@@ -1,6 +1,6 @@
 # just copy the web app over to the httpserv dir
 
-server=../build/public
+SERVER=../build/files
 
 # using Bootstrap but its CDN doens't have the full jquery with AJAX so
 # bringing along my own
@@ -10,14 +10,17 @@ JS=duwt.js jquery-3.5.1.min.js jquery-3.5.1.js sample.js
 # starter.html from AdminLTE https://adminlte.io
 HTML=index.html starter.html
 
-all: js html
+all: $(SERVER) js html
 
-js: $(foreach src,$(JS),$(server)/$(src))
+$(SERVER):
+	mkdir -p $(SERVER)
 
-html: $(foreach src,$(HTML),$(server)/$(src))
+js: $(foreach src,$(JS),$(SERVER)/$(src))
 
-$(server)/%: %
+html: $(foreach src,$(HTML),$(SERVER)/$(src))
+
+$(SERVER)/%: %
 	@cp -v $< $@
 
 clean:
-	$(RM) $(server)/*
+	$(RM) $(SERVER)/*
