@@ -1,7 +1,8 @@
 #include <iostream>
-
 #include <cstdint>
 #include <cinttypes>
+
+#include <sys/epoll.h>
 
 // netlink
 #include <linux/if_ether.h>
@@ -18,6 +19,7 @@
 
 static int survd_debug = 0;
 
+static const int MAX_EVENTS = 32;
 static const size_t MAX_DEV_LIST = 16;
 
 #define BUNDLE_COOKIE 0x01448f44
@@ -380,6 +382,8 @@ private:
 
 int ScanningThread::ScanningInternal::init() 
 {
+	log_set_level(LOG_LEVEL_DEBUG);
+
 	int err = setup_scan_event_sock(&scan_event_watcher);
 	if (err) {
 		// TODO
@@ -404,11 +408,70 @@ int ScanningThread::ScanningInternal::init()
 
 int ScanningThread::ScanningInternal::run() 
 {
-	while( !stop_flag ) {
-		std::cout << "hello " << get_counter() << " from thread\n" ;
-		std::this_thread::sleep_for(std::chrono::seconds(1));
+	int ret, err;
+	int epoll_fd;
+
+	epoll_fd = epoll_create1(0);
+	if (epoll_fd < 0) {
+		err = -errno;
+		ERR("%s epoll_create1 failed errno=%d %s\n", __func__, errno, strerror(errno));
+		return err;
 	}
-	return 0;
+
+	struct epoll_event ev;
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+	ev.events = EPOLLIN;
+	ev.data.ptr = (void *)&scan_event_watcher;
+	ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, scan_event_watcher.sock_fd, &ev);
+	if (ret < 0) {
+		err = -errno;
+		ERR("%s epoll ctl scan event failed errno=%d %s\n", __func__, errno, strerror(errno));
+		return err;
+	}
+
+	memset(&ev, 0, sizeof(struct epoll_event));
+	ev.events = EPOLLIN;
+	ev.data.ptr = (void *)&scan_results_watcher;
+	ret = epoll_ctl(epoll_fd, EPOLL_CTL_ADD, scan_results_watcher.sock_fd, &ev);
+	if (ret < 0) {
+		err = -errno;
+		ERR("%s epoll ctl scan results failed errno=%d %s\n", __func__, errno, strerror(errno));
+		return err;
+	}
+
+	struct epoll_event events[MAX_EVENTS];
+
+	int final_err = 0;
+	while( !stop_flag ) {
+//		std::cout << "hello " << get_counter() << " from thread\n" ;
+//		std::this_thread::sleep_for(std::chrono::seconds(1));
+
+		DBG("%s epoll wait...\n", __func__);
+		int num_fds = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
+		DBG("%s epoll_wait returned num_fds=%d\n", __func__, num_fds);
+
+		if (num_fds < 0) {
+			// error or signal
+			if (errno == EINTR) {
+				// interrupted system call; please try your call again
+				continue;
+			}
+			else {
+				// something went wrong
+				final_err = -errno;
+				ERR("%s epoll wait failed errno=%d %s\n", __func__, errno, strerror(errno));
+				break;
+			}
+		}
+
+		for ( int i=0 ; i<num_fds ; i++) {
+			ret = netlink_read((struct netlink_socket_bundle*)events[i].data.ptr);
+
+		}
+	}
+
+	return final_err;
 }
 
 
