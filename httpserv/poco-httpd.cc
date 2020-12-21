@@ -18,40 +18,13 @@
 #include "mimetypes.h"
 #include "oui.h"
 #include "scan.h"
+#include "fs.h"
 
 using namespace Poco;
 using namespace Poco::Net;
 using namespace Poco::Util;
 
 mimetypes all_mimetypes;
-
-static std::optional<std::string> make_absolute(std::string path)
-{
-	char abspath[PATH_MAX+1];
-
-	char* p = realpath(path.c_str(), abspath);
-	if (!p) {
-		return std::nullopt;
-	}
-
-	return std::string { abspath };
-}
-
-static bool is_file(std::string& path)
-{
-	struct stat statbuf;
-
-	int ret = stat(path.c_str(), &statbuf);
-	if (ret != 0) {
-		return false;
-	}
-
-	if ( (statbuf.st_mode & S_IFREG) != S_IFREG ) {
-		return false;
-	}
-
-	return true;
-}
 
 class HelloRequestHandler: public HTTPRequestHandler
 {
@@ -60,53 +33,52 @@ class HelloRequestHandler: public HTTPRequestHandler
 		Application& app = Application::instance();
 		app.logger().information("Request from %s", request.clientAddress().toString());
 
+		// fills out the response object on an error
+		auto error = [&response] {
+			response.setStatusAndReason(HTTPResponse::HTTP_NOT_FOUND);
+			response.setContentLength(0);
+			response.send();
+		};
+
+		// is this a file in our allowed location?
 		std::string uri = request.getURI();
 		app.logger().debug("request for URI=%s", uri);
 		app.logger().warning("request for URI=%s", uri);
 
-		Poco::Path path {false}; // path will be relative
-		path.pushDirectory("files");
-		path.setFileName(uri);
+		fs::path root = fs::absolute("files");
+		std::string root_str = root.string();
+		fs::path path { root };
+		path /= uri;
 
-		// poco absolute()/makeAbsolute() don't do what I hope it would do
-//		path = path.absolute();
-//		path.makeAbsolute();
-		// so let's do this the posix-y way
-		auto path_absolute = make_absolute(path.toString(Poco::Path::PATH_UNIX));
-		if ( !path_absolute.has_value() ) {
+		try {
+			path = fs::canonical(path);
+		} 
+		catch (fs::filesystem_error& err) {
+			// https://en.cppreference.com/w/cpp/filesystem/filesystem_error
 			app.logger().error("invalid absolute path uri=%s", uri);
-			response.setStatusAndReason(HTTPResponse::HTTP_NOT_FOUND);
-			response.setContentLength(0);
-			response.send();
+			error();
 			return;
-		}
+		};
 
-		std::string path_str = path_absolute.value();
-		app.logger().information("file=%s", path_str);
-
-		// is uri path under current dir?
-		std::string cwd { Poco::Path::current() };
-		app.logger().information("cwd=%s substr=%s", cwd, path_str.substr(0, cwd.size()) );
-
-		if ( path_str.substr(0, cwd.size()) != cwd) {
+		// is this path within our valid location?  (prevent relative path shenanigans)
+		std::string path_str { path.string() };
+		if ( path_str.substr(0, root_str.size()) != root_str) {
 			app.logger().error("request for invalid path uri=%s", path_str);
-			response.setStatusAndReason(HTTPResponse::HTTP_NOT_FOUND);
-			response.setContentLength(0);
-			response.send();
+			error();
 			return;
 		}
 
-		if (!is_file(path_str)) {
+		// is this actually a file?
+		if (! fs::is_regular_file(path)) {
 			app.logger().error("uri=%s not a file", uri);
-			response.setStatusAndReason(HTTPResponse::HTTP_NOT_FOUND);
-			response.setContentLength(0);
-			response.send();
+			error();
 			return;
 		}
 
+		// look up file extension
 		std::string content_type;
 		try {
-			content_type = all_mimetypes.at(path.getExtension());
+			content_type = all_mimetypes.at(path.extension());
 		} catch (std::out_of_range& err) {
 		}
 
@@ -133,6 +105,27 @@ class WebServerApp: public ServerApplication
 	int main(const std::vector<std::string>& args)
 	{
 		UInt16 port = static_cast<UInt16>(config().getUInt("port", 8080));
+
+		for (auto a : args) {
+			std::cout << "arg=" << a << "\n";
+		}
+
+		Logger& rlogger = Logger::root();
+
+//		Poco::Logger::root().setLevel(Poco::Message::PRIO_DEBUG);
+		std::cout << "level=" << rlogger.getLevel() << "\n";
+		rlogger.setLevel(Poco::Message::PRIO_DEBUG);
+		std::cout << "level=" << rlogger.getLevel() << "\n";
+		rlogger.error("this is an error message");
+		rlogger.warning("this is an warning message");
+		rlogger.information("this is an information message");
+		rlogger.notice("this is an notice message");
+		rlogger.debug("this is an debug message");
+
+		// this seems really weird+verbose but enables debug messages up in the
+		// RequestHandler
+//		Application::instance().logger().setLevel(Poco::Message::PRIO_DEBUG);
+		Poco::Logger::setLevel("", Message::PRIO_DEBUG);
 
 		all_mimetypes = mimetype_parse_default_file();
 
