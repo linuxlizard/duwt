@@ -1,7 +1,6 @@
 #include <iostream>
 #include <thread>
 #include <string>
-#include <optional>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -48,7 +47,7 @@ class HelloRequestHandler: public HTTPRequestHandler
 		fs::path root = fs::absolute("files");
 		std::string root_str = root.string();
 		fs::path path { root };
-		path /= uri;
+		path += uri;
 
 		try {
 			path = fs::canonical(path);
