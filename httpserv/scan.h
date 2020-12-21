@@ -7,37 +7,39 @@
 #ifndef SCAN_H
 #define SCAN_H
 
+#include <vector>
+#include <thread>
+#include <atomic>
+
+struct iw_dev;
+
 class ScanningThread
 {
 	public:
-		ScanningThread() : thd(run, this),
-							stop_flag(false),
-							counter(0)
-		{ 
-		};
+		ScanningThread();
+		~ScanningThread();
 
-		void stop(void) { 
-			stop_flag = true;
-		};
+		void stop(void);
 
 		void join(void) { thd.join(); };
 
-		uint64_t get_counter(void) {
-			return this->counter++;
-		};
-
 		static void run(ScanningThread* self) { 
-			while(not self->stop_flag) {
-				std::cout << "hello " << self->get_counter() << " from thread\n" ;
-				std::this_thread::sleep_for(std::chrono::seconds(1));
-			};
+			self->init_worker();
+			self->run_worker();
+//			while(not self->stop_flag) {
+//				std::cout << "hello " << self->get_counter() << " from thread\n" ;
+//				std::this_thread::sleep_for(std::chrono::seconds(1));
+//			};
 		};
 
 	private:
 		std::thread thd;
-		std::atomic<bool> stop_flag;
 
-		uint64_t counter;
+		int init_worker(void);
+		int run_worker(void);
+
+		class ScanningInternal;
+		std::unique_ptr<ScanningInternal> worker;
 };
 
 #endif
