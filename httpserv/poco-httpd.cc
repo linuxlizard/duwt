@@ -1,10 +1,15 @@
+/*
+ * web api for retrieving wifi scan data
+ *
+ * started from the simple web server at https://pocoproject.org/
+ * davep 20201220
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <iostream>
 #include <thread>
 #include <string>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
 
 #include "Poco/Net/HTTPServer.h"
 #include "Poco/Net/HTTPRequestHandler.h"
