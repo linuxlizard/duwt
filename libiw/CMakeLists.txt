@@ -29,6 +29,7 @@ list(APPEND Tests HAVE_NL80211_CMD_ABORT_SCAN)
 list(APPEND Tests HAVE_NL80211_CMD_EXTERNAL_AUTH)
 list(APPEND Tests HAVE_NL80211_ATTR_EXTERNAL_AUTH_ACTION)
 list(APPEND Tests HAVE_NL80211_ATTR_AUTH_DATA)
+list(APPEND Tests HAVE_NL80211_VLAN_ID)
 
 # iterate through all the symbols we need, discovering if they exist
 foreach(test IN LISTS Tests)

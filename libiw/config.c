@@ -49,6 +49,11 @@ int main(void)
 #ifdef HAVE_NL80211_ATTR_HE_OBSS_PD 
 	enum nl80211_attrs he_obss_pd = NL80211_ATTR_HE_OBSS_PD;
 #endif
+
+#ifdef HAVE_NL80211_ATTR_VLAN_ID 
+	enum nl80211_attrs vlan_id = NL80211_ATTR_VLAN_ID;
+#endif
+
 	return 0;
 }
 
