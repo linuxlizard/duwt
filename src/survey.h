@@ -10,6 +10,9 @@
 // thread-safe container to hold survey results
 class Survey
 {
+public:
+private:
+
 };
 
 #endif

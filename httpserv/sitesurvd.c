@@ -45,6 +45,7 @@ typedef int MHD_Result;
 //#include "mimetypes.h"
 #include "args.h"
 #include "bss_json.h"
+#include "ssid.h"
 
 #define PORT 8081
 //#define PORT 8888
@@ -108,6 +109,7 @@ static void bss_print(const void* nodep, const VISIT which, const int depth)
 {
 	struct BSS* bss = *(struct BSS**)nodep;
 
+	(void)depth;
 	if (which==postorder || which==leaf) {
 		printf("%s %s", __func__, bss->bssid_str);
 		ssid_print(bss, stdout, 32, "\n");
@@ -340,7 +342,7 @@ static int on_scan_event_valid_handler(struct nl_msg *msg, void *arg)
 	return NL_SKIP;
 }
 
-MHD_Result capture_keys (void *arg, enum MHD_ValueKind kind, 
+enum MHD_Result capture_keys (void *arg, enum MHD_ValueKind kind, 
 					const char *key, const char *value)
 {
 	// MHD callback
@@ -589,7 +591,7 @@ struct MHD_Response* get_file_response(const char* url)
 	return response;
 }
 
-MHD_Result answer_to_connection (void *arg, 
+enum MHD_Result answer_to_connection (void *arg, 
 						struct MHD_Connection *connection,
 						const char *url,
 						const char *method, 
@@ -673,7 +675,7 @@ MHD_Result answer_to_connection (void *arg,
 		// TODO check for error
 	}
 
-	MHD_Result ret = MHD_queue_response (connection, status, response);
+	enum MHD_Result ret = MHD_queue_response (connection, status, response);
 	// TODO check return
 
 	MHD_destroy_response (response);
