@@ -42,8 +42,10 @@ message("jsoncpp found=${Jsoncpp_FOUND} include=${jsoncpp_INCLUDE_DIRS} ldflags=
 add_library(duwt STATIC src/oui.cc src/mimetypes.cc src/survey.cc)
 #target_compile_features(duwt PUBLIC cxx_std_17)
 target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS} ${jsoncpp_INCLUDE_DIRS})
-target_include_directories(duwt PUBLIC include)
+target_include_directories(duwt PUBLIC include libiw)
 target_compile_options(duwt PUBLIC $<$<CONFIG:DEBUG>:${MY_DEBUG_OPTIONS}>)
+
+pkg_check_modules(jansson REQUIRED jansson)
 
 foreach(test IN ITEMS test_oui test_survey)
 	message("test=${test}")
@@ -51,10 +53,10 @@ foreach(test IN ITEMS test_oui test_survey)
 	string(REPLACE "test_" "" test_target ${test})
 	message("test_target=${test_target}")
 
-	add_executable(${test} src/${test}.cc src/${test_target}.cc)
+	add_executable(${test} src/${test}.cc src/${test_target}.cc src/${test}_main.cc)
 
 	target_include_directories(${test} PUBLIC include)
-	target_link_libraries(${test} duwt)
+	target_link_libraries(${test} duwt jansson)
 	target_include_directories(${test} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libiw)
 	target_link_libraries(${test} iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
 
