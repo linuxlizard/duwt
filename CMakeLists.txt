@@ -54,7 +54,7 @@ foreach(test IN ITEMS test_oui test_survey)
 	add_executable(${test} src/${test}.cc src/${test_target}.cc src/${test}_main.cc)
 
 	target_include_directories(${test} PUBLIC include)
-	target_link_libraries(${test} duwt jansson)
+	target_link_libraries(${test} duwt jansson pthread)
 	target_include_directories(${test} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/libiw)
 	target_link_libraries(${test} iw ${libnl_LDFLAGS} ${libnl_genl_LDFLAGS} )
 
