@@ -1,3 +1,11 @@
+/*
+ * oui.cc
+ *
+ * parse oui files in CSV or other formats
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -28,9 +36,9 @@ using namespace ieeeoui;
 //#define DEBUG_CSV
 //#define DEBUG_MA
 
-OUI::OUI(std::string filename)
-	: filename(filename),
-	  infile(filename)
+OUI::OUI(std::string filename_in)
+	: filename(filename_in),
+	  infile(filename_in)
 {
 	if (!infile) {
 		std::string errmsg { "no such file: " };
@@ -73,7 +81,7 @@ std::string OUI::get_org_name(uint8_t* oui)
 
 
 
-OUI_CSV::OUI_CSV(std::string filename): OUI(filename)
+OUI_CSV::OUI_CSV(std::string filename_in): OUI(filename_in)
 {
 	std::string line;
 
@@ -179,8 +187,8 @@ std::string OUI_CSV::lookup(uint32_t oui)
 	throw std::out_of_range(oui_to_string(oui));
 }
 
-OUI_MA::OUI_MA(std::string filename) 
-	: OUI(filename)
+OUI_MA::OUI_MA(std::string filename_in) 
+	: OUI(filename_in)
 {
 	std::string line;
 

@@ -1,3 +1,11 @@
+/*
+ * mimetypes.h  pure C parse /etc/mime.types into glibc hash table
+ *
+ * (work in progress)
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #define _GNU_SOURCE
 #include <stdio.h>
 #include <string.h>

@@ -1,3 +1,11 @@
+/*
+ * oui.h  header file for oui.cc  
+ *
+ * parse oui files in CSV or other formats
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #ifndef OUI_H
 #define OUI_H
 
