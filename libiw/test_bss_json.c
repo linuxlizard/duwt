@@ -10,9 +10,12 @@
 
 #include "core.h"
 #include "iw.h"
-#include "args.h"
 #include "dumpfile.h"
 #include "bss_json.h"
+
+
+// default to my soup.dat capture from the office
+#define DEFAULT_TEST_FILE "soup.dat"
 
 static void json_summary(struct dl_list* bss_list)
 {
@@ -65,15 +68,15 @@ static void json_full(struct dl_list* bss_list)
 	}
 }
 
-static void dump_from_file(struct args* args)
+static void dump_from_file(const char* dump_filename)
 {
 	int err = 0;
 
 	DEFINE_DL_LIST(bss_list);
 
-	err = dumpfile_parse(args->dump_filename, &bss_list);
+	err = dumpfile_parse(dump_filename, &bss_list);
 	if (err != 0) {
-		ERR("%s failed to parse \"%s\": %s\n", __func__, args->dump_filename, strerror(err));
+		ERR("%s failed to parse \"%s\": %s\n", __func__, dump_filename, strerror(-err));
 		return;
 	}
 
@@ -88,21 +91,13 @@ static void dump_from_file(struct args* args)
 
 int main(int argc, char* argv[])
 {
-	struct args args;
-
-	memset(&args,0,sizeof(struct args));
-	int err = args_parse(argc, argv, &args);
-
-	if (err) {
-		exit(EXIT_FAILURE);
+	if (argc == 1) {
+		dump_from_file(DEFAULT_TEST_FILE);
 	}
-
-	if (args.debug > 0) {
-		log_set_level(LOG_LEVEL_DEBUG);
-	}
-
-	if (args.load_dump_file) {
-		dump_from_file(&args);
+	else {
+		for (int i=1 ; i<argc ; i++) {
+			dump_from_file(argv[i]);
+		}
 	}
 
 	return EXIT_SUCCESS;

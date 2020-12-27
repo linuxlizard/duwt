@@ -4,11 +4,7 @@
 #include <chrono>
 #include <cstddef>
 
-// if I'm not using the pre-compiled header catch.hpp, then pull it in now
-#ifndef CATCH_CONFIG_MAIN
-#define CATCH_CONFIG_MAIN
 #include "catch.hpp"
-#endif
 
 #include "oui.h"
 
