@@ -30,14 +30,14 @@ int main(void)
 	for (size_t i=0 ; i<count ; i++, dev++ ) {
 		if (dev->ifindex==0) {
 			printf("Unnamed/non-netdev interface\n");
-			printf("\twdev=%" PRIu64 "\n", dev->wdev);
+			printf("\twdev=%#" PRIx64 "\n", dev->wdev);
 			printf("\taddr=" MAC_ADD_FMT "\n", MAC_ADD_PRN(dev->addr));
 			printf("\ttype=%" PRIu32 "\n", dev->iftype);
 		}
 		else {
 			printf("Interface %s\n", dev->ifname);
 			printf("\tifindex=%d\n", dev->ifindex);
-			printf("\twdev=%" PRIu64 "\n", dev->wdev);
+			printf("\twdev=%#" PRIx64 "\n", dev->wdev);
 			printf("\taddr=" MAC_ADD_FMT "\n", MAC_ADD_PRN(dev->addr));
 			printf("\ttype=%" PRIu32 "\n", dev->iftype);
 		}
