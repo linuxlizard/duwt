@@ -1,4 +1,11 @@
+/*
+ * scan.cc  nl80211 scanning thread using my libiw
+ *
+ * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
+ */
+
 #include <iostream>
+#include <unordered_map>
 #include <cstdint>
 #include <cinttypes>
 
@@ -14,13 +21,17 @@
 
 #include "core.h"
 #include "iw.h"
+#include "bss.h"
 #include "nlnames.h"
 #include "scan.h"
+#include "survey.h"
 
 static int survd_debug = 0;
 
 static const int MAX_EVENTS = 32;
 static const size_t MAX_DEV_LIST = 16;
+
+Survey survey;
 
 #define BUNDLE_COOKIE 0x01448f44
 struct netlink_socket_bundle 
@@ -53,9 +64,6 @@ static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 	struct netlink_socket_bundle* bun = (struct netlink_socket_bundle*)arg;
 	XASSERT(bun->cookie == BUNDLE_COOKIE, bun->cookie);
 
-//	struct dl_list* bss_list = (struct dl_list*)bun->more_args;
-//	BSSMap* map = (BSSMap*)bun->more_args;
-
 	struct nlmsghdr *hdr = nlmsg_hdr(msg);
 	INFO("%s len=%" PRIu32 " type=%u flags=%u seq=%" PRIu32 " pid=%" PRIu32 "\n", __func__,
 			hdr->nlmsg_len, hdr->nlmsg_type, hdr->nlmsg_flags, 
@@ -80,38 +88,13 @@ static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 	err = bss_from_nlattr(tb_msg, &new_bss);
 	if (err) {
 		ERR("%s bss_from_nlattr failed err=%d\n", __func__, err);
-		goto fail;
+		return NL_SKIP;
 	}
-	else {
-		uint64_t key = BSSID_U64(new_bss->bssid);
-		(void)key;
-#if 0
-		// find tree entry with matching bssid
-		void* p = tfind((void*)new_bss, &map->root, bss_compare);
-		if (p) {
-			// item found ; release the memory
-			struct BSS* bss = *(struct BSS**)p;
-			XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
-			tdelete(bss, &map->root, bss_compare);
-			DBG("%s free %p\n", __func__, (void*)bss);
-			bss_free(&bss);
-		}
-		else { 
-			// not found ; this is new 
-			// so increment our count
-			map->count++;
-		}
 
-		// add it
-		p = tsearch((void*)new_bss, &map->root, bss_compare);
-#endif
-	}
+	survey.store(new_bss);
 
 	DBG("%s success\n", __func__);
 	return NL_OK;
-fail:
-	DBG("%s failed\n", __func__);
-	return NL_SKIP;
 }
 
 // libnl callback 
@@ -400,8 +383,7 @@ int ScanningThread::ScanningInternal::init()
 	// GET_SCAN_RESULTS from the watcher's libnl callback
 	scan_event_watcher.more_args = (void*)&scan_results_watcher;
 
-	// attach the bss collection to the get scan results watcher
-//	scan_results_watcher.more_args = (void*)&bss_map;
+	scan_results_watcher.more_args = nullptr;
 
 	return 0;
 }
@@ -454,7 +436,8 @@ int ScanningThread::ScanningInternal::run()
 		if (num_fds < 0) {
 			// error or signal
 			if (errno == EINTR) {
-				// interrupted system call; please try your call again
+				// your system call cannot be completed at this time; please
+				// try your call again
 				continue;
 			}
 			else {

@@ -4,11 +4,12 @@
  *
  * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
  */
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
 #include <iostream>
 #endif
+#include <sstream>
 #include <string>
 #include <stdexcept>
 #include <cassert>
@@ -27,14 +28,20 @@ void Survey::store(struct BSS* bss)
 	assert(bss);
 	assert(bss->cookie == BSS_COOKIE);
 
+	const std::lock_guard<std::mutex> local_lock(lock);
+
+#ifdef DEBUG
+	std::clog << "store " << bss->bssid_str << "\n";
+#endif
+
 	// if the entry exists, must free the memory first
 	// (this is a C-allocated struct so no destructor for you)
 	try {
-#ifdef DEBUG
-		std::clog << "find " << bss->bssid_str << "\n";
-#endif
 		struct BSS* old_bss = survey.at(bss->bssid_str);
 
+#ifdef DEBUG
+		std::clog << "store remove " << bss->bssid_str << "\n";
+#endif
 		// remove from json, too
 		json.erase(bss->bssid_str);
 
@@ -46,7 +53,7 @@ void Survey::store(struct BSS* bss)
 	catch (std::out_of_range& err) {
 		// not found
 #ifdef DEBUG
-		std::clog << bss->bssid_str << " not found\n";
+		std::clog << "store new " << bss->bssid_str << "\n";
 #endif
 		counters.add++;
 	}
@@ -58,6 +65,9 @@ void Survey::store(struct BSS* bss)
 bool Survey::erase(std::string bssid)
 {
 	struct BSS* bss = nullptr;
+
+	const std::lock_guard<std::mutex> local_lock(lock);
+
 #ifdef DEBUG
 	std::clog << "erase " << bssid << "\n";
 #endif
@@ -83,10 +93,12 @@ bool Survey::erase(std::string bssid)
 
 std::optional<const struct BSS*> Survey::find(std::string bssid)
 {
-	counters.find++;
 #ifdef DEBUG
 	std::clog << "find " << bssid << "\n";
 #endif
+	const std::lock_guard<std::mutex> local_lock(lock);
+
+	counters.find++;
 	try {
 		return survey.at(bssid);
 	}
@@ -96,9 +108,16 @@ std::optional<const struct BSS*> Survey::find(std::string bssid)
 	}
 }
 
+size_t Survey::size(void)
+{
+	const std::lock_guard<std::mutex> local_lock(lock);
+	return survey.size();
+}
+
 
 std::optional<std::reference_wrapper<const std::string>> Survey::get_json(std::string bssid) 
 {
+	const std::lock_guard<std::mutex> local_lock(lock);
 
 	// check the json cache
 	try {
@@ -139,5 +158,39 @@ std::optional<std::reference_wrapper<const std::string>> Survey::get_json(std::s
 	free(s);
 
 	return std::ref(json.at(bssid));
+}
+
+std::string Survey::stats_get(void)
+{
+	const std::lock_guard<std::mutex> local_lock(lock);
+	return counters.get();
+}
+
+std::string Counters::get(void)
+{
+	std::ostringstream stats;
+	stats << "add=" << add 
+		  << " update=" << update
+		  << " erase=" << erase
+		  << " find=" << find
+		  << " not_found=" << not_found
+		  << " json_add=" << json_add;
+	return stats.str();
+}
+
+void Survey::stats_reset(void)
+{
+	const std::lock_guard<std::mutex> local_lock(lock);
+	counters.reset();
+}
+
+void Counters::reset(void)
+{
+	add = 0;
+	update = 0;
+	erase = 0;
+	find = 0;
+	not_found = 0;
+	json_add = 0;
 }
 

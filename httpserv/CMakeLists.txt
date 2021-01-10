@@ -46,6 +46,7 @@ target_link_libraries(poco-httpd PUBLIC Poco::Foundation Poco::Net Poco::Util)
 target_include_directories(poco-httpd PUBLIC ../libiw)
 target_link_libraries(poco-httpd PUBLIC duwt)
 target_link_libraries(poco-httpd PUBLIC iw)
+target_link_libraries(poco-httpd PUBLIC jansson)
 target_link_libraries(poco-httpd PUBLIC ${libnl_LDFLAGS};${libnl_genl_LDFLAGS})
 
 #add_executable(sitesurvd sitesurvd.c)

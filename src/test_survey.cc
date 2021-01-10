@@ -36,7 +36,7 @@ TEST_CASE("Load file", "[dumpfile]"){
 	DEFINE_DL_LIST(bss_list);
 	int err = dumpfile_parse(dump_filename.c_str(), &bss_list);
 	REQUIRE(err==0);
-	std::cout << "load\n";
+	std::cout << "dumpfile " << dump_filename << " loaded\n";
 
 	SECTION("sanity check loaded file") {
 		json_t* jlist=NULL;
@@ -227,12 +227,13 @@ TEST_CASE("Load file", "[dumpfile]"){
 
 	SECTION("threads") {
 		// My webserver is using a thread for cfg80211 listening and another
-		// thread(s) under the poco-httpd server. So my surve data structure
+		// thread(s) under the poco-httpd server. So my survey data structure
 		// must be threadsafe.
 
 		struct BSS* bss;
 
 		Survey survey;
+
 		bool stop { false };
 		std::thread query ( [&]() {
 			int counter = 0;
@@ -247,6 +248,7 @@ TEST_CASE("Load file", "[dumpfile]"){
 		}
 		stop = true;
 		query.join();
+		std::clog << "stats " << survey.stats_get() << "\n";
 	}
 
 	// can I put code here? 

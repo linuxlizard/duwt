@@ -126,9 +126,6 @@ class WebServerApp: public ServerApplication
 		rlogger.notice("this is an notice message");
 		rlogger.debug("this is an debug message");
 
-		// this seems really weird+verbose but enables debug messages up in the
-		// RequestHandler
-//		Application::instance().logger().setLevel(Poco::Message::PRIO_DEBUG);
 		Poco::Logger::setLevel("", Message::PRIO_DEBUG);
 
 		all_mimetypes = mimetype_parse_default_file();

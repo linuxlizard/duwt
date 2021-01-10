@@ -11,8 +11,24 @@
 #include <unordered_map>
 #include <optional>
 #include <functional>
+#include <mutex>
 
 struct BSS;
+
+struct Counters 
+{
+	Counters() { reset(); };
+
+	std::string get(void);
+	void reset(void);
+
+	unsigned long int add;
+	unsigned long int update;
+	unsigned long int erase;
+	unsigned long int find;
+	unsigned long int not_found;
+	unsigned long int json_add;
+};
 
 // thread-safe container to hold survey results
 class Survey
@@ -31,10 +47,10 @@ public:
 //	std::optional<const std::string*> json_of(std::string bssid) const;
 	std::optional<std::reference_wrapper<const std::string>> get_json(std::string bssid);
 
-	size_t size(void) const noexcept
-	{
-		return survey.size();
-	}
+	size_t size(void);
+
+	void stats_reset(void);
+	std::string stats_get(void);
 
 private:
 	// key: bss->bssid_str
@@ -47,15 +63,11 @@ private:
 	// value: json (built with jansson in libiw then converted to std::string)
 	std::unordered_map<std::string, std::string> json;
 
+	// protect the contents (scan survey runs in its own thread)
+	std::mutex lock;
+
 	// track the survey cache behavior (for debugging)
-	struct {
-		unsigned long int add;
-		unsigned long int update;
-		unsigned long int erase;
-		unsigned long int find;
-		unsigned long int not_found;
-		unsigned long int json_add;
-	} counters;
+	Counters counters;
 };
 
 #endif
