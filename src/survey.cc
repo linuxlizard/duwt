@@ -13,6 +13,8 @@
 #include <string>
 #include <stdexcept>
 #include <cassert>
+#include <thread>
+#include <chrono>
 
 #include "jansson.h"
 
@@ -91,13 +93,9 @@ bool Survey::erase(std::string bssid)
 	return true;
 }
 
-std::optional<const struct BSS*> Survey::find(std::string bssid)
+std::optional<const struct BSS*> Survey::_locked_find(std::string bssid)
 {
-#ifdef DEBUG
-	std::clog << "find " << bssid << "\n";
-#endif
-	const std::lock_guard<std::mutex> local_lock(lock);
-
+	// do the search with the lock held
 	counters.find++;
 	try {
 		return survey.at(bssid);
@@ -108,12 +106,20 @@ std::optional<const struct BSS*> Survey::find(std::string bssid)
 	}
 }
 
+std::optional<const struct BSS*> Survey::find(std::string bssid)
+{
+#ifdef DEBUG
+	std::clog << "find " << bssid << "\n";
+#endif
+	const std::lock_guard<std::mutex> local_lock(lock);
+	return _locked_find(bssid);
+}
+
 size_t Survey::size(void)
 {
 	const std::lock_guard<std::mutex> local_lock(lock);
 	return survey.size();
 }
-
 
 std::optional<std::reference_wrapper<const std::string>> Survey::get_json(std::string bssid) 
 {
@@ -128,7 +134,7 @@ std::optional<std::reference_wrapper<const std::string>> Survey::get_json(std::s
 	}
 
 	// at this point, we have to create it
-	auto findme = find(bssid);
+	auto findme = _locked_find(bssid);
 	if (!findme) {
 		// no such BSS
 		return {};
@@ -147,9 +153,7 @@ std::optional<std::reference_wrapper<const std::string>> Survey::get_json(std::s
 		return {};
 	}
 
-//	std::string str_json { s };
-
-//	json[bssid] = s;
+	// store the json encoded string back to our map
 	json.emplace( std::make_pair(bssid, std::string(s)) );
 	counters.json_add++;
 

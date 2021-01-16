@@ -66,6 +66,10 @@ private:
 	// protect the contents (scan survey runs in its own thread)
 	std::mutex lock;
 
+	// do the search with the lock held because we need to find from multiple
+	// methods
+	std::optional<const struct BSS*> _locked_find(std::string bssid);
+
 	// track the survey cache behavior (for debugging)
 	Counters counters;
 };
