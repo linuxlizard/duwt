@@ -121,7 +121,7 @@ size_t Survey::size(void)
 	return survey.size();
 }
 
-std::optional<std::reference_wrapper<const std::string>> Survey::get_json(std::string bssid) 
+std::optional<std::reference_wrapper<const std::string>> Survey::get_json_bssid(std::string bssid) 
 {
 	const std::lock_guard<std::mutex> local_lock(lock);
 
@@ -162,6 +162,42 @@ std::optional<std::reference_wrapper<const std::string>> Survey::get_json(std::s
 	free(s);
 
 	return std::ref(json.at(bssid));
+}
+
+std::string Survey::get_json_survey(void)
+{
+	// get entire survey as json (expensive)
+
+	const std::lock_guard<std::mutex> local_lock(lock);
+
+	json_t* jarray = json_array();
+
+	for (auto iter : survey) {
+		struct BSS* bss = iter.second;
+//		XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
+
+		json_t* jbss;
+
+		int err = bss_to_json(bss, &jbss, BSS_JSON_SHORT_IE_DECODE);
+		// TODO error checking
+		(void)err;
+
+		err = json_array_append_new(jarray, jbss);
+		// TODO error checking
+		(void)err;
+	}
+
+	char* s = json_dumps(jarray, 0);
+	if (!s) {
+//		ERR("%s json dump failed\n", __func__);
+		json_decref(jarray);
+		return "{}";
+	}
+
+	json_decref(jarray);
+
+	std::string survey_str { s };
+	return survey_str;
 }
 
 std::string Survey::stats_get(void)

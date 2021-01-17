@@ -28,8 +28,8 @@ extern "C" void log_set_level(int level);
 
 TEST_CASE("Load file", "[dumpfile]"){
 	// can't include my libiw log.h because it collides with catch.hpp symbols
-	log_set_level(1);  // LOG_LEVEL_ERR
-//	log_set_level(2);  // LOG_LEVEL_WARN
+//	log_set_level(1);  // LOG_LEVEL_ERR
+	log_set_level(2);  // LOG_LEVEL_WARN
 
 	// TODO add my own cli args to catch
 	const std::string dump_filename { "soup.dat" };
@@ -125,10 +125,21 @@ TEST_CASE("Load file", "[dumpfile]"){
 		}
 
 		struct BSS* findme = dl_list_first(&bss_list, struct BSS, node);
-		auto maybe_json = survey.get_json(findme->bssid_str);
+		auto maybe_json = survey.get_json_bssid(findme->bssid_str);
 		REQUIRE(maybe_json.has_value());
 
 		std::cout << maybe_json.value().get() << "\n";
+	}
+
+	SECTION("get_survey") {
+		struct BSS* bss;
+		Survey survey;
+
+		dl_list_for_each(bss, &bss_list, struct BSS, node) {
+			survey.store(bss);
+		}
+		std::string survey_json = survey.get_json_survey();
+		std::cout << survey_json << "\n";
 	}
 
 	SECTION("survey update") {
@@ -181,7 +192,7 @@ TEST_CASE("Load file", "[dumpfile]"){
 
 		// get some json
 		struct BSS* first = dl_list_first(&bss_list, struct BSS, node);
-		auto maybe_json = survey.get_json(first->bssid_str);
+		auto maybe_json = survey.get_json_bssid(first->bssid_str);
 		REQUIRE(maybe_json.has_value());
 
 		// we will remove the BSS from the survey so must remove from the
@@ -203,7 +214,7 @@ TEST_CASE("Load file", "[dumpfile]"){
 
 		// at this point store() should have flushed the BSS from the json
 		// cache so a new json string would have to be generated
-		auto maybe_json_after_store = survey.get_json(bss->bssid_str);
+		auto maybe_json_after_store = survey.get_json_bssid(bss->bssid_str);
 		REQUIRE(maybe_json_after_store.has_value());
 
 		// the new json should be teeny tiny
@@ -221,7 +232,7 @@ TEST_CASE("Load file", "[dumpfile]"){
 
 		// at this point erase() should have flushed the BSS from the json
 		// cache 
-		auto maybe_json_after_del = survey.get_json(new_bssid_str);
+		auto maybe_json_after_del = survey.get_json_bssid(new_bssid_str);
 		REQUIRE(!maybe_json_after_del.has_value());
 	}
 
