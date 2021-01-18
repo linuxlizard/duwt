@@ -80,7 +80,7 @@ $(function () {
 								return {
 									savebssid: network.bssid,
 									...network,
-									bssid:`<a href=/bssid/${network.bssid}>${network.bssid}</a>`,
+									bssid:`<a href=/bssid?bssid=${network.bssid}>${network.bssid}</a>`,
 									};
 							});
 					return new_survey;

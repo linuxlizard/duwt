@@ -18,6 +18,7 @@
 #include "Poco/Net/HTTPServerResponse.h"
 #include "Poco/Net/ServerSocket.h"
 #include "Poco/Util/ServerApplication.h"
+#include "Poco/URI.h"
 
 #include "mimetypes.h"
 #include "oui.h"
@@ -37,11 +38,54 @@ class HelloRequestHandler: public HTTPRequestHandler
 {
 	void handle_api_survey(HTTPServerRequest& request, HTTPServerResponse& response)
 	{
+		// ignore any params for now
+		(void)request;
+
 		std::string survey_json = survey.get_json_survey();
 		response.setContentType("application/json");
 		response.sendBuffer(survey_json.c_str(), survey_json.length());
 	}
 
+	void handle_api_bssid(HTTPServerRequest& request, HTTPServerResponse& response)
+	{
+		response.setContentType("application/json");
+
+		std::string bssid;
+		std::string bssid_json;
+
+		URI uri { request.getURI() };
+		// std::vector < std::pair < std::string, std::string >>;
+		auto params = uri.getQueryParameters();
+		for (auto p : params) {
+			std::cout << p.first << "=" << p.second << "\n";
+			if (p.first == "bssid") {
+				bssid = p.second;
+			}
+		}
+
+		if (bssid.length() == 0) {
+			response.sendBuffer("{}", 2);
+			return;
+		}
+
+		auto bssid_result = survey.get_json_bssid(bssid);
+		if (!bssid_result.has_value()) {
+			response.sendBuffer("{}", 2);
+			return;
+		}
+
+		bssid_json = bssid_result.value().get();
+		response.sendBuffer(bssid_json.c_str(), bssid_json.length());
+	}
+
+	void handle_page_bssid(HTTPServerRequest& request, HTTPServerResponse& response)
+	{
+		(void)request;
+
+		response.sendFile("files/bssid.html", "text/html");
+	}
+
+		
 	void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response)
 	{
 		Application& app = Application::instance();
@@ -55,11 +99,21 @@ class HelloRequestHandler: public HTTPRequestHandler
 		};
 
 		// is this a file in our allowed location?
-		std::string uri = request.getURI();
-		app.logger().debug("request for URI=%s", uri);
+		std::string uri_str = request.getURI();
+		app.logger().debug("request for URI=%s", uri_str);
 
-		if (uri == "/api/survey") {
+		if (uri_str == "/api/survey") {
 			handle_api_survey(request, response);
+			return;
+		}
+		else if (uri_str.length() == 34 && uri_str.substr(0,11) == "/api/bssid?") {
+			// for example:  /api/bssid?bssid=00:30:44:44:3f:40
+			handle_api_bssid(request, response);
+			return;
+		}
+		else if (uri_str.length() == 30 && uri_str.substr(0,7) == "/bssid?") {
+			// for example:  /bssid?bssid=00:30:44:44:3f:40
+			handle_page_bssid(request, response);
 			return;
 		}
 
@@ -68,14 +122,14 @@ class HelloRequestHandler: public HTTPRequestHandler
 		fs::path root = fs::absolute("files");
 		std::string root_str = root.string();
 		fs::path path { root };
-		path += uri;
+		path += uri_str;
 
 		try {
 			path = fs::canonical(path);
 		} 
 		catch (fs::filesystem_error& err) {
 			// https://en.cppreference.com/w/cpp/filesystem/filesystem_error
-			app.logger().error("invalid absolute path uri=%s", uri);
+			app.logger().error("invalid absolute path uri=%s", uri_str);
 			error();
 			return;
 		};
@@ -90,7 +144,7 @@ class HelloRequestHandler: public HTTPRequestHandler
 
 		// is this actually a file?
 		if (! fs::is_regular_file(path)) {
-			app.logger().error("uri=%s not a file", uri);
+			app.logger().error("uri=%s not a file", uri_str);
 			error();
 			return;
 		}
