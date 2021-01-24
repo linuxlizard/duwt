@@ -164,7 +164,8 @@ std::optional<std::reference_wrapper<const std::string>> Survey::get_json_bssid(
 	return std::ref(json.at(bssid));
 }
 
-std::string Survey::get_json_survey(void)
+std::string Survey::get_json_survey(Decode decode)
+//std::string Survey::get_json_survey(void)
 {
 	// get entire survey as json (expensive)
 
@@ -178,7 +179,7 @@ std::string Survey::get_json_survey(void)
 
 		json_t* jbss;
 
-		int err = bss_to_json(bss, &jbss, BSS_JSON_SHORT_IE_DECODE);
+		int err = bss_to_json(bss, &jbss, decode == Decode::short_ie ? BSS_JSON_SHORT_IE_DECODE : 0);
 		// TODO error checking
 		(void)err;
 

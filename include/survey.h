@@ -47,8 +47,10 @@ public:
 //	std::optional<const std::string*> json_of(std::string bssid) const;
 	std::optional<std::reference_wrapper<const std::string>> get_json_bssid(std::string bssid);
 
+	enum class Decode { full, short_ie };
+
 	// get survey as json
-	std::string get_json_survey(void);
+	std::string get_json_survey(Decode decode=Decode::short_ie);
 
 	size_t size(void);
 

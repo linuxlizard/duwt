@@ -1,4 +1,4 @@
-var mysurvey = new Survey("/api/survey");
+var mysurvey = new Survey("/api/survey?decode=full");
 var survey_table;
 
 $(document).ready(function() {
