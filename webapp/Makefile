@@ -4,7 +4,7 @@ SERVER=../build/files
 
 # using Bootstrap but its CDN doens't have the full jquery with AJAX so
 # bringing along my own
-JS=duwt.js bssid.js jquery-3.5.1.min.js jquery-3.5.1.js sample.js datatable.js
+JS=duwt.js bssid.js jquery-3.5.1.min.js jquery-3.5.1.js sample.js datatable.js survey.js
 
 # index.html from https://getbootstrap.com/docs/4.5/getting-started/introduction/#starter-template
 # starter.html from AdminLTE https://adminlte.io
