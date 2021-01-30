@@ -30,7 +30,49 @@ class Survey {
 		this.survey = [];
 	}
 
+	IE_RSN = 48;
+
 	length() { return this.survey.length; }
+
+	decode_rsn(network) { 
+		// convert the RSN IE to a simple "Security" string
+		if (!("IE" in network)) {
+			return "unknown";
+		}
+		// search for the RSN IE
+		var rsn_ie = $.grep(network.IE, ie => ie.id == this.IE_RSN);
+		if (!rsn_ie.length) {
+			return "unknown";
+		}
+
+		// grep returns array so should convert our one element array into a
+		// single value for convenience
+		rsn_ie = rsn_ie.shift();
+
+		var auth = [];
+		if ($.grep(rsn_ie.auth, a => a.includes("PSK")).length) {
+			auth = auth.concat("PSK");
+		}
+		if ($.grep(rsn_ie.auth, a => a.includes("802.1X")).length) {
+			auth = auth.concat("8021.X");
+		}
+
+		// search for TKIP and CCMP which indicates WPA1 / WPA2
+		var cipher = "";
+		if (rsn_ie.pairwise.includes("TKIP")) {
+			cipher += "WPA1";
+		}
+		if (rsn_ie.pairwise.includes("CCMP")) {
+			cipher += "WPA2";
+		}
+
+		if (cipher) {
+			return cipher + "/" + auth.join(",");
+		}
+
+		console.log("rsn_ie=",rsn_ie);
+		return "unknown/todo";
+	}
 
 	fetch() {
 		return fetch(this.url)
@@ -44,6 +86,7 @@ class Survey {
 							var new_survey = $.map(json, (network,idx) => {
 										return {
 											date: new Date(),
+											"security": this.decode_rsn(network),
 											...network,
 											};
 									});

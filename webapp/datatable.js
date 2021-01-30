@@ -19,7 +19,7 @@ $(document).ready(function() {
 		survey.forEach(network => survey_table.row.add( 
 					[escapeHTML(network.ssid), network.bssid, String(network.freq), 
 					 String(network.dbm), network.mode, network.chwidth, 
-					 "TODO"]
+					 network.security]
 					).draw(false)
 				);
 	});
