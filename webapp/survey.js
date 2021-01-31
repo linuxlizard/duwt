@@ -39,10 +39,12 @@ class Survey {
 		if (!("IE" in network)) {
 			return "unknown";
 		}
+
 		// search for the RSN IE
 		var rsn_ie = $.grep(network.IE, ie => ie.id == this.IE_RSN);
 		if (!rsn_ie.length) {
-			return "unknown";
+			console.log("rsn_ie=",rsn_ie);
+			return "Open";
 		}
 
 		// grep returns array so should convert our one element array into a
