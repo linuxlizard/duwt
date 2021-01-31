@@ -11,6 +11,7 @@ $(document).ready(function() {
             { title: "mode" },
             { title: "width" },
             { title: "security" },
+            { title: "vendor" },
         ]
     } );
 
@@ -19,7 +20,9 @@ $(document).ready(function() {
 		survey.forEach(network => survey_table.row.add( 
 					[escapeHTML(network.ssid), network.bssid, String(network.freq), 
 					 String(network.dbm), network.mode, network.chwidth, 
-					 network.security]
+					 network.security, 
+					 network.oui || "Unknown"
+					]
 					).draw(false)
 				);
 	});

@@ -29,6 +29,9 @@
 //
 // Flat files:
 // http://standards-oui.ieee.org/oui/oui.txt
+//
+// TODO add support for Wireshark
+// https://gitlab.com/wireshark/wireshark/-/raw/master/manuf
 
 using namespace ieeeoui;
 

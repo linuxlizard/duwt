@@ -33,6 +33,8 @@ using namespace Poco::Util;
 
 mimetypes all_mimetypes;
 
+ieeeoui::OUI_MA * oui;
+
 extern Survey survey;
 
 class HelloRequestHandler: public HTTPRequestHandler
@@ -40,19 +42,22 @@ class HelloRequestHandler: public HTTPRequestHandler
 	void handle_api_survey(const URI::QueryParameters& params, HTTPServerResponse& response)
 	{
 		// optional argument: decode
-		// "full"  : return full IE decode (HUGE)
-		// anything else return the smaller decode w/o IEs all decoded
+		// "short"  : return short IE decode (HUGE)
+		// "full"  : return full IE decode (default)
+		// anything else return the full decode /w IEs all decoded
 
 		// amuse myself using std::find_if()
 		// QueryParameters = std::vector < std::pair < std::string, std::string >>;
-		bool decode_full { false };
+		bool decode_full { true };
 		auto decode_arg = std::find_if(std::cbegin(params), std::cend(params), 
 				[](const std::pair<std::string, std::string>& p) { 
 					return p.first == "decode"; 
 				} 
 		);
 
-		decode_full = decode_arg != std::cend(params) && (*decode_arg).second == "full";
+		if (decode_arg != std::cend(params)) {
+			decode_full = (*decode_arg).second != "short";
+		}
 
 		std::string survey_json = survey.get_json_survey( decode_full ? Survey::Decode::full : Survey::Decode::short_ie );
 
@@ -213,6 +218,18 @@ class WebServerApp: public ServerApplication
 		Poco::Logger::setLevel("", Message::PRIO_DEBUG);
 
 		all_mimetypes = mimetype_parse_default_file();
+
+		// TODO get this from a config file somewhere.
+		// Also search for alternatives.
+		std::string path = "/usr/share/hwdata/oui.txt";
+		try {
+			oui = new ieeeoui::OUI_MA( path );
+			survey.add_oui_db(oui);
+		}
+		catch (const ieeeoui::OUIException & err) {
+			printf("err=%s\n", err.what());
+			logger().error("failed to read oui file=%s err=%s", path, std::string{err.what()} );
+		}
 
 		ScanningThread scanner;
 

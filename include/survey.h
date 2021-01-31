@@ -13,6 +13,8 @@
 #include <functional>
 #include <mutex>
 
+#include "oui.h"
+
 struct BSS;
 
 struct Counters 
@@ -57,6 +59,8 @@ public:
 	void stats_reset(void);
 	std::string stats_get(void);
 
+	void add_oui_db(ieeeoui::OUI_MA* oui);
+
 private:
 	// key: bss->bssid_str
 	// value: ptr to BSS
@@ -77,6 +81,9 @@ private:
 
 	// track the survey cache behavior (for debugging)
 	Counters counters;
+
+	// for oui lookup
+	ieeeoui::OUI_MA* oui;
 };
 
 #endif
