@@ -43,7 +43,12 @@ class Survey {
 		// search for the RSN IE
 		var rsn_ie = $.grep(network.IE, ie => ie.id == this.IE_RSN);
 		if (!rsn_ie.length) {
-			console.log("rsn_ie=",rsn_ie);
+//			console.log("rsn_ie=",rsn_ie);
+//			console.log("capability=",network.capability);
+			// need capability to check for WEP
+			if (network.capability && network.capability.includes("Privacy")) {
+				return "WEP";
+			}
 			return "Open";
 		}
 
@@ -58,21 +63,28 @@ class Survey {
 		if ($.grep(rsn_ie.auth, a => a.includes("802.1X")).length) {
 			auth = auth.concat("8021.X");
 		}
+		if ($.grep(rsn_ie.auth, a => a.includes("SAE")).length) {
+		console.log("rsn_ie=",rsn_ie);
+			auth = auth.concat("SAE");
+		}
 
 		// search for TKIP and CCMP which indicates WPA1 / WPA2
 		var cipher = "";
 		if (rsn_ie.pairwise.includes("TKIP")) {
 			cipher += "WPA1";
 		}
-		if (rsn_ie.pairwise.includes("CCMP")) {
+		if (auth.includes("SAE")) {
+			cipher = "WPA3";
+		}
+		else if (rsn_ie.pairwise.includes("CCMP")) {
 			cipher += "WPA2";
 		}
 
-		if (cipher) {
+		if (cipher && auth.length) {
 			return cipher + "/" + auth.join(",");
 		}
 
-		console.log("rsn_ie=",rsn_ie);
+//		console.log("rsn_ie=",rsn_ie);
 		return "unknown/todo";
 	}
 
