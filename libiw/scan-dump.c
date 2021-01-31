@@ -754,9 +754,23 @@ static void json_dump_bss_list(struct dl_list* bss_list)
 	json_decref(jlist);
 }
 
-static void dump_from_file(struct args* args)
+static void scan_dump_bss_list(struct dl_list* bss_list)
 {
 	struct BSS* bss;
+	dl_list_for_each(bss, bss_list, struct BSS, node) {
+		print_bss(bss);
+	}
+
+	json_dump_bss_list(bss_list);
+
+	printf("\n\n");
+	dl_list_for_each(bss, bss_list, struct BSS, node) {
+		print_short(bss);
+	}
+}
+
+static void dump_from_file(struct args* args)
+{
 	int err = 0;
 
 	DEFINE_DL_LIST(bss_list);
@@ -764,11 +778,7 @@ static void dump_from_file(struct args* args)
 	err = dumpfile_parse(args->dump_filename, &bss_list);
 	XASSERT(err==0, err);
 
-	json_dump_bss_list(&bss_list);
-
-	dl_list_for_each(bss, &bss_list, struct BSS, node) {
-		print_short(bss);
-	}
+	scan_dump_bss_list(&bss_list);
 
 	bss_free_list(&bss_list);
 }
@@ -856,17 +866,7 @@ int main(int argc, char* argv[])
 		INFO("nl_recvmsgs err=%d\n", err);
 	}
 
-	struct BSS* bss;
-	dl_list_for_each(bss, &bss_list, struct BSS, node) {
-		print_bss(bss);
-	}
-
-	json_dump_bss_list(&bss_list);
-
-	printf("\n\n");
-	dl_list_for_each(bss, &bss_list, struct BSS, node) {
-		print_short(bss);
-	}
+	scan_dump_bss_list(&bss_list);
 
 
 //	search_for(&bss_list);
