@@ -1,3 +1,8 @@
+/*
+ * davep 20210218 ; tinkering with jansson's limits
+ *
+ * gcc -g -Wall -Wextra -o test_jansson test_jansson.c -ljansson
+ */
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -12,6 +17,8 @@ int main(void)
 	uint16_t num16;
 	uint32_t num32;
 	uint64_t num64;
+
+	// jansson uses signed long long for integers. Will that cause problems?
 
 	num8 = num16 = num32 = num64 = 0;
 
