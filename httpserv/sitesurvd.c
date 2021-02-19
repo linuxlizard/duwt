@@ -39,6 +39,7 @@ typedef int MHD_Result;
 #include "core.h"
 #include "iw.h"
 #include "iw-scan.h"
+#include "ssid.h"
 #include "nlnames.h"
 #include "hdump.h"
 #include "ie.h"
@@ -364,22 +365,6 @@ enum MHD_Result capture_keys (void *arg, enum MHD_ValueKind kind,
 	return MHD_YES;
 }
 
-#if 0
-std::vector<char> load_file(fs::path path)
-{
-	// TODO need many, many check for errors
-	std::ifstream infile(path, std::ios::binary);
-
-	std::vector<char> buf ;
-	buf.reserve(fs::file_size(path));
-
-	buf.resize(buf.capacity());
-	infile.read(buf.data(), buf.capacity());
-
-	return buf;
-}
-#endif
-
 // responsible for /api/survey 
 void get_survey_response(const BSSMap* bss_map, struct MHD_Response **p_response, int* status)
 {
@@ -529,13 +514,13 @@ void get_api_response(const char* url, ssize_t url_len, const BSSMap* bss_map, s
 	return ;
 }
 
+// http callback
 struct MHD_Response* get_file_response(const char* url)
 {
-	// http callback
-	(void)url;
 	struct MHD_Response *response = NULL;
-#if 0
 
+	DBG("%s %s\n", __func__, url);
+#if 0
 	fs::path root = fs::absolute("public");
 	fs::path path = root;
 	std::string root_str = root.string();
@@ -558,36 +543,34 @@ struct MHD_Response* get_file_response(const char* url)
 	if (pp != root_str) {
 		return NULL;
 	}
+#endif
 
-	std::vector<char> page = load_file(path);
+	char path[FILENAME_MAX+1];
+	struct bytebuf page;
+	bytebuf_init_from_file(&page, path);
 
 	response = MHD_create_response_from_buffer(
-					page.size(),
-					page.data(), 
-					MHD_RESPMEM_MUST_COPY);
+					page.len,
+					page.buf, 
+					MHD_RESPMEM_MUST_FREE);
 	if (!response) {
+		bytebuf_free(&page);
 		return NULL;
 	}
+	page.buf = NULL;
 
 	// look for a MIME type
-	std::string extension = path.extension();
-	extension.erase(0,1); // get rid of the "."
+	char content_type[32] = "application/msword";
 
-	try {
-		std::string content_type = mt.at(extension);
-
-		int ret = MHD_add_response_header(response, 
-				"Content-Type",
-				content_type.c_str());
-		if (ret != MHD_YES) {
-			ERR("%s add response failed ret=%d\n", __func__, ret);
-			MHD_destroy_response(response);
-			response = NULL;
-		}
-	} catch (std::out_of_range& err) {
-		// pass
+	int ret = MHD_add_response_header(response, 
+			"Content-Type",
+			content_type);
+	if (ret != MHD_YES) {
+		ERR("%s add response failed ret=%d\n", __func__, ret);
+		MHD_destroy_response(response);
+		response = NULL;
 	}
-#endif
+
 	return response;
 }
 
