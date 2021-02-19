@@ -10,6 +10,7 @@
 #include <iostream>
 #include <thread>
 #include <string>
+#include <algorithm>
 
 #include "Poco/Net/HTTPServer.h"
 #include "Poco/Net/HTTPRequestHandler.h"
@@ -32,37 +33,54 @@ using namespace Poco::Util;
 
 mimetypes all_mimetypes;
 
+ieeeoui::OUI_MA * oui;
+
 extern Survey survey;
 
 class HelloRequestHandler: public HTTPRequestHandler
 {
-	void handle_api_survey(HTTPServerRequest& request, HTTPServerResponse& response)
+	void handle_api_survey(const URI::QueryParameters& params, HTTPServerResponse& response)
 	{
-		// ignore any params for now
-		(void)request;
+		// optional argument: decode
+		// "short"  : return short IE decode (HUGE)
+		// "full"  : return full IE decode (default)
+		// anything else return the full decode /w IEs all decoded
 
-		std::string survey_json = survey.get_json_survey();
+		// amuse myself using std::find_if()
+		// QueryParameters = std::vector < std::pair < std::string, std::string >>;
+		bool decode_full { true };
+		auto decode_arg = std::find_if(std::cbegin(params), std::cend(params), 
+				[](const std::pair<std::string, std::string>& p) { 
+					return p.first == "decode"; 
+				} 
+		);
+
+		if (decode_arg != std::cend(params)) {
+			decode_full = (*decode_arg).second != "short";
+		}
+
+		std::string survey_json = survey.get_json_survey( decode_full ? Survey::Decode::full : Survey::Decode::short_ie );
+
 		response.setContentType("application/json");
 		response.sendBuffer(survey_json.c_str(), survey_json.length());
 	}
 
-	void handle_api_bssid(HTTPServerRequest& request, HTTPServerResponse& response)
+	void handle_api_bssid(const URI::QueryParameters& params, HTTPServerResponse& response)
 	{
 		response.setContentType("application/json");
 
 		std::string bssid;
 		std::string bssid_json;
 
-		URI uri { request.getURI() };
+		// linear search for bssid arg
 		// std::vector < std::pair < std::string, std::string >>;
-		auto params = uri.getQueryParameters();
 		for (auto p : params) {
-			std::cout << p.first << "=" << p.second << "\n";
 			if (p.first == "bssid") {
 				bssid = p.second;
 			}
 		}
 
+		// required bssid not in args so return empty result
 		if (bssid.length() == 0) {
 			response.sendBuffer("{}", 2);
 			return;
@@ -78,14 +96,6 @@ class HelloRequestHandler: public HTTPRequestHandler
 		response.sendBuffer(bssid_json.c_str(), bssid_json.length());
 	}
 
-	void handle_page_bssid(HTTPServerRequest& request, HTTPServerResponse& response)
-	{
-		(void)request;
-
-		response.sendFile("files/bssid.html", "text/html");
-	}
-
-		
 	void handleRequest(HTTPServerRequest& request, HTTPServerResponse& response)
 	{
 		Application& app = Application::instance();
@@ -102,18 +112,24 @@ class HelloRequestHandler: public HTTPRequestHandler
 		std::string uri_str = request.getURI();
 		app.logger().debug("request for URI=%s", uri_str);
 
-		if (uri_str == "/api/survey") {
-			handle_api_survey(request, response);
+		// https://pocoproject.org/docs/Poco.URI.html
+		URI uri { request.getURI() };
+		auto params = uri.getQueryParameters();
+		for (auto p : params) {
+			std::cout << p.first << "=" << p.second << "\n";
+		}
+
+		// path component of the URI
+		std::string uri_path = uri.getPath();
+		std::cout << "uri_path=" << uri_path << "\n";
+
+		if (uri_path == "/api/survey") {
+			handle_api_survey(params, response);
 			return;
 		}
-		else if (uri_str.length() == 34 && uri_str.substr(0,11) == "/api/bssid?") {
+		else if (uri_path == "/api/bssid") {
 			// for example:  /api/bssid?bssid=00:30:44:44:3f:40
-			handle_api_bssid(request, response);
-			return;
-		}
-		else if (uri_str.length() == 30 && uri_str.substr(0,7) == "/bssid?") {
-			// for example:  /bssid?bssid=00:30:44:44:3f:40
-			handle_page_bssid(request, response);
+			handle_api_bssid(params, response);
 			return;
 		}
 
@@ -122,7 +138,7 @@ class HelloRequestHandler: public HTTPRequestHandler
 		fs::path root = fs::absolute("files");
 		std::string root_str = root.string();
 		fs::path path { root };
-		path += uri_str;
+		path += uri_path;
 
 		try {
 			path = fs::canonical(path);
@@ -202,6 +218,18 @@ class WebServerApp: public ServerApplication
 		Poco::Logger::setLevel("", Message::PRIO_DEBUG);
 
 		all_mimetypes = mimetype_parse_default_file();
+
+		// TODO get this from a config file somewhere.
+		// Also search for alternatives.
+		std::string path = "/usr/share/hwdata/oui.txt";
+		try {
+			oui = new ieeeoui::OUI_MA( path );
+			survey.add_oui_db(oui);
+		}
+		catch (const ieeeoui::OUIException & err) {
+			printf("err=%s\n", err.what());
+			logger().error("failed to read oui file=%s err=%s", path, std::string{err.what()} );
+		}
 
 		ScanningThread scanner;
 

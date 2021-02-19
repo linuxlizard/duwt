@@ -23,8 +23,25 @@
 #include "bss.h"
 #include "bss_json.h"
 #include "survey.h"
+#include "oui.h"
 
-struct BSS;
+// add the OUI to the json encoded BSS
+static void add_oui(ieeeoui::OUI_MA* oui, json_t* j_bss, const struct BSS* bss)
+{
+	uint8_t oui_bytes[3] { bss->bssid[0], bss->bssid[1], bss->bssid[2] };
+	try {
+		std::string oui_str = oui->get_org_name(oui_bytes);
+
+		json_t* j_oui = json_string(oui_str.c_str());
+		if (j_oui) {
+			json_object_set_new(j_bss, "oui", j_oui);
+			j_oui = nullptr; // belongs to j_bss now
+		}
+	} 
+	catch (std::out_of_range& err) {
+		// ignore 
+	}
+}
 
 void Survey::store(struct BSS* bss)
 {
@@ -149,8 +166,14 @@ std::optional<std::reference_wrapper<const std::string>> Survey::get_json_bssid(
 		return {};
 	}
 
+	// add OUI, if possible
+	if (oui) {
+		add_oui(oui, j_bss, bss);
+	}
+
 	char* s = json_dumps(j_bss, JSON_INDENT(1));
 	if (!s) {
+		json_decref(j_bss);
 		return {};
 	}
 
@@ -165,7 +188,8 @@ std::optional<std::reference_wrapper<const std::string>> Survey::get_json_bssid(
 	return std::ref(json.at(bssid));
 }
 
-std::string Survey::get_json_survey(void)
+std::string Survey::get_json_survey(Decode decode)
+//std::string Survey::get_json_survey(void)
 {
 	// get entire survey as json (expensive)
 
@@ -179,9 +203,14 @@ std::string Survey::get_json_survey(void)
 
 		json_t* jbss;
 
-		int err = bss_to_json(bss, &jbss, BSS_JSON_SHORT_IE_DECODE);
+		int err = bss_to_json(bss, &jbss, decode == Decode::short_ie ? BSS_JSON_SHORT_IE_DECODE : 0);
 		// TODO error checking
 		(void)err;
+
+		// add OUI, if possible
+		if (oui) {
+			add_oui(oui, jbss, bss);
+		}
 
 		err = json_array_append_new(jarray, jbss);
 		// TODO error checking
@@ -206,6 +235,13 @@ std::string Survey::stats_get(void)
 {
 	const std::lock_guard<std::mutex> local_lock(lock);
 	return counters.get();
+}
+
+void Survey::add_oui_db(ieeeoui::OUI_MA* oui_db)
+{
+	const std::lock_guard<std::mutex> local_lock(lock);
+	// for now, just support one table
+	this->oui = oui_db;
 }
 
 std::string Counters::get(void)

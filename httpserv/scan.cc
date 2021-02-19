@@ -326,11 +326,11 @@ static int netlink_read(struct netlink_socket_bundle* bun)
 	do {
 		int err = nl_recvmsgs(bun->nl_sock, bun->cb);
 		DBG("%s err=%d cb_err=%d\n", __func__, err, bun->cb_err);
-		if (err < 0) {
-			// TODO
-			ERR("%s on %s err=%d: %s\n", __func__, bun->name, err, nl_geterror(err));
-			break;
-		}
+//		if (err < 0) {
+//			// TODO
+//			ERR("%s on %s err=%d: %s\n", __func__, bun->name, err, nl_geterror(err));
+//			break;
+//		}
 	} while (bun->cb_err > 0);
 
 	return 0;

@@ -485,6 +485,52 @@ static int ie_to_json(const struct IE* ie, json_t** p_jie, unsigned int flags)
 	return 0;
 }
 
+static json_t* capability_to_json(unsigned int capa)
+{
+	json_t* jcapa = json_array();
+	if (!jcapa) {
+		return NULL;
+	}
+
+	struct named_bit {
+		unsigned int bit;
+		const char* name;
+	};
+
+	struct named_bit capabits[] = {
+		{WLAN_CAPABILITY_ESS, "ESS"},
+		{WLAN_CAPABILITY_IBSS, "IBSS"},
+		{WLAN_CAPABILITY_CF_POLLABLE, "CfPollable"},
+		{WLAN_CAPABILITY_CF_POLL_REQUEST, "CfPollReq"},
+		{WLAN_CAPABILITY_PRIVACY, "Privacy"},
+		{WLAN_CAPABILITY_SHORT_PREAMBLE, "ShortPreamble"},
+		{WLAN_CAPABILITY_PBCC, "PBCC"},
+		{WLAN_CAPABILITY_CHANNEL_AGILITY, "ChannelAgility"},
+		{WLAN_CAPABILITY_SPECTRUM_MGMT, "SpectrumMgmt"},
+		{WLAN_CAPABILITY_QOS, "QoS"},
+		{WLAN_CAPABILITY_SHORT_SLOT_TIME, "ShortSlotTime"},
+		{WLAN_CAPABILITY_APSD, "APSD"},
+		{WLAN_CAPABILITY_RADIO_MEASURE, "RadioMeasure"},
+		{WLAN_CAPABILITY_DSSS_OFDM, "DSSS-OFDM"},
+		{WLAN_CAPABILITY_DEL_BACK, "DelayedBACK"},
+		{WLAN_CAPABILITY_IMM_BACK, "ImmediateBACK"},
+		{0,NULL},
+	};
+
+	struct named_bit *nbit = capabits;
+	while (nbit->bit) {
+		if (capa & nbit->bit) {
+			json_t* jstr = json_string(nbit->name);
+			if (jstr) {
+				json_array_append_new(jcapa, jstr);
+			}
+		}
+		nbit++;
+	}
+
+	return jcapa;
+}
+
 int bss_to_json(const struct BSS* bss, json_t** p_jbss, unsigned int flags)
 {
 	*p_jbss = NULL;
@@ -493,6 +539,15 @@ int bss_to_json(const struct BSS* bss, json_t** p_jbss, unsigned int flags)
 	int err = bss_to_json_summary(bss, &jbss);
 	if (err) {
 		return err;
+	}
+
+	json_t* jcapa;
+	jcapa = capability_to_json(bss->capability);
+	if (jcapa) {
+		err = json_object_set_new(jbss, "capability", jcapa);
+		if (err) {
+			json_decref(jcapa);
+		}
 	}
 
 	// build the array of encoded IEs

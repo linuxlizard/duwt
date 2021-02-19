@@ -13,6 +13,8 @@
 #include <functional>
 #include <mutex>
 
+#include "oui.h"
+
 struct BSS;
 
 struct Counters 
@@ -47,13 +49,17 @@ public:
 //	std::optional<const std::string*> json_of(std::string bssid) const;
 	std::optional<std::reference_wrapper<const std::string>> get_json_bssid(std::string bssid);
 
+	enum class Decode { full, short_ie };
+
 	// get survey as json
-	std::string get_json_survey(void);
+	std::string get_json_survey(Decode decode=Decode::short_ie);
 
 	size_t size(void);
 
 	void stats_reset(void);
 	std::string stats_get(void);
+
+	void add_oui_db(ieeeoui::OUI_MA* oui);
 
 private:
 	// key: bss->bssid_str
@@ -75,6 +81,9 @@ private:
 
 	// track the survey cache behavior (for debugging)
 	Counters counters;
+
+	// for oui lookup
+	ieeeoui::OUI_MA* oui;
 };
 
 #endif
