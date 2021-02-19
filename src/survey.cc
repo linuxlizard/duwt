@@ -18,6 +18,7 @@
 
 #include "jansson.h"
 
+#include "core.h"
 #include "iw.h"
 #include "bss.h"
 #include "bss_json.h"
@@ -159,7 +160,7 @@ std::optional<std::reference_wrapper<const std::string>> Survey::get_json_bssid(
 
 	// release jansson memory
 	json_decref(j_bss);
-	free(s);
+	PTR_FREE(s);
 
 	return std::ref(json.at(bssid));
 }
@@ -197,6 +198,7 @@ std::string Survey::get_json_survey(void)
 	json_decref(jarray);
 
 	std::string survey_str { s };
+	PTR_FREE(s);
 	return survey_str;
 }
 
