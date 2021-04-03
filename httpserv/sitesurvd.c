@@ -6,6 +6,9 @@
  *
  * Copyright (c) 2019-2020 David Poole <davep@mbuf.com>
  */
+
+#define _GNU_SOURCE 1
+
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
@@ -20,6 +23,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <search.h>
+#include <limits.h>
 
 // netlink
 #include <linux/if_ether.h>
@@ -33,7 +37,13 @@
 
 // microhttpd switched to enums after this point
 #if MHD_VERSION <= 0x00097000
-typedef int MHD_Result;
+#error
+#undef MHD_NO
+#undef MHD_YES
+enum MHD_Result {
+	MHD_NO = 0,
+	MHD_YES = 1 
+};
 #endif
 
 #include "core.h"
@@ -43,7 +53,7 @@ typedef int MHD_Result;
 #include "nlnames.h"
 #include "hdump.h"
 #include "ie.h"
-//#include "mimetypes.h"
+#include "mimetypes.h"
 #include "args.h"
 #include "bss_json.h"
 #include "ssid.h"
@@ -52,6 +62,8 @@ typedef int MHD_Result;
 //#define PORT 8888
 
 int survd_debug = 0;
+
+static struct hsearch_data mimetypes;
 
 static const char* notfound = "\
 <html>\n\
@@ -164,8 +176,7 @@ static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 		goto fail;
 	}
 	else {
-		uint64_t key = BSSID_U64(new_bss->bssid);
-		(void)key;
+//		uint64_t key = BSSID_U64(new_bss->bssid);
 
 		// find tree entry with matching bssid
 		void* p = tfind((void*)new_bss, &map->root, bss_compare);
@@ -514,61 +525,120 @@ void get_api_response(const char* url, ssize_t url_len, const BSSMap* bss_map, s
 	return ;
 }
 
+static size_t get_ext(const char *filename, char ext[], size_t ext_size)
+{
+	// search backwards looking for last '.'
+	// then copy from the . to end of string into ext[]
+	size_t filename_len = strlen(filename);
+	const char *ptr = filename + filename_len - 1;
+
+	size_t count = 0;
+	while (ptr != filename && *ptr != '.') {
+		count++;
+		ptr--;
+	}
+
+	if (*ptr != '.') {
+		// no extension
+		INFO("%s no extension found for file=%s\n", __func__, filename);
+		return 0;
+	}
+
+	if (count >= ext_size) {
+		INFO("%s extension len=%zu too long for file=%s\n", __func__, count, filename);
+		return 0;
+	}
+
+	// skip the '.'
+	ptr++; 
+
+	strncpy(ext, ptr, ext_size);
+	DBG("%s filename=%s found ext=%s\n", __func__, filename, ext);
+	return count;
+}
+
 // http callback
 struct MHD_Response* get_file_response(const char* url)
 {
 	struct MHD_Response *response = NULL;
+	static char *pwd = NULL;
+	static size_t pwd_len = 0;
 
-	DBG("%s %s\n", __func__, url);
-#if 0
-	fs::path root = fs::absolute("public");
-	fs::path path = root;
-	std::string root_str = root.string();
-	path += url;
+	DBG("%s url=%s\n", __func__, url);
 
-	try {
-		path = fs::canonical(path);
-	} 
-	catch (fs::filesystem_error& err) {
-		// https://en.cppreference.com/w/cpp/filesystem/filesystem_error
-		std::cerr << err.what() << "\n";
-		return NULL;
-	};
+	if (!pwd) {
+		pwd = get_current_dir_name();
+		if (!pwd) {
+			ERR("%s get_current_dir_nameout of memory\n", __func__);
+			return NULL;
+		}
 
-	// XXX this looks super stupid and over complicated
-	std::string pp = path.parent_path().string().substr(0,root_str.length());
+		pwd_len = strlen(pwd);
+	}
 
-	// if it's a correct path and it's under our root directory, then we
-	// shall read it
-	if (pp != root_str) {
+	char path[PATH_MAX+1];
+	char path_cleaned[PATH_MAX+1];
+
+	int len = snprintf(path, sizeof(path), "%s/%s", pwd, url);
+	if (len == sizeof(path)) {
+		ERR("%s path too long\n", __func__);
 		return NULL;
 	}
-#endif
 
-	char path[FILENAME_MAX+1];
-	struct bytebuf page;
-	bytebuf_init_from_file(&page, path);
+	if (!realpath(path, path_cleaned) ) {
+		ERR("%s path=%s realpath() err=%s\n", __func__, path, strerror(errno));
+		return NULL;
+	}
 
-	response = MHD_create_response_from_buffer(
-					page.len,
-					page.buf, 
-					MHD_RESPMEM_MUST_FREE);
+	// require realpath to be under current path (no ../.. shennanigans)
+	if ( strncmp(pwd, path_cleaned, pwd_len) != 0) {
+		ERR("%s path=%s out of range\n", __func__, path_cleaned);
+		return NULL;
+	}
+
+	struct stat statbuf;
+	memset( &statbuf, 0, sizeof(struct stat));
+	int err = stat(path_cleaned, &statbuf);
+	if (err != 0) {
+		ERR("%s path=%s stat failed err=%s\n", __func__, path_cleaned, strerror(errno));
+		return NULL;
+	}
+	if (!((statbuf.st_mode & S_IFMT) & S_IFREG)) {
+		ERR("%s path=%s not a file\n", __func__, path_cleaned);
+		return NULL;
+	}
+
+	int fd = open(path_cleaned, 0);
+	if (fd < 0) { 
+		ERR("%s %s open failed err=%s\n", __func__, path_cleaned, strerror(errno));
+		return NULL;
+	}
+
+	response = MHD_create_response_from_fd(statbuf.st_size, fd);
 	if (!response) {
-		bytebuf_free(&page);
+		close(fd);
 		return NULL;
 	}
-	page.buf = NULL;
 
 	// look for a MIME type
-	char content_type[32] = "application/msword";
-
-	int ret = MHD_add_response_header(response, 
-			"Content-Type",
-			content_type);
-	if (ret != MHD_YES) {
-		ERR("%s add response failed ret=%d\n", __func__, ret);
-		MHD_destroy_response(response);
-		response = NULL;
+	char ext[16];
+	size_t ext_len = get_ext(path_cleaned, ext, sizeof(ext));
+	if (ext_len != 0) {
+		ENTRY entry, *found;
+		entry.key = ext;
+		entry.data = NULL;
+		int ret = hsearch_r(entry, FIND, &found, &mimetypes);
+		if (ret) {
+			DBG("%s ext=%s mimetype=%s\n", __func__, ext, (char*)found->data);
+			enum MHD_Result mhd_ret = MHD_add_response_header(response, 
+					"Content-Type",
+					(char*)found->data);
+			if (mhd_ret != MHD_YES) {
+				ERR("%s add response failed ret=%d\n", __func__, ret);
+				MHD_destroy_response(response);
+				response = NULL;
+			}
+		}
 	}
 
 	return response;
@@ -667,7 +737,7 @@ enum MHD_Result answer_to_connection (void *arg,
 }
 
 
-static MHD_Result on_client_connect (void *cls,
+static enum MHD_Result on_client_connect (void *cls,
 								const struct sockaddr *addr,
 								socklen_t addrlen)
 {
@@ -777,6 +847,9 @@ int main(int argc, char* argv[])
 	struct args args;
 
 	int err = args_parse(argc, argv, &args);
+	if (err != 0) {
+		return EXIT_FAILURE;
+	}
 
 	if (args.debug > 0) {
 		log_set_level(LOG_LEVEL_DEBUG);
@@ -788,7 +861,13 @@ int main(int argc, char* argv[])
 		.root = NULL
 	};
 
-//	mt = mimetype_parse_default_file();
+	memset(&mimetypes, 0, sizeof(struct hsearch_data));
+	err = hcreate_r(1024, &mimetypes);
+	if (!err) {
+		return EXIT_FAILURE;
+	}
+
+	err = mimetype_parse("/etc/mime.types", &mimetypes);
 
 	daemon = MHD_start_daemon ( MHD_NO_FLAG, PORT, 
 			&on_client_connect, NULL,
@@ -797,25 +876,30 @@ int main(int argc, char* argv[])
 	XASSERT( daemon, 0);
 
 	struct netlink_socket_bundle scan_event_watcher;
-	err = setup_scan_event_sock(&scan_event_watcher);
-	if (err) {
-		// TODO
-		XASSERT(0,err);
-	}
-
 	struct netlink_socket_bundle scan_results_watcher;
-	err = setup_scan_netlink_socket(&scan_results_watcher);
-	if (err) {
-		// TODO
-		XASSERT(0,err);
+	memset( &scan_event_watcher, 0, sizeof(struct netlink_socket_bundle));
+	memset( &scan_results_watcher, 0, sizeof(struct netlink_socket_bundle));
+
+	if (!args.load_dump_file) {
+		err = setup_scan_event_sock(&scan_event_watcher);
+		if (err) {
+			// TODO
+			XASSERT(0,err);
+		}
+
+		err = setup_scan_netlink_socket(&scan_results_watcher);
+		if (err) {
+			// TODO
+			XASSERT(0,err);
+		}
+
+		// attach the scan results watcher to the scan event watcher so we can call
+		// GET_SCAN_RESULTS from the watcher's libnl callback
+		scan_event_watcher.more_args = (void*)&scan_results_watcher;
+
+		// attach the bss collection to the get scan results watcher
+		scan_results_watcher.more_args = (void*)&bss_map;
 	}
-
-	// attach the scan results watcher to the scan event watcher so we can call
-	// GET_SCAN_RESULTS from the watcher's libnl callback
-	scan_event_watcher.more_args = (void*)&scan_results_watcher;
-
-	// attach the bss collection to the get scan results watcher
-	scan_results_watcher.more_args = (void*)&bss_map;
 
 	fd_set read_fd_set, write_fd_set, except_fd_set;
 	while(1) { 
@@ -830,8 +914,12 @@ int main(int argc, char* argv[])
 								&max_fd);
 		XASSERT(err==MHD_YES, err);
 		printf("max_fd=%d event=%d results=%d\n", max_fd, scan_event_watcher.sock_fd, scan_results_watcher.sock_fd);
-		FD_SET(scan_event_watcher.sock_fd, &read_fd_set);
-		FD_SET(scan_results_watcher.sock_fd, &read_fd_set);
+		if (scan_event_watcher.sock_fd) {
+			FD_SET(scan_event_watcher.sock_fd, &read_fd_set);
+		}
+		if (scan_results_watcher.sock_fd) {
+			FD_SET(scan_results_watcher.sock_fd, &read_fd_set);
+		}
 
 		int nfds = max_fd;
 		nfds = MAX(scan_event_watcher.sock_fd, nfds);
@@ -869,6 +957,7 @@ int main(int argc, char* argv[])
 	}
 
 	MHD_stop_daemon (daemon);
+	hdestroy_r(&mimetypes);
 	return 0;
 }
 

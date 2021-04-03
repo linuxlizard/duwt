@@ -13,6 +13,8 @@
 #include <errno.h>
 #include <search.h>
 
+#include "mimetypes.h"
+
 enum State {
 	START = 1,
 	TYPE,
@@ -66,7 +68,7 @@ static int save(const char* type, const char* ext, struct hsearch_data* htab)
 
 	err = hsearch_r(entry, ENTER, &found, htab);
 
-	return 0;
+	return err;
 }
 
 int mimetype_parse(const char* infilename, struct hsearch_data* htab )
@@ -191,6 +193,7 @@ int mimetype_parse(const char* infilename, struct hsearch_data* htab )
 	return 0;
 }
 
+#ifdef TEST_ME
 int main(void)
 {
 	int ret;
@@ -214,4 +217,5 @@ int main(void)
 
 	return 0;
 }
+#endif
 
