@@ -13,7 +13,7 @@
 #include <errno.h>
 #include <search.h>
 
-#include "mimetypes.h"
+//#include "mimetypes.h"
 
 enum State {
 	START = 1,
@@ -91,15 +91,10 @@ int mimetype_parse(const char* infilename, struct hsearch_data* htab )
 	memset(ext,0,sizeof(ext));
 
 	while (1) {
-#ifdef DEBUG
-		dbg_cout_file(infile);
-#endif
 		char c = fgetc(infile);
 		if (feof(infile)) {
 			break;
 		}
-
-//		dbg_cout_file(infile);
 
 		switch (state) {
 			case START:
@@ -112,7 +107,6 @@ int mimetype_parse(const char* infilename, struct hsearch_data* htab )
 				else if (c==LF || c==SP || c==HT) {
 				}
 				else {
-//					std::cout << "State::TYPE start\n";
 					memset(type,0,sizeof(type));
 					type_idx = 0;
 					type[type_idx++] = c;
@@ -160,21 +154,18 @@ int mimetype_parse(const char* infilename, struct hsearch_data* htab )
 			case EXTENSION:
 				if (c==CR) {
 					// end of line; save extension
-//					mt[ext] = type;
 					err = save(type, ext, htab);
 					printf("%s=%s\n", ext, type);
 					state = eat_eol(infile);
 				}
 				else if (c==LF) {
 					// end of line; save extension
-//					mt[ext] = type;
 					err = save(type, ext, htab);
 					printf("%s=%s\n", ext, type);
 					state = START;
 				}
 				else if (c==SP || c==HT) {
 					// end of this extension
-//					mt[ext] = type;
 					err = save(type, ext, htab);
 					printf("%s=%s\n", ext, type);
 					state = SEEK_EXTENSION;

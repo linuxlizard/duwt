@@ -53,7 +53,6 @@ enum MHD_Result {
 #include "nlnames.h"
 #include "hdump.h"
 #include "ie.h"
-#include "mimetypes.h"
 #include "args.h"
 #include "bss_json.h"
 #include "ssid.h"
@@ -684,14 +683,15 @@ enum MHD_Result answer_to_connection (void *arg,
 			origin = kv.second;
 		}
 	}
+#endif
 
 	// get the URL arguments
-	KeyValueList args;
+	int args;
 	MHD_get_connection_values (connection, MHD_GET_ARGUMENT_KIND, &capture_keys, &args);
-	for (auto& kv : args) {
-		printf("%s arg %s=%s\n", __func__, kv.first, kv.second);
-	}
-#endif
+//	for (auto& kv : args) {
+//		printf("%s arg %s=%s\n", __func__, kv.first, kv.second);
+//	}
+
 	struct MHD_Response *response;
 	int status = MHD_HTTP_OK;
 
