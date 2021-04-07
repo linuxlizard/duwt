@@ -8,7 +8,7 @@ JS=duwt.js bssid.js jquery-3.5.1.min.js jquery-3.5.1.js sample.js datatable.js s
 
 # index.html from https://getbootstrap.com/docs/4.5/getting-started/introduction/#starter-template
 # starter.html from AdminLTE https://adminlte.io
-HTML=index.html starter.html bssid.html datatable.html
+HTML=simple.html index.html starter.html bssid.html datatable.html
 
 all: $(SERVER) js html
 
