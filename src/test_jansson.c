@@ -18,11 +18,21 @@ int main(void)
 	uint32_t num32;
 	uint64_t num64;
 
+	// peek at jansson and 64-bit integers
+	json_int_t n = -1;
+	printf("%s n=%"JSON_INTEGER_FORMAT" size=%zu\n", __func__, n, sizeof(n));
+#ifdef JSON_INTEGER_IS_LONG_LONG
+	printf("%s JSON_INTEGER_IS_LONG_LONG is defined\n", __func__);
+#else
+	printf("%s JSON_INTEGER_IS_LONG_LONG is NOT defined\n", __func__);
+#endif
+
 	// jansson uses signed long long for integers. Will that cause problems?
 	num8 = num16 = num32 = num64 = 0;
 
 	json_t *jnum;
 	char *s;
+	char *si, *sI;
 
 	for (size_t i=0 ; i<8 ; i++) {
 		num8 = 1u<<i;
@@ -46,9 +56,10 @@ int main(void)
 		num32 = 1ul<<i;
 		jnum = json_integer(num32);
 		assert(jnum);
-		s = json_dumps(json_pack("{si}", "num32", num32), 0);
+		si = json_dumps(json_pack("{si}", "num32", num32), 0);
+		sI = json_dumps(json_pack("{sI}", "num32", num32), 0);
 		assert(s);
-		printf("%"PRIu32 " 0x%"PRIx32 " %d %s\n", num32, num32, (int)num32, s);
+		printf("%"PRIu32 " 0x%"PRIx32 " %d si=%s sI=%s\n", num32, num32, (int)num32, si, sI);
 	}
 
 	num64 = 0ull;
