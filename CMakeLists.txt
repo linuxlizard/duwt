@@ -45,6 +45,9 @@ target_compile_options(duwt PUBLIC $<$<CONFIG:DEBUG>:${MY_DEBUG_OPTIONS}>)
 # libiw requires jansson
 pkg_check_modules(jansson REQUIRED jansson)
 
+add_executable(oui src/run_oui.cc src/oui.cc)
+target_include_directories(oui PUBLIC include )
+
 foreach(test IN ITEMS test_oui test_survey)
 	message("test=${test}")
 	# strip the "test_" from the test name to get the src we're trying to test

@@ -1,3 +1,11 @@
+/*
+ * run_oui.cc 
+ *
+ * read mac addresses from stdin ; look them up in the oui db
+ *
+ * Copyright (c) 2021 David Poole <davep@mbuf.com>
+ */
+
 #include <iostream>
 #include <algorithm>
 
@@ -16,6 +24,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 
+		// TODO error checking (shame!)
 		std::string s = arg.substr(0,8);
 		s.erase(2,1);
 		s.erase(4,1);
