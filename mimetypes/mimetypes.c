@@ -13,7 +13,7 @@
 #include <errno.h>
 #include <search.h>
 
-//#include "mimetypes.h"
+#include "mimetypes.h"
 
 enum State {
 	START = 1,

@@ -56,6 +56,7 @@ enum MHD_Result {
 #include "args.h"
 #include "bss_json.h"
 #include "ssid.h"
+#include "mimetypes.h"
 
 #define PORT 8081
 //#define PORT 8888
