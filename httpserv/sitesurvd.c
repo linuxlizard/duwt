@@ -22,7 +22,7 @@
 #include <arpa/inet.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <search.h>
+//#include <search.h>
 #include <limits.h>
 
 // netlink
@@ -37,13 +37,15 @@
 
 // microhttpd switched to enums after this point
 #if MHD_VERSION <= 0x00097000
-#error
-#undef MHD_NO
-#undef MHD_YES
-enum MHD_Result {
-	MHD_NO = 0,
-	MHD_YES = 1 
-};
+//#undef MHD_NO
+//#undef MHD_YES
+//enum MHD_Result {
+//	MHD_NO = 0,
+//	MHD_YES = 1 
+//};
+typedef int RESULT_TYPE;
+#else
+typedef enum MHD_Result RESULT_TYPE;
 #endif
 
 #include "core.h"
@@ -56,6 +58,7 @@ enum MHD_Result {
 #include "args.h"
 #include "bss_json.h"
 #include "ssid.h"
+#include "list.h"
 #include "mimetypes.h"
 
 #define PORT 8081
@@ -74,14 +77,6 @@ static const char* notfound = "\
 <p>Not Found.</p>\n\
 </html>\n\
 ";
-
-// storage for the glibc binary tree data structure 
-// "tsearch, tfind, tdelete, twalk, tdestroy - manage a binary search tree  "
-typedef struct 
-{
-	size_t count;
-	void* root;
-} BSSMap;
 
 #define BUNDLE_COOKIE 0x01448f44
 struct netlink_socket_bundle 
@@ -102,36 +97,18 @@ struct netlink_socket_bundle
 	bool busy;
 };
 
-// tsearch() callback
-static int bss_compare(const void* p1, const void* p2)
+DEFINE_DL_LIST(bss_list);
+
+// linear search the list for a particular bssid
+static struct BSS * find_bss(macaddr bssid)
 {
-	struct BSS* bss_one = (struct BSS*)p1;
-	struct BSS* bss_two = (struct BSS*)p2;
-
-	XASSERT(bss_one->cookie == BSS_COOKIE, 0);
-	XASSERT(bss_two->cookie == BSS_COOKIE, 0);
-
-	printf("compare %s to %s\n", bss_one->bssid_str, bss_two->bssid_str);
-
-	// TODO switch to 64-bit encapsulation of the 6-byte bssid?
-	return strcmp(bss_one->bssid_str, bss_two->bssid_str);
-}
-
-// twalk() callback
-static void bss_print(const void* nodep, const VISIT which, const int depth)
-{
-	struct BSS* bss = *(struct BSS**)nodep;
-
-	(void)depth;
-	if (which==postorder || which==leaf) {
-		printf("%s %s", __func__, bss->bssid_str);
-		ssid_print(bss, stdout, 32, "\n");
+	struct BSS* bss;
+	dl_list_for_each(bss, &bss_list, struct BSS, node) {
+		if (memcmp(bss->bssid, bssid, ETH_ALEN) == 0) {
+			return bss;
+		}
 	}
-}
-
-static void bss_map_dump(const BSSMap* bss_map)
-{
-	twalk(bss_map->root, bss_print);
+	return NULL;
 }
 
 // netlink callback on the NL80211_CMD_GET_SCAN message
@@ -145,9 +122,6 @@ static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 
 	struct netlink_socket_bundle* bun = (struct netlink_socket_bundle*)arg;
 	XASSERT(bun->cookie == BUNDLE_COOKIE, bun->cookie);
-
-//	struct dl_list* bss_list = (struct dl_list*)bun->more_args;
-	BSSMap* map = (BSSMap*)bun->more_args;
 
 	struct nlmsghdr *hdr = nlmsg_hdr(msg);
 	INFO("%s len=%" PRIu32 " type=%u flags=%u seq=%" PRIu32 " pid=%" PRIu32 "\n", __func__,
@@ -176,27 +150,15 @@ static int scan_survey_valid_handler(struct nl_msg *msg, void *arg)
 		goto fail;
 	}
 	else {
-//		uint64_t key = BSSID_U64(new_bss->bssid);
-
-		// find tree entry with matching bssid
-		void* p = tfind((void*)new_bss, &map->root, bss_compare);
-		if (p) {
-			// item found ; release the memory
-			struct BSS* bss = *(struct BSS**)p;
-			XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
-			tdelete(bss, &map->root, bss_compare);
-			DBG("%s free %p\n", __func__, (void*)bss);
+		struct BSS *bss = find_bss(new_bss->bssid );
+		if (bss) {
+			// this existing element must be removed before we can add the new BSS decode
+			DBG("%s remove %s\n", __func__, bss->bssid_str);
+			dl_list_del(&bss->node);
 			bss_free(&bss);
 		}
-		else { 
-			// not found ; this is new 
-			// so increment our count
-			map->count++;
-		}
-
-		// add it
-		p = tsearch((void*)new_bss, &map->root, bss_compare);
-
+		// add new
+		dl_list_add_tail(&bss_list, &new_bss->node);
 	}
 
 	DBG("%s success\n", __func__);
@@ -354,7 +316,7 @@ static int on_scan_event_valid_handler(struct nl_msg *msg, void *arg)
 	return NL_SKIP;
 }
 
-enum MHD_Result capture_keys (void *arg, enum MHD_ValueKind kind, 
+RESULT_TYPE capture_keys (void *arg, enum MHD_ValueKind kind, 
 					const char *key, const char *value)
 {
 	// MHD callback
@@ -377,15 +339,16 @@ enum MHD_Result capture_keys (void *arg, enum MHD_ValueKind kind,
 }
 
 // responsible for /api/survey 
-void get_survey_response(const BSSMap* bss_map, struct MHD_Response **p_response, int* status)
+void get_survey_response(struct MHD_Response **p_response, int* status)
 {
 	struct MHD_Response* response  = NULL;
 
+	DBG("%s\n", __func__);
+
 	json_t* jarray = json_array();
 
-#if 0
-	for (auto iter : *bss_map) {
-		struct BSS* bss = iter.second;
+	const struct BSS* bss;
+	dl_list_for_each(bss, &bss_list, const struct BSS, node) {
 		XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
 
 		json_t* jbss;
@@ -398,7 +361,6 @@ void get_survey_response(const BSSMap* bss_map, struct MHD_Response **p_response
 		// TODO error checking
 		(void)err;
 	}
-#endif
 
 	char* s = json_dumps(jarray, 0);
 	if (!s) {
@@ -418,7 +380,7 @@ void get_survey_response(const BSSMap* bss_map, struct MHD_Response **p_response
 		return;
 	}
 
-	int ret = MHD_add_response_header(response, 
+	RESULT_TYPE ret = MHD_add_response_header(response, 
 			"Content-Type", "application/json"
 			);
 	if (ret != MHD_YES) {
@@ -434,8 +396,11 @@ void get_survey_response(const BSSMap* bss_map, struct MHD_Response **p_response
 }
 
 // responsible for /api/bssid
-void get_bssid_response(const char* bssid_str, ssize_t bssid_len, const BSSMap* bss_map, struct MHD_Response **p_response, int* status)
+void get_bssid_response(const char* bssid_str, ssize_t bssid_len, 
+						struct MHD_Response **p_response, int* status)
 {
+	// TODO finish convert from C++ to C
+
 	*p_response = NULL;
 	*status = MHD_HTTP_INTERNAL_SERVER_ERROR;
 
@@ -505,7 +470,8 @@ void get_bssid_response(const char* bssid_str, ssize_t bssid_len, const BSSMap* 
 }
 
 // starting point for /api 
-void get_api_response(const char* url, ssize_t url_len, const BSSMap* bss_map, struct MHD_Response **p_response, int* status)
+void get_api_response(const char* url, ssize_t url_len, 
+						struct MHD_Response **p_response, int* status)
 {
 	// MHD callback
 
@@ -516,13 +482,11 @@ void get_api_response(const char* url, ssize_t url_len, const BSSMap* bss_map, s
 	}
 
 	if (strncmp(url, "survey", 6) == 0) {
-		get_survey_response(bss_map, p_response, status);
+		get_survey_response(p_response, status);
 	}
 	else if (strncmp(url, "bssid/", 6) == 0) {
-		get_bssid_response(url+6, url_len-6, bss_map, p_response, status);
+		get_bssid_response(url+6, url_len-6, p_response, status);
 	}
-
-	return ;
 }
 
 static size_t get_ext(const char *filename, char ext[], size_t ext_size)
@@ -630,7 +594,7 @@ struct MHD_Response* get_file_response(const char* url)
 		int ret = hsearch_r(entry, FIND, &found, &mimetypes);
 		if (ret) {
 			DBG("%s ext=%s mimetype=%s\n", __func__, ext, (char*)found->data);
-			enum MHD_Result mhd_ret = MHD_add_response_header(response, 
+			RESULT_TYPE mhd_ret = MHD_add_response_header(response, 
 					"Content-Type",
 					(char*)found->data);
 			if (mhd_ret != MHD_YES) {
@@ -644,7 +608,7 @@ struct MHD_Response* get_file_response(const char* url)
 	return response;
 }
 
-enum MHD_Result answer_to_connection (void *arg, 
+RESULT_TYPE answer_to_connection (void *arg, 
 						struct MHD_Connection *connection,
 						const char *url,
 						const char *method, 
@@ -654,17 +618,13 @@ enum MHD_Result answer_to_connection (void *arg,
 						void **con_cls)
 {
 	// MHD callback
-	// TODO finish C++ -> C conversion
 	(void)arg;
-	(void)connection;
 	(void)url;
 	(void)method;
 	(void)version;
 	(void)upload_data;
 	(void)upload_data_size;
 	(void)con_cls;
-
-	BSSMap* bss_map = (BSSMap*)arg;
 
 	printf ("%s method=%s request for url=%s using version=%s\n", __func__, method, url, version);
 
@@ -687,8 +647,8 @@ enum MHD_Result answer_to_connection (void *arg,
 #endif
 
 	// get the URL arguments
-	int args;
-	MHD_get_connection_values (connection, MHD_GET_ARGUMENT_KIND, &capture_keys, &args);
+//	int args;
+//	MHD_get_connection_values (connection, MHD_GET_ARGUMENT_KIND, &capture_keys, &args);
 //	for (auto& kv : args) {
 //		printf("%s arg %s=%s\n", __func__, kv.first, kv.second);
 //	}
@@ -700,7 +660,7 @@ enum MHD_Result answer_to_connection (void *arg,
 	ssize_t url_len = strlen(url);
 
 	if (strncmp(url, "/api/", 5) == 0) {
-		get_api_response(url+5, url_len-5, bss_map, &response, &status);
+		get_api_response(url+5, url_len-5, &response, &status);
 		// CORS
 //		if (origin.length()) {
 //			int ret = MHD_add_response_header(response, 
@@ -715,12 +675,16 @@ enum MHD_Result answer_to_connection (void *arg,
 
 	// if all else fails, return a simple default page
 	if (!response) {
-		bss_map_dump(bss_map);
+		const struct BSS* bss;
+		dl_list_for_each(bss, &bss_list, const struct BSS, node) {
+			XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
+			printf("BSS %s\n", bss->bssid_str);
+		}
 
 		char p[64];
 		const char* msg = "<html><body>Found %zu BSSID</body></html>\n";
 
-		size_t page_len = snprintf(p, sizeof(p), msg, bss_map->count);
+		size_t page_len = snprintf(p, sizeof(p), msg, dl_list_len(&bss_list));
 
 		response = MHD_create_response_from_buffer(
 						page_len,
@@ -729,7 +693,7 @@ enum MHD_Result answer_to_connection (void *arg,
 		// TODO check for error
 	}
 
-	enum MHD_Result ret = MHD_queue_response (connection, status, response);
+	RESULT_TYPE ret = MHD_queue_response (connection, status, response);
 	// TODO check return
 
 	MHD_destroy_response (response);
@@ -738,7 +702,7 @@ enum MHD_Result answer_to_connection (void *arg,
 }
 
 
-static enum MHD_Result on_client_connect (void *cls,
+static RESULT_TYPE on_client_connect (void *cls,
 								const struct sockaddr *addr,
 								socklen_t addrlen)
 {
@@ -857,11 +821,6 @@ int main(int argc, char* argv[])
 	}
 	struct MHD_Daemon *daemon = NULL;
 
-	BSSMap bss_map = {
-		.count = 0,
-		.root = NULL
-	};
-
 	memset(&mimetypes, 0, sizeof(struct hsearch_data));
 	err = hcreate_r(1024, &mimetypes);
 	if (!err) {
@@ -872,7 +831,7 @@ int main(int argc, char* argv[])
 
 	daemon = MHD_start_daemon ( MHD_NO_FLAG, PORT, 
 			&on_client_connect, NULL,
-			&answer_to_connection, (void*)&bss_map, 
+			&answer_to_connection, NULL, 
 			MHD_OPTION_END);
 	XASSERT( daemon, 0);
 
@@ -899,7 +858,7 @@ int main(int argc, char* argv[])
 		scan_event_watcher.more_args = (void*)&scan_results_watcher;
 
 		// attach the bss collection to the get scan results watcher
-		scan_results_watcher.more_args = (void*)&bss_map;
+		scan_results_watcher.more_args = (void*)&bss_list;
 	}
 
 	fd_set read_fd_set, write_fd_set, except_fd_set;
