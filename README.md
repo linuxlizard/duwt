@@ -24,15 +24,13 @@ The full C++17 implemenation was too heavy for firmware, so backed up and made
 a C-only version that lives in libiw. Contains "scan-dump", a super useful
 cmdline utility to dump the scan results, one BSS per line.
 
-The back-end for the web application is in httpserv and is written in C++.
-Uses microhttpd for now but likely will be transitioned to [Poco](https://pocoproject.org/)
+The back-end for the web application is in httpserv and is written in C.
+Uses [microhttpd](https://www.gnu.org/software/libmicrohttpd/)
 
 # Packages Used
  - https://github.com/gabime/spdlog
  - https://github.com/fmtlib/fmt
  - https://nlohmann.github.io/json/
- - http://www.digip.org/jansson/
- - https://pocoproject.org/
  - http://www.digip.org/jansson/
  - [Linux 'iw'](https://git.kernel.org/pub/scm/linux/kernel/git/jberg/iw.git)
 
@@ -62,3 +60,11 @@ https://github.com/fmtlib/fmt#license
 ## spdlog license (MIT)
 https://github.com/gabime/spdlog/blob/v1.x/LICENSE
 
+## list.h
+Doubly-linked list
+Copyright (c) 2009-2019, Jouni Malinen <j@w1.fi>
+
+This software may be distributed under the terms of the BSD license.
+See README for more details.
+
+Copyright (c) 2009-2019, Jouni Malinen <j@w1.fi>
