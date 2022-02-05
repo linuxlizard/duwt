@@ -57,7 +57,7 @@ int main(void)
 		jnum = json_integer(num32);
 		assert(jnum);
 		si = json_dumps(json_pack("{si}", "num32", num32), 0);
-		sI = json_dumps(json_pack("{sI}", "num32", num32), 0);
+		sI = json_dumps(json_pack("{sI}", "num32", (json_int_t)num32), 0);
 		assert(s);
 		printf("%"PRIu32 " 0x%"PRIx32 " %d si=%s sI=%s\n", num32, num32, (int)num32, si, sI);
 	}
@@ -67,7 +67,7 @@ int main(void)
 		num64 = 1ull<<i;
 		jnum = json_integer(num64);
 		assert(jnum);
-		s = json_dumps(json_pack("{sI}", "num64", num64), 0);
+		s = json_dumps(json_pack("{sI}", "num64", (json_int_t)num64), 0);
 		assert(s);
 		printf("%"PRIu64 " 0x%"PRIx64 " %d %s\n", num64, num64, (int)num64, s);
 	}
