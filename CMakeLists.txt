@@ -43,7 +43,7 @@ target_include_directories(duwt PUBLIC include libiw)
 target_compile_options(duwt PUBLIC $<$<CONFIG:DEBUG>:${MY_DEBUG_OPTIONS}>)
 
 add_library(mimetypes STATIC mimetypes/mimetypes.c)
-target_include_directories(mimetypes PUBLIC mimetypes/mimetypes.c)
+target_include_directories(mimetypes PUBLIC mimetypes)
 
 target_include_directories(duwt PUBLIC ${libnl_INCLUDE_DIRS} ${jsoncpp_INCLUDE_DIRS})
 # libiw requires jansson
