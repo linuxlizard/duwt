@@ -40,6 +40,10 @@ int main(void)
 			printf("\twdev=%#" PRIx64 "\n", dev->wdev);
 			printf("\taddr=" MAC_ADD_FMT "\n", MAC_ADD_PRN(dev->addr));
 			printf("\ttype=%" PRIu32 "\n", dev->iftype);
+			printf("\tchannel %d (%d MHz), width: %s MHz, center1: %d MHz\n",
+					ieee80211_frequency_to_channel(dev->freq_khz), 
+					dev->freq_khz, bw_str(dev->channel_width), dev->channel_center_freq1);
+			printf("\tgeneration=%" PRIu32 "\n", dev->generation);
 		}
 	}
 	return ret;

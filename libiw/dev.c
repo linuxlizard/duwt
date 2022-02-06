@@ -30,6 +30,8 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 	struct iw_dev_list* devlist = (struct iw_dev_list*)arg;
 	struct iw_dev* dev;
 
+	DBG("%s\n", __func__);
+
 	if (devlist->count + 1 > devlist->max) {
 		ERR("%s out of memory for iw_dev at count=%zu\n", __func__, devlist->count);
 		return NL_SKIP;
@@ -51,7 +53,7 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 		goto fail;
 	}
 
-//	peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
+	peek_nla_attr(tb_msg, NL80211_ATTR_MAX);
 
 	if (tb_msg[NL80211_ATTR_WIPHY]) {
 		dev->phy_id = nla_get_u32(tb_msg[NL80211_ATTR_WIPHY]);
@@ -66,17 +68,56 @@ static int valid_handler(struct nl_msg *msg, void *arg)
 		strncpy(dev->ifname, nla_get_string(tb_msg[NL80211_ATTR_IFNAME]), IF_NAMESIZE);
 	}
 
+	if (tb_msg[NL80211_ATTR_IFTYPE]) {
+		dev->iftype = nla_get_u32(tb_msg[NL80211_ATTR_IFTYPE]);
+	}
+
 	if (tb_msg[NL80211_ATTR_MAC]) {
 		memcpy(dev->addr, nla_data(tb_msg[NL80211_ATTR_MAC]), ETH_ALEN);
 	}
+
+ 	/*	"%NL80211_ATTR_WIPHY_FREQ in positive KHz. Only valid when supplied with
+	 *	an %NL80211_ATTR_WIPHY_FREQ_OFFSET."
+	 */
+	if (tb_msg[NL80211_ATTR_WIPHY_FREQ]) {
+		dev->freq_khz = nla_get_u32(tb_msg[NL80211_ATTR_WIPHY_FREQ]);
+	}
+
+	// ATTR_WIPHY_CHANNEL_TYPE
+
+ 	/* "@NL80211_ATTR_GENERATION: Used to indicate consistent snapshots for
+	 *	dumps. This number increases whenever the object list being
+	*	dumped changes"
+	 */
+	if (tb_msg[NL80211_ATTR_GENERATION]) {
+		dev->generation = nla_get_u32(tb_msg[NL80211_ATTR_GENERATION]);
+	}
+
+	// TODO
+//	if (tb_msg[NL80211_ATTR_SSID]) {
+//		memcpy(dev->ssid, nla_data(tb_msg[NL80211_ATTR_SSID]), 32);
+//	}
+
+	// ATTR_4ADDR
+	// ATTR_WIPHY_TX_POWER_LEVEL
 
 	if (tb_msg[NL80211_ATTR_WDEV]) {
 		dev->wdev = nla_get_u64(tb_msg[NL80211_ATTR_WDEV]);
 	}
 
-	if (tb_msg[NL80211_ATTR_IFTYPE]) {
-		dev->iftype = nla_get_u32(tb_msg[NL80211_ATTR_IFTYPE]);
+	if (tb_msg[NL80211_ATTR_CHANNEL_WIDTH]) {
+		dev->channel_width = nla_get_u32(tb_msg[NL80211_ATTR_CHANNEL_WIDTH]);
 	}
+
+	if (tb_msg[NL80211_ATTR_CENTER_FREQ1]) {
+		dev->channel_center_freq1 = nla_get_u32(tb_msg[NL80211_ATTR_CENTER_FREQ1]);
+	}
+
+	if (tb_msg[NL80211_ATTR_CENTER_FREQ2]) {
+		dev->channel_center_freq1 = nla_get_u32(tb_msg[NL80211_ATTR_CENTER_FREQ2]);
+	}
+
+	// ATTR_TXQ_SATS
 
 	return NL_OK;
 fail:

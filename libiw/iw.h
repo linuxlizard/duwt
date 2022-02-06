@@ -83,6 +83,13 @@ struct iw_dev
 	uint32_t phy_id;
 	uint64_t wdev;
 	enum nl80211_iftype iftype;
+
+	uint32_t freq_khz;
+	enum nl80211_chan_width channel_width;
+	uint32_t channel_center_freq1;
+	uint32_t channel_center_freq2;
+
+	uint32_t generation;
 };
 
 void peek_nla_attr( struct nlattr* tb_msg[], size_t count);
