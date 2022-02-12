@@ -64,6 +64,9 @@ typedef enum MHD_Result RESULT_TYPE;
 #define PORT 8081
 //#define PORT 8888
 
+// directory containg the web app
+#define WEB_FILES "files"
+
 int survd_debug = 0;
 
 static struct hsearch_data mimetypes;
@@ -339,10 +342,8 @@ RESULT_TYPE capture_keys (void *arg, enum MHD_ValueKind kind,
 }
 
 // responsible for /api/survey 
-void get_survey_response(struct MHD_Response **p_response, int* status)
+struct MHD_Response* get_survey_response(int* status)
 {
-	struct MHD_Response* response  = NULL;
-
 	DBG("%s\n", __func__);
 
 	json_t* jarray = json_array();
@@ -366,18 +367,18 @@ void get_survey_response(struct MHD_Response **p_response, int* status)
 	if (!s) {
 		ERR("%s json dump failed\n", __func__);
 		json_decref(jarray);
-		return;
+		return NULL;
 	}
 
 	json_decref(jarray);
 
-	response = MHD_create_response_from_buffer(
+	struct MHD_Response* response = MHD_create_response_from_buffer(
 					strlen(s),
 					(void *)s, 
 					MHD_RESPMEM_MUST_FREE);
 	if (!response) {
 		PTR_FREE(s);
-		return;
+		return NULL;
 	}
 
 	RESULT_TYPE ret = MHD_add_response_header(response, 
@@ -390,29 +391,27 @@ void get_survey_response(struct MHD_Response **p_response, int* status)
 	}
 
 	if (response) {
-		PTR_ASSIGN(*p_response, response);
 		*status = MHD_HTTP_OK;
 	}
+	return response;
 }
 
 // responsible for /api/bssid
-void get_bssid_response(const char* bssid_str, ssize_t bssid_len, 
-						struct MHD_Response **p_response, int* status)
+struct MHD_Response* get_bssid_response(const char* bssid_str, ssize_t bssid_len, int* status)
 {
 	// TODO finish convert from C++ to C
 
-	*p_response = NULL;
 	*status = MHD_HTTP_INTERNAL_SERVER_ERROR;
 
 	if (!bssid_str || !*bssid_str || bssid_len < 12) {
-		return;
+		return NULL;
 	}
 
 	macaddr bssid;
 	int ret = bss_str_to_bss(bssid_str, bssid_len, bssid);
 	if (ret<0 ) {
 		DBG("%s failed parse bssid=%s\n", __func__, bssid_str);
-		return;
+		return NULL;
 	}
 
 	struct BSS* bss = NULL;
@@ -442,7 +441,7 @@ void get_bssid_response(const char* bssid_str, ssize_t bssid_len,
 						(void *)s, 
 						MHD_RESPMEM_MUST_FREE);
 		if (!response) {
-			return;
+			return NULL;
 		}
 
 		ret = MHD_add_response_header(response, 
@@ -464,29 +463,26 @@ void get_bssid_response(const char* bssid_str, ssize_t bssid_len,
 		*status = MHD_HTTP_NOT_FOUND;
 	}
 
-	if (response) {
-		PTR_ASSIGN(*p_response, response);
-	}
+	return response;
 }
 
 // starting point for /api 
-void get_api_response(const char* url, ssize_t url_len, 
-						struct MHD_Response **p_response, int* status)
+struct MHD_Response* get_api_response(const char* url, ssize_t url_len, int* status)
 {
 	// MHD callback
 
-	*p_response = NULL;
-
 	if (url_len < 6) {
-		return;
+		return NULL;
 	}
 
 	if (strncmp(url, "survey", 6) == 0) {
-		get_survey_response(p_response, status);
+		return get_survey_response(status);
 	}
 	else if (strncmp(url, "bssid/", 6) == 0) {
-		get_bssid_response(url+6, url_len-6, p_response, status);
+		return get_bssid_response(url+6, url_len-6, status);
 	}
+
+	return NULL;
 }
 
 static size_t get_ext(const char *filename, char ext[], size_t ext_size)
@@ -543,7 +539,7 @@ struct MHD_Response* get_file_response(const char* url)
 	char path[PATH_MAX+1];
 	char path_cleaned[PATH_MAX+1];
 
-	int len = snprintf(path, sizeof(path), "%s/%s", pwd, url);
+	int len = snprintf(path, sizeof(path), "%s/%s/%s", pwd, WEB_FILES, url);
 	if (len == sizeof(path)) {
 		ERR("%s path too long\n", __func__);
 		return NULL;
@@ -660,7 +656,7 @@ RESULT_TYPE answer_to_connection (void *arg,
 	ssize_t url_len = strlen(url);
 
 	if (strncmp(url, "/api/", 5) == 0) {
-		get_api_response(url+5, url_len-5, &response, &status);
+		response = get_api_response(url+5, url_len-5, &status);
 		// CORS
 //		if (origin.length()) {
 //			int ret = MHD_add_response_header(response, 
