@@ -78,9 +78,11 @@ $(function () {
 					// save the actual bssid then create a link to a bssid page
 					var new_survey = $.map(filtered, (network,idx) => {
 								return {
+									savessid: network.ssid,
 									savebssid: network.bssid,
 									...network,
 									bssid:`<a href=/bssid?bssid=${network.bssid}>${network.bssid}</a>`,
+									ssid:_.escape(network.ssid),
 									};
 							});
 					return new_survey;
