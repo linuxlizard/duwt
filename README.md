@@ -28,11 +28,12 @@ The back-end for the web application is in httpserv and is written in C.
 Uses [microhttpd](https://www.gnu.org/software/libmicrohttpd/)
 
 # Packages Used
- - https://github.com/gabime/spdlog
- - https://github.com/fmtlib/fmt
- - https://nlohmann.github.io/json/
  - http://www.digip.org/jansson/
  - [Linux 'iw'](https://git.kernel.org/pub/scm/linux/kernel/git/jberg/iw.git)
+ - https://jquery.com/
+ - https://getbootstrap.com/
+ - https://underscorejs.org/
+ - http://js-grid.com/
 
 # Licenses
 
