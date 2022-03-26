@@ -756,8 +756,8 @@ static void json_dump_bss_list(struct dl_list* bss_list)
 
 static void scan_dump_bss_list(struct dl_list* bss_list)
 {
-	struct BSS* bss;
-	dl_list_for_each(bss, bss_list, struct BSS, node) {
+	const struct BSS* bss;
+	dl_list_for_each(bss, bss_list, const struct BSS, node) {
 		print_bss(bss);
 	}
 
