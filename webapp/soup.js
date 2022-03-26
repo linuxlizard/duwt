@@ -6,11 +6,13 @@
 
 // TODO run standalone. Saving a copy here in case I lose codesandbox.io
 
-import "./styles.css";
-import * as d3 from "d3";
+//import "./styles.css";
+//import * as d3 from "d3";
 
 async function drawStuff() {
-  var soup = await d3.json("soup.json");
+  let source_url = new URL(document.URL);
+  let target_url = source_url.origin + "/api/survey";
+  var soup = await d3.json(target_url);
 
   // only 2.4 GHz bands
   //soup = d3.filter(soup, (d) => d.freq < 4000);
@@ -228,6 +230,6 @@ async function drawStuff() {
 
 drawStuff();
 
-//console.log(d3.select("#app"));
-d3.select("#app").html("<h1>Welcome to the Soup</h1>");
+console.log(d3.select("#app"));
+//d3.select("#app").html("<h1>Welcome to the Soup</h1>");
 
