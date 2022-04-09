@@ -8,18 +8,28 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-giJF6kkoqNQ00vy+HMDP7azOuL0xtbfIcaT9wjKHr8RbDVddVHyTfAAsrekwKmP1" crossorigin="anonymous">
 
+  <!-- jsGrid http://js-grid.com/docs/ -->
+  <link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.css" />
+  <link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid-theme.min.css" />
+
   <title>Welcome to the Soup</title>
   </head>
   <body>
-	<div class="container" id="button">
+
+  <!-- let's learn from https://getbootstrap.com/docs/5.1/examples/dashboard/ -->
+
+	<div class="container"</div>
+		<h1>Scan Survey</h1>
 		<div class="row">
-			<div class="col">
-				<h1>Scan Survey</h1>
+			<div class="col" id="app">
+			</div>
+		</div>
+		<h1>Detail</h1>
+		<div class="row">
+			<div class="col" id="jsGrid1">
 			</div>
 		</div>
 	</div>
-
-	<div class="container" id="app"></div>
 
 	<script src="jquery-3.5.1.js"></script>
 
@@ -36,8 +46,10 @@
 
 	<!-- page script -->
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.2/underscore-umd-min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.js"></script>
 	<script src="https://d3js.org/d3.v7.min.js"></script>
 	<script src="soup.js"></script>
+	<script src="duwt.js"></script>
 
   </body>
 </html>

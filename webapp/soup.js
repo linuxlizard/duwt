@@ -14,6 +14,9 @@ async function drawStuff() {
   let target_url = source_url.origin + "/api/survey";
   var soup = await d3.json(target_url);
 
+  var table = d3.select("detailtable");
+  console.log("table=",table);
+
   // only 2.4 GHz bands
   //soup = d3.filter(soup, (d) => d.freq < 4000);
   // only 5Ghz bands
