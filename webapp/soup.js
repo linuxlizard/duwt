@@ -31,7 +31,7 @@ async function drawStuff() {
 
   // 2. Create chart dimensions
 
-  const width = d3.min([window.innerWidth * 0.9, window.innerHeight * 0.9]);
+  const width = d3.min([window.innerWidth * 0.5, window.innerHeight * 0.5]);
   let dimensions = {
     width: width,
     height: width,
@@ -125,6 +125,7 @@ async function drawStuff() {
     .attr("cy", (d) => yScale(yAccessor(d)))
     .attr("r", (d) => radiusmap[widthAccessor(d)])
     .attr("fill", "#444")
+	.attr("fill-opacity", "0.4")
     .attr("cursor", "crosshair")
     .on("mouseenter", onMouseEnter)
     .on("mouseleave", onMouseLeave);
