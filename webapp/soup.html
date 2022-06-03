@@ -12,6 +12,25 @@
   <link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.css" />
   <link type="text/css" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid-theme.min.css" />
 
+
+  <!-- https://bl.ocks.org/d3noob/97e51c5be17291f79a27705cef827da2 -->
+<!--
+  <style>
+    div.tooltip {
+      position: absolute;
+      text-align: center;
+      width: 60px;
+      height: 28px;
+      padding: 2px;
+      font: 12px sans-serif;
+      background: lightsteelblue;
+      border: 0px;
+      border-radius: 8px;
+      pointer-events: none;
+    }  
+  </style>
+-->
+
   <title>Welcome to the Soup</title>
   </head>
   <body>
@@ -25,9 +44,7 @@
 		</div>
 		<div class="row">
 			<div class="col">
-				<form>
-					<button>Reset</button>
-				</form>
+				<input id="resetbutton" type="button" value="Reset" />
 			</div>
 		</div>
 		<div class="row">
@@ -52,7 +69,8 @@
 	<!-- page script -->
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.2/underscore-umd-min.js"></script>
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jsgrid/1.5.3/jsgrid.min.js"></script>
-	<script src="https://d3js.org/d3.v7.min.js"></script>
+<!--	<script src="https://d3js.org/d3.v7.min.js"></script> -->
+	<script src="d3.js"></script>
 	<script src="soup.js"></script>
 	<script src="duwt.js"></script>
 

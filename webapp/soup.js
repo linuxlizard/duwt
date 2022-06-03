@@ -12,9 +12,9 @@
 async function drawStuff() {
   let source_url = new URL(document.URL);
   let target_url = source_url.origin + "/api/survey";
-  var soup = await d3.json(target_url);
+  let soup = await d3.json(target_url);
 
-  var table = d3.select("detailtable");
+  let table = d3.select("detailtable");
   console.log("table=",table);
 
   // only 2.4 GHz bands
@@ -111,45 +111,80 @@ async function drawStuff() {
       .attr("y2", (d) => dimensions.boundedHeight);
   }
 
-  drawGridLines(xScale, yScale);
+    drawGridLines(xScale, yScale);
 
-  // 5. Draw data
-  const dotsGroup = bounds.append("g").attr("clip-path", "url(#border)");
+    // 5. Draw data
+    const dotsGroup = bounds.append("g").attr("clip-path", "url(#border)");
 
-  const dots = dotsGroup
-    .selectAll("circle")
-    .data(soup)
-    .enter()
-    .append("circle")
-    .attr("cx", (d) => xScale(xAccessor(d)))
-    .attr("cy", (d) => yScale(yAccessor(d)))
-    .attr("r", (d) => radiusmap[widthAccessor(d)])
-    .attr("fill", "#444")
-	.attr("fill-opacity", "0.4")
-    .attr("cursor", "crosshair")
-    .on("mouseenter", onMouseEnter)
-    .on("mouseleave", onMouseLeave);
+    // https://observablehq.com/@d3/line-with-tooltip
+    const tooltip = bounds.append("g")
+        .style("pointer-events", "none");
 
-  //drawGridLines(xScale, yScale);
+    const dots = dotsGroup
+        .selectAll("circle")
+        .data(soup)
+        .enter()
+        .append("circle")
+        .attr("cx", (d) => xScale(xAccessor(d)))
+        .attr("cy", (d) => yScale(yAccessor(d)))
+        .attr("r", (d) => radiusmap[widthAccessor(d)])
+        .attr("fill", "#444")
+        .attr("fill-opacity", "0.4")
+        .attr("cursor", "crosshair")
+        .on("mouseenter", onMouseEnter)
+        .on("mouseleave", onMouseLeave);
 
-  function onMouseEnter(evt, datum) {
-    //console.log("pt=", d3.pointer(evt));
-    //console.log("target=", evt.currentTarget);
-    console.log("d=", datum);
-    const node = d3.select(this);
-    console.log(node.attr("cx"), node.attr("cy"));
-    bounds
-      .append("line")
-      .attr("x1", 0)
-      .attr("y1", 0)
-      .attr("x2", d3.select(this).attr("cx"))
-      .attr("y2", d3.select(this).attr("cy"))
-      .attr("stroke", "black")
-      .attr("id", "linez");
-  }
+    function onMouseEnter(evt, datum) {
+        //console.log("pt=", d3.pointer(evt));
+        //console.log("target=", evt.currentTarget);
+        console.log("d=", datum);
+
+        const node = d3.select(this);
+        console.log(node.attr("cx"), node.attr("cy"));
+
+        // draw a line from 0,0 to our pointered circle
+        bounds
+          .append("line")
+          .attr("x1", 0)
+          .attr("y1", 0)
+          .attr("x2", d3.select(this).attr("cx"))
+          .attr("y2", d3.select(this).attr("cy"))
+          .attr("stroke", "black")
+          .attr("id", "linez");
+
+        const X = d3.select(this).attr("cx");
+        const Y = d3.select(this).attr("cy");
+        console.log(`X=${X} Y=${Y}`);
+
+        // https://observablehq.com/@d3/line-with-tooltip
+//        tooltip.style("display", null);
+//        tooltip.attr("transform", `translate(${X},${Y})`);
+//        tooltip.attr("transform", `translate(${xScale(X[i])},${yScale(Y[i])})`);
+
+//        const path = tooltip.selectAll("path")
+//          .data([,])
+//          .join("path")
+//            .attr("fill", "white")
+//            .attr("stroke", "black");
+            
+          const rect = tooltip.selectAll("rect")
+              .join("rect")
+                .attr("x", 100)
+                .attr("y", 100)
+                .attr("width", "20")
+                .attr("height", "20")
+                .attr("fill", "white")
+                .attr("stroke", "black")
+                ;
+
+//<rect x="50" y="10" width="20" height="40"
+//    style="fill: none; stroke: black;"/>
+
+    }
 
   function onMouseLeave(evt, datum) {
     d3.select("#linez").remove();
+    tooltip.style("display", "none");
   }
 
   // A better zoom
@@ -171,9 +206,9 @@ async function drawStuff() {
     .call(yAxisGenerator)
     .call((g) => g.selectAll(".domain"));
 
-  // https://observablehq.com/@d3/zoom-svg-rescaled?collection=@d3/d3-zoom
+  // https://observablehq.com/@d4/zoom-svg-rescaled?collection=@d3/d3-zoom
 
-  wrapper.call(
+  let zoom = 
     d3
       .zoom()
       .extent([
@@ -182,7 +217,8 @@ async function drawStuff() {
       ])
       .scaleExtent([1, 8])
       .on("zoom", zoomed)
-  );
+      ;
+  wrapper.call(zoom);
 
   const circle = bounds.selectAll("circle");
   console.log("circle=", circle);
@@ -230,6 +266,15 @@ async function drawStuff() {
 
     //dots.attr("transform", (d) => `translate(${transform.apply(d)})`);
   }
+
+  const resetbutton = d3.select("#resetbutton");
+  console.log("resetbutton=", resetbutton);
+  resetbutton.on("click", function() { 
+          console.log("click!"); 
+//          zoomed({transform:{k:1, x:1, y:1}});
+          wrapper.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
+         });
+
 }
 
 drawStuff();
