@@ -107,7 +107,7 @@ fail:
 	return NL_SKIP;
 }
 
-static void print_supported_rates(struct BSS* bss)
+static void print_supported_rates(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_SUPPORTED_RATES);
 	if (ie) {
@@ -120,7 +120,7 @@ static void print_supported_rates(struct BSS* bss)
 	}
 }
 
-static void print_dsss_param(struct BSS* bss)
+static void print_dsss_param(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_DSSS_PARAMETER_SET);
 	if (ie) {
@@ -128,7 +128,7 @@ static void print_dsss_param(struct BSS* bss)
 	}
 }
 
-static void print_dtim(struct BSS* bss)
+static void print_dtim(const struct BSS* bss)
 {
 	const struct IE* ie = ie_list_find_id(&bss->ie_list, IE_TIM);
 	if (!ie) {
@@ -649,7 +649,7 @@ static void print_mobility_domain(const struct BSS* bss)
 	ie_print_mobility_domain(sie);
 }
 
-static void print_bss(struct BSS* bss)
+static void print_bss(const struct BSS* bss)
 {
 	XASSERT(bss->cookie == BSS_COOKIE, bss->cookie);
 
@@ -698,27 +698,23 @@ static void print_short(const struct BSS* bss)
 	//  SSID            BSSID              CHAN RATE  S:N   INT CAPS
 	ssid_print(bss, stdout, 32, NULL);
 
-	char mode[32];
-	bss_get_mode_str(bss, mode, 32);
+	char mode[32] = {0};
+	bss_get_mode_str(bss, mode, sizeof(mode));
 
-	char width[32];
-	bss_get_chan_width_str(bss, width, 32);
+	char width[32] = {0};
+	bss_get_chan_width_str(bss, width, sizeof(width));
 
-	printf("%18s  %d %8s %10s  %0.2f ", bss->bssid_str, bss->frequency, width, mode, bss->signal_strength_mbm/100.0);
-//	for( size_t i=0 ; i<bss->ie_list.count ; i++) {
-//		printf("%3d ", bss->ie_list.ieptrlist[i]->id);
-//	}
-//	printf("\n");
+	char security[64] = {0};
+	bss_get_security_str(bss, security, sizeof(security));
+
+	printf("%18s  %d %12s %10s  %0.2f %-20s", bss->bssid_str, bss->frequency, width, mode, bss->signal_strength_mbm/100.0, security);
 
 	const struct IE* ie= (void*)-1;
 	ie_list_for_each_entry(ie, bss->ie_list) {
-//		printf("%zu %p\n", i, (void*)ie);
-//		printf("%zu %p\n", i, bss->ie_list.ieptrlist[i]);
 		XASSERT(ie->cookie == IE_COOKIE, ie->cookie);
 		printf("%3d ", ie->id);
 	}
 	printf("\n");
-
 }
 
 void search_for(struct dl_list* list)
@@ -867,9 +863,6 @@ int main(int argc, char* argv[])
 	}
 
 	scan_dump_bss_list(&bss_list);
-
-
-//	search_for(&bss_list);
 
 leave:
 	bss_free_list(&bss_list);

@@ -693,6 +693,10 @@ struct IE_List
 extern "C" {
 #endif
 
+extern const uint8_t ms_oui[3];
+extern const uint8_t ieee80211_oui[3];
+extern const uint8_t wfa_oui[3];
+
 int ie_new(uint8_t id, uint8_t len, const uint8_t* buf, struct IE** pie);
 void ie_delete(struct IE** pie);
 

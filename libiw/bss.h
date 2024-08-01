@@ -143,8 +143,10 @@ bool bss_is_ht(const struct BSS* bss);
 
 int bss_get_chan_width_str(const struct BSS* bss, char* s, size_t len);
 int bss_get_mode_str(const struct BSS* bss, char* s, size_t len);
+int bss_get_security_str(const struct BSS* bss, char* s, size_t len);
 
 int bss_str_to_bss(const char* bss_str, size_t bssid_str_len, macaddr bssid);
+
 
 #ifdef __cplusplus
 } // end extern "C"

@@ -223,6 +223,8 @@ int bss_get_mode_str(const struct BSS* bss, char* s, size_t len)
 	// b b/g b/g/n b/g/n/ax 
 	// a a/n a/n/ac a/n/ac/ax
 
+	memset(s, 0, len);
+
 	const struct IE* const ht_ie = ie_list_find_id(&bss->ie_list, IE_HT_CAPABILITIES);
 	const struct IE* const vht_ie = ie_list_find_id(&bss->ie_list, IE_VHT_CAPABILITIES);
 	const struct IE* const he_ie = ie_list_find_ext_id(&bss->ie_list, IE_EXT_HE_CAPABILITIES );
@@ -259,8 +261,46 @@ int bss_get_mode_str(const struct BSS* bss, char* s, size_t len)
 	}
 	else {
 		// TODO
+		strncpy(s, "??", len);
 		return -ENOSYS;
 	}
+
+	return 0;
+}
+
+int bss_get_security_str(const struct BSS* bss, char* s, size_t len)
+{
+	const struct IE* const rsn_ie = ie_list_find_id(&bss->ie_list, IE_RSN);
+	const struct IE_RSN* rsn = NULL;
+	int size;
+
+	memset(s, 0, len);
+
+#define UPDATE_S \
+	do { \
+		XASSERT(size>=0, size); \
+		if ((size_t)size >= len ) { \
+			return -ENOMEM; \
+		}\
+		s += size;\
+		len -= (size_t)size;\
+	} while(0)
+
+	if (rsn_ie) {
+		rsn = IE_CAST(rsn_ie, struct IE_RSN);
+
+		XASSERT(rsn->akm_suite, 0);
+		for (uint16_t i=0 ; i<rsn->akm_suite_count ; i++) {
+			size = auth_to_str(&rsn->akm_suite[i], s, len);
+			UPDATE_S;
+		}
+
+		size = snprintf(s, len, " mfp:%d/%d", rsn->mfp_capable, rsn->mfp_required);
+		UPDATE_S;
+
+	}
+
+#undef UPDATE_S
 
 	return 0;
 }
@@ -278,7 +318,10 @@ int bss_get_chan_width_str(const struct BSS* bss, char* s, size_t len)
 	// 40+  above
 	// 40-  below
 
+	memset(s, 0, len);
+
 	if ((int)bss->chan_width == -1) {
+		strncpy(s, "??", len);
 		return -EINVAL;
 	}
 

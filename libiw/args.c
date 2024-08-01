@@ -13,7 +13,7 @@
 #include "core.h"
 #include "args.h"
 
-const char *version = "1.0.0";
+const char *version = "1.1.0";
 
 static void usage(void)
 {
