@@ -61,7 +61,7 @@ static int save(const char* type, const char* ext, struct hsearch_data* htab)
 	int err;
 	ENTRY entry, *found;
 
-	printf("%s %s %s\n", __func__, type, ext);
+//	printf("%s %s %s\n", __func__, type, ext);
 
 	entry.key = strdup(ext);
 	entry.data = strdup(type);
@@ -155,19 +155,19 @@ int mimetype_parse(const char* infilename, struct hsearch_data* htab )
 				if (c==CR) {
 					// end of line; save extension
 					err = save(type, ext, htab);
-					printf("%s=%s\n", ext, type);
+//					printf("%s=%s\n", ext, type);
 					state = eat_eol(infile);
 				}
 				else if (c==LF) {
 					// end of line; save extension
 					err = save(type, ext, htab);
-					printf("%s=%s\n", ext, type);
+//					printf("%s=%s\n", ext, type);
 					state = START;
 				}
 				else if (c==SP || c==HT) {
 					// end of this extension
 					err = save(type, ext, htab);
-					printf("%s=%s\n", ext, type);
+//					printf("%s=%s\n", ext, type);
 					state = SEEK_EXTENSION;
 				}
 				else {
